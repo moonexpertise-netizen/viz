@@ -40,6 +40,7 @@ export function entryInfoMap(entries) {
       piece: e.piece_number || e.invoice_number || '',
       invoice: e.invoice_number || '',
       date: e.date || '',
+      pieceUrl: e.attachment?.url || '',
     });
   }
   return map;
@@ -66,6 +67,8 @@ export function accountEntries(lines, entries, journals, accountArg) {
         credit: toNum(l.credit),
         journalCode: jmap.get(l.journal?.id) || '',
         pieceRef: e.piece || '',
+        pieceUrl: e.pieceUrl || '',
+        invoiceNumber: e.invoice || '',
       };
     });
 }

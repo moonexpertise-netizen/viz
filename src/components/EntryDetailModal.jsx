@@ -218,7 +218,16 @@ export default function EntryDetailModal({ balanceId, clientId, accountNumber, a
                 {entriesWithSolde.map((e, i) => (
                   <tr key={i} className={`border-b border-slate-100 hover:bg-blue-50/50 transition ${i % 2 === 1 ? 'bg-slate-50/50' : ''}`}>
                     <td className="py-1.5 px-2 text-gray-600 whitespace-nowrap w-[100px]">{e.date || '-'}</td>
-                    <td className="py-1.5 px-2 text-gray-800">{e.label}</td>
+                    <td className="py-1.5 px-2 text-gray-800">
+                      {e.pieceUrl ? (
+                        <a href={e.pieceUrl} target="_blank" rel="noreferrer"
+                           className="text-navy underline decoration-dotted hover:decoration-solid hover:text-blue-700 inline-flex items-center gap-1"
+                           title="Ouvrir la pièce comptable dans Pennylane">
+                          {e.label || e.invoiceNumber || 'Pièce'}
+                          <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                        </a>
+                      ) : (e.label || '—')}
+                    </td>
                     <td className={`py-1.5 px-2 text-right font-mono tabular-nums ${e.debit > 0 ? '' : 'text-gray-300'}`}>
                       {fmtAmt(e.debit)}
                     </td>

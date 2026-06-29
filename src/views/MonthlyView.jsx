@@ -1508,8 +1508,8 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
           clientId={clientId}
           accountNumber={modal.number}
           accountLabel={modal.label}
-          from={modal.from}
-          to={modal.to}
+          from={modal.from || months[0]}
+          to={modal.to || months[months.length - 1]}
           onClose={() => setModal(null)}
         />
       )}
@@ -1518,11 +1518,13 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
 }
 
 // Cash Flow Detail Modal
-function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, account, month, onClose }) {
+function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, account, month, from, to, onClose }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
+  const fromM = month || from;
+  const toM = month || to;
   const periodLabel = month ? `${month.split('-')[1]}/${month.split('-')[0]}` : 'Toutes periodes';
 
   useEffect(() => {
@@ -1533,8 +1535,8 @@ function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, acc
           company_id: balanceId || clientId,
           category,
           account: account || undefined,
-          from: month || undefined,
-          to: month || undefined,
+          from: fromM || undefined,
+          to: toM || undefined,
         });
         setEntries(res.data.entries || []);
       } catch (err) {
@@ -1544,7 +1546,7 @@ function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, acc
       }
     };
     fetchEntries();
-  }, [balanceId, clientId, category, account, month]);
+  }, [balanceId, clientId, category, account, fromM, toM]);
 
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -1829,6 +1831,8 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
           categoryLabel={modal.label}
           account={modal.account}
           month={modal.month}
+          from={months[0]}
+          to={months[months.length - 1]}
           onClose={() => setModal(null)}
         />
       )}
