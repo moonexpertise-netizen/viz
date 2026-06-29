@@ -33,7 +33,13 @@ const fmtAmt = (n) => {
   return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 };
 
-export default function EntryDetailModal({ balanceId, clientId, accountNumber, accountLabel, from, to, onClose }) {
+const frDate = (iso) => {
+  const s = String(iso || '').slice(0, 10);
+  const [y, m, d] = s.split('-');
+  return d && m && y ? `${d}/${m}/${y}` : s;
+};
+
+export default function EntryDetailModal({ balanceId, clientId, accountNumber, accountLabel, from, to, cachedLines = null, onClose }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -49,6 +55,23 @@ export default function EntryDetailModal({ balanceId, clientId, accountNumber, a
     : 'Toutes periodes';
 
   useEffect(() => {
+    // 1) Cache local (chargé à la synchro) : filtrage instantané, aucun appel réseau
+    if (cachedLines && cachedLines.length) {
+      const set = String(accountNumber || '').split(',').map((s) => s.trim()).filter(Boolean);
+      const matches = (num) => set.some((a) => num === a || num.startsWith(a));
+      const inRange = (iso) => {
+        const ym = String(iso).slice(0, 7);
+        return (!from || ym >= from) && (!to || ym <= to);
+      };
+      const filtered = cachedLines
+        .filter((l) => matches(l.account) && inRange(l.date))
+        .map((l) => ({ date: frDate(l.date), label: l.label, debit: l.debit, credit: l.credit, journalCode: l.journalCode, pieceRef: l.pieceRef, pieceUrl: l.pieceUrl }))
+        .sort((a, b) => (a.date || '').split('/').reverse().join().localeCompare((b.date || '').split('/').reverse().join()));
+      setEntries(filtered);
+      setLoading(false);
+      return;
+    }
+    // 2) Repli : appel API (anciens caches sans lignes)
     const fetchEntries = async () => {
       try {
         setLoading(true);
@@ -68,7 +91,7 @@ export default function EntryDetailModal({ balanceId, clientId, accountNumber, a
       }
     };
     fetchEntries();
-  }, [balanceId, clientId, accountNumber, from, to]);
+  }, [balanceId, clientId, accountNumber, from, to, cachedLines]);
 
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };

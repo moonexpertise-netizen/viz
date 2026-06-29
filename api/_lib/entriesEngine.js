@@ -73,6 +73,32 @@ export function accountEntries(lines, entries, journals, accountArg) {
     });
 }
 
+/**
+ * Toutes les lignes normalisées (pour mise en cache au moment de la synchro).
+ * Date en ISO (YYYY-MM-DD) pour permettre le filtrage par période côté client.
+ */
+export function allLines(lines, entries, journals) {
+  const jmap = journalCodeMap(journals);
+  const emap = entryInfoMap(entries);
+  const out = [];
+  for (const l of lines || []) {
+    const account = String(l.ledger_account?.number || '');
+    if (!account) continue;
+    const e = emap.get(l.ledger_entry?.id) || {};
+    out.push({
+      date: String(l.date || '').slice(0, 10),
+      account,
+      label: l.label || e.label || e.piece || '',
+      debit: toNum(l.debit),
+      credit: toNum(l.credit),
+      journalCode: jmap.get(l.journal?.id) || '',
+      pieceUrl: e.pieceUrl || '',
+      pieceRef: e.piece || '',
+    });
+  }
+  return out;
+}
+
 const CATEGORY_OF = (counterNum) => {
   const p2 = counterNum.substring(0, 2);
   if (p2 === '41') return 'encaissementsClients';

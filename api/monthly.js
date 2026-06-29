@@ -1,6 +1,7 @@
 import { requireAuth } from './_lib/auth.js';
-import { getLedgerEntryLines, getJournals, getTrialBalance } from './_lib/pennylane.js';
+import { getLedgerEntryLines, getJournals, getTrialBalance, getLedgerEntries } from './_lib/pennylane.js';
 import { linesToMonthly, calculateMonthlyPL, calculateMonthlyCashFlow } from './_lib/monthlyEngine.js';
+import { allLines } from './_lib/entriesEngine.js';
 
 /**
  * GET /api/monthly?company_id=..&period_start=YYYY-MM-DD&period_end=YYYY-MM-DD
@@ -16,10 +17,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const [lines, journals, tb] = await Promise.all([
+    const [lines, journals, tb, entries] = await Promise.all([
       getLedgerEntryLines(cid, period_start, period_end),
       getJournals(cid),
       getTrialBalance(cid, period_start, period_end),
+      getLedgerEntries(cid, period_start, period_end),
     ]);
 
     // Map id journal -> code (pour exclure les a-nouveaux)
@@ -45,6 +47,7 @@ export default async function handler(req, res) {
       plSummary: pl.summary,
       accountMonthly: pl.accountMonthly,
       cashflow,
+      lines: allLines(lines, entries, journals),
     });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message, code: err.code });

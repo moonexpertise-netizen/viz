@@ -15,10 +15,12 @@ export function mergeMonthly(entries, clientName) {
   const plByMonth = {};
   const cfRows = {}; // key -> { ...meta, months:{}, accounts:{num:{label,months,total}} }
   let cfOrder = [];
+  const lines = []; // lignes d'écritures (détail des comptes), chargées à la synchro
 
   for (const e of valid) {
     const m = e.monthly;
     (m.months || []).forEach((mo) => months.add(mo));
+    if (Array.isArray(m.lines)) lines.push(...m.lines);
 
     // P&L par compte
     for (const [num, acc] of Object.entries(m.accountMonthly || {})) {
@@ -80,6 +82,7 @@ export function mergeMonthly(entries, clientName) {
   return {
     monthly: { months: sortedMonths, accountMonthly, plSummary },
     monthlyCashflow: { months: sortedMonths, rows },
+    lines,
     exercises,
     client: { name: clientName },
   };

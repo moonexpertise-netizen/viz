@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LogOut, RefreshCw, Building2, Check, Cloud, CloudOff, CalendarRange, X, ChevronRight } from 'lucide-react';
+import { LogOut, RefreshCw, Building2, Check, Cloud, CloudOff, CalendarRange, X, ChevronRight, Home as HomeIcon, List, Command } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
 import Combobox from '../components/Combobox';
+import CommandPalette from '../components/CommandPalette';
 import { loadSync, saveEntry } from '../lib/syncStore';
 import { mergeMonthly } from '../lib/mergeMonthly';
 import SyntheseView from '../views/SyntheseView';
@@ -36,7 +37,20 @@ export default function Workspace({ onLogout }) {
   const [periodicOpen, setPeriodicOpen] = useState(Boolean(initialUI.periodicOpen));
   const [loading, setLoading] = useState({ companies: false, fy: false });
   const [error, setError] = useState('');
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const restoreConsumed = useRef(false);
+
+  // Raccourci global Ctrl/⌘+K
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   // Persister l'etat de navigation (pour rester au meme endroit au rechargement)
   useEffect(() => {
@@ -146,6 +160,45 @@ export default function Workspace({ onLogout }) {
   const showPrompt = companyId && !anySynced && selectedFy && !dismissedPrompt && !syncing[selectedFy?.id];
   const goHome = () => { setCompanyId(''); setPeriodicOpen(false); };
 
+  // Commandes de la palette (Ctrl/⌘+K)
+  const commandGroups = useMemo(() => {
+    const groups = [];
+    if (companyId) {
+      const nav = TABS.map((t) => ({
+        id: `tab-${t.key}`, label: t.label, hint: 'onglet', keywords: `onglet ${t.label}`,
+        icon: <List size={16} />, run: () => { setPeriodicOpen(false); setTab(t.key); },
+      }));
+      if (anySynced) nav.push({ id: 'periodic', label: 'Vision périodique (plein écran)', keywords: 'mensuel trésorerie cashflow périodique', icon: <CalendarRange size={16} />, run: () => setPeriodicOpen(true) });
+      nav.push({ id: 'home', label: 'Accueil', keywords: 'accueil home retour', icon: <HomeIcon size={16} />, run: goHome });
+      groups.push({ title: 'Navigation', items: nav });
+
+      if (fiscalYears.length) {
+        groups.push({
+          title: 'Exercices',
+          items: fiscalYears.map((fy) => ({
+            id: `fy-${fy.id}`, label: fy.label, hint: synced[fy.id] ? 'consulter' : 'à synchroniser',
+            keywords: `exercice ${fy.label} ${fy.year || ''}`, icon: <CalendarRange size={16} />,
+            run: () => { setPeriodicOpen(false); setFyId(String(fy.id)); if (!synced[fy.id]) doSync(fy); },
+          })),
+        });
+      }
+    }
+    groups.push({
+      title: 'Sociétés',
+      items: companies.map((c) => ({
+        id: `co-${c.id}`, label: c.name, hint: c.registrationNumber || '',
+        keywords: `société dossier ${c.name} ${c.registrationNumber || ''}`, icon: <Building2 size={16} />,
+        run: () => setCompanyId(String(c.id)),
+      })),
+    });
+    const actions = [];
+    if (selectedFy) actions.push({ id: 'sync-current', label: `${synced[fyId] ? 'Mettre à jour' : 'Synchroniser'} ${selectedFy.label}`, keywords: 'synchroniser mettre à jour actualiser', icon: <RefreshCw size={16} />, run: () => doSync(selectedFy) });
+    actions.push({ id: 'logout', label: 'Déconnexion', keywords: 'logout déconnexion quitter', icon: <LogOut size={16} />, run: onLogout });
+    groups.push({ title: 'Actions', items: actions });
+    return groups;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId, companies, fiscalYears, synced, anySynced, selectedFy, fyId]);
+
   return (
     <div className="min-h-screen bg-cream flex flex-col">
       {/* Header */}
@@ -159,13 +212,19 @@ export default function Workspace({ onLogout }) {
             </div>
           </button>
           <div className="flex-1" />
+          <button onClick={() => setPaletteOpen(true)}
+            className="flex items-center gap-2 text-sm text-sage hover:text-white transition rounded-lg border border-white/15 hover:border-white/30 px-2.5 py-1.5"
+            title="Recherche & commandes (Ctrl/⌘ + K)">
+            <Command size={14} /> <span className="hidden sm:inline">Rechercher</span>
+            <kbd className="hidden sm:inline text-[10px] bg-white/10 rounded px-1.5 py-0.5">⌘K</kbd>
+          </button>
           {company && (
             <button onClick={goHome} className="hidden sm:flex items-center gap-1.5 text-sm text-sage hover:text-white transition">
               Accueil
             </button>
           )}
           <button onClick={onLogout} className="flex items-center gap-2 text-sm text-sage hover:text-white transition">
-            <LogOut size={16} /> Déconnexion
+            <LogOut size={16} /> <span className="hidden sm:inline">Déconnexion</span>
           </button>
         </div>
       </header>
@@ -257,6 +316,8 @@ export default function Workspace({ onLogout }) {
           </>
         )}
       </main>
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} groups={commandGroups} />
 
       {/* Vision périodique — plein écran */}
       {periodicOpen && mergedMonthly && (

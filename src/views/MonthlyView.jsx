@@ -908,7 +908,7 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
 }
 
 // P&L Tab
-function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId, decimals = 0, customTree = null, exercises = [] }) {
+function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId, decimals = 0, customTree = null, exercises = [], cachedLines = null }) {
   const [expanded, setExpanded] = useState({});
   const [modal, setModal] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -1510,6 +1510,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
           accountLabel={modal.label}
           from={modal.from || months[0]}
           to={modal.to || months[months.length - 1]}
+          cachedLines={cachedLines}
           onClose={() => setModal(null)}
         />
       )}
@@ -2221,7 +2222,7 @@ export default function MonthlyView({ companyId, data, loading = false }) {
       <main className="max-w-full mx-auto px-6 py-6">
         <div className="card-moon p-5">
           {activeTab === 'pl' && hasMonthly && (
-            <PLTab monthly={monthly} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} customTree={customPLData} exercises={data?.exercises || []} />
+            <PLTab monthly={monthly} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} customTree={customPLData} exercises={data?.exercises || []} cachedLines={data?.lines || null} />
           )}
           {activeTab === 'cashflow' && hasCashflow && (
             <CashFlowTab cashflow={monthlyCashflow} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} exercises={data?.exercises || []} />
