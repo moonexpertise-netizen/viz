@@ -24,6 +24,8 @@ export const dataAPI = {
   fiscalYears: (companyId) => api.get('/fiscal-years', { params: { company_id: companyId } }),
   report: (params) => api.get('/report', { params }),
   monthly: (params) => api.get('/monthly', { params }),
+  entries: (params) => api.get('/entries', { params }),
+  cashflowEntries: (params) => api.get('/cashflow-entries', { params }),
 };
 
 export default api;

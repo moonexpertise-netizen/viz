@@ -11,3 +11,6 @@ TOKEN_PENNYLANE.txt
 *token*.txt
 
 .vercel
+
+# Reference ancienne version (non deploye)
+_legacy/

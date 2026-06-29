@@ -217,7 +217,7 @@ export default function Workspace({ onLogout }) {
             </div>
 
             {tab === 'synthese' && <SyntheseView report={report} meta={meta} />}
-            {tab === 'mensuel' && <MonthlyView meta={meta} />}
+            {tab === 'mensuel' && <MonthlyView company={meta.company} fiscalYears={fiscalYears} />}
             {tab === 'sig' && <SIGView report={report} meta={meta} />}
             {tab === 'resultat' && <ResultatView report={report} meta={meta} />}
             {tab === 'bilan' && <BilanView report={report} meta={meta} />}

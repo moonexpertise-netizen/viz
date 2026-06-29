@@ -26,10 +26,12 @@ function getToken() {
   return token;
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 /**
- * Appel bas niveau a l'API Pennylane.
+ * Appel bas niveau a l'API Pennylane, avec retry/backoff sur 429 (rate limit) et 5xx.
  */
-async function plFetch(path, { params } = {}) {
+async function plFetch(path, { params, attempt = 0 } = {}) {
   const token = getToken();
   const url = new URL(BASE + path);
   if (params) {
@@ -44,6 +46,15 @@ async function plFetch(path, { params } = {}) {
       Accept: 'application/json',
     },
   });
+
+  if (res.status === 429 || (res.status >= 500 && res.status < 600)) {
+    if (attempt < 6) {
+      const retryAfter = parseFloat(res.headers.get('retry-after') || '');
+      const waitMs = Number.isFinite(retryAfter) ? retryAfter * 1000 : Math.min(8000, 500 * 2 ** attempt);
+      await sleep(waitMs);
+      return plFetch(path, { params, attempt: attempt + 1 });
+    }
+  }
 
   if (!res.ok) {
     let body = '';
@@ -109,9 +120,13 @@ export async function getTrialBalance(companyId, periodStart, periodEnd) {
 }
 
 export async function getLedgerEntries(companyId, periodStart, periodEnd) {
-  // ledger_entries plafonne la pagination a 100 (et non 1000)
+  // ledger_entries plafonne la pagination a 100 ; filtrage par date via `filter`
+  const filter = JSON.stringify([
+    { field: 'date', operator: 'gteq', value: periodStart },
+    { field: 'date', operator: 'lteq', value: periodEnd },
+  ]);
   return plFetchAll(`/companies/${companyId}/ledger_entries`, {
-    params: { period_start: periodStart, period_end: periodEnd, limit: 100 },
+    params: { filter, limit: 100 },
   });
 }
 
