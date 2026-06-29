@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LogOut, RefreshCw, Building2, Check, Cloud, CloudOff, CalendarRange, X, ChevronRight } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
@@ -20,18 +20,28 @@ const TABS = [
   { key: 'ratios', label: 'Ratios' },
 ];
 
+const UI_KEY = 'mv:ui';
+const readUI = () => { try { return JSON.parse(localStorage.getItem(UI_KEY) || '{}'); } catch { return {}; } };
+
 export default function Workspace({ onLogout }) {
+  const initialUI = useMemo(() => readUI(), []);
   const [companies, setCompanies] = useState([]);
-  const [companyId, setCompanyId] = useState('');
+  const [companyId, setCompanyId] = useState(initialUI.companyId || '');
   const [fiscalYears, setFiscalYears] = useState([]);
-  const [fyId, setFyId] = useState('');
+  const [fyId, setFyId] = useState(initialUI.fyId || '');
   const [synced, setSynced] = useState({});
   const [syncing, setSyncing] = useState({});
   const [dismissedPrompt, setDismissedPrompt] = useState(false);
-  const [tab, setTab] = useState('synthese');
-  const [periodicOpen, setPeriodicOpen] = useState(false);
+  const [tab, setTab] = useState(initialUI.tab || 'synthese');
+  const [periodicOpen, setPeriodicOpen] = useState(Boolean(initialUI.periodicOpen));
   const [loading, setLoading] = useState({ companies: false, fy: false });
   const [error, setError] = useState('');
+  const restoreConsumed = useRef(false);
+
+  // Persister l'etat de navigation (pour rester au meme endroit au rechargement)
+  useEffect(() => {
+    try { localStorage.setItem(UI_KEY, JSON.stringify({ companyId, fyId, tab, periodicOpen })); } catch { /* noop */ }
+  }, [companyId, fyId, tab, periodicOpen]);
 
   useEffect(() => {
     (async () => {
@@ -50,9 +60,14 @@ export default function Workspace({ onLogout }) {
 
   useEffect(() => {
     if (!companyId) { setFiscalYears([]); setFyId(''); setSynced({}); return; }
-    setDismissedPrompt(false);
-    setPeriodicOpen(false);
-    setTab('synthese');
+    // Premier chargement de la societe sauvegardee = restauration : on garde l'etat memorise.
+    const isRestore = !restoreConsumed.current && String(companyId) === String(initialUI.companyId);
+    restoreConsumed.current = true;
+    if (!isRestore) {
+      setDismissedPrompt(false);
+      setPeriodicOpen(false);
+      setTab('synthese');
+    }
     setSynced(loadSync(companyId));
     (async () => {
       setLoading((l) => ({ ...l, fy: true }));
@@ -61,7 +76,11 @@ export default function Workspace({ onLogout }) {
         const { data } = await dataAPI.fiscalYears(companyId);
         const fys = data.fiscalYears || [];
         setFiscalYears(fys);
-        setFyId(fys[0]?.id ? String(fys[0].id) : '');
+        if (isRestore && fys.some((f) => String(f.id) === String(initialUI.fyId))) {
+          setFyId(String(initialUI.fyId));
+        } else {
+          setFyId(fys[0]?.id ? String(fys[0].id) : '');
+        }
       } catch (err) {
         setFiscalYears([]);
         setError(describe(err));
@@ -240,7 +259,7 @@ export default function Workspace({ onLogout }) {
       </main>
 
       {/* Vision périodique — plein écran */}
-      {periodicOpen && (
+      {periodicOpen && mergedMonthly && (
         <PeriodicFullscreen
           companyName={company?.name}
           companyId={companyId}
