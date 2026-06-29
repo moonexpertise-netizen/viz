@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.env*.local
+.vercel/
+backend/uploads/
+*.db
+deploy-*.zip

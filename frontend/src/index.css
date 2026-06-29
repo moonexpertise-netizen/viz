@@ -1,0 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy: #1a223d;
+  --navy-light: #2a3456;
+  --sage: #ced5ce;
+  --sage-light: #e8ece8;
+  --cream: #f6f5f2;
+  --cream-dark: #edecea;
+  --text-dark: #1a223d;
+  --text-gray: #6c757d;
+  --text-light: #9ca3af;
+  --accent-green: #2d8a4e;
+  --accent-red: #c0392b;
+  --accent-blue: #2563eb;
+  --accent-gold: #d4a84b;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--cream);
+  color: var(--text-dark);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Funnel Display', Georgia, serif;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.font-display {
+  font-family: 'Funnel Display', Georgia, serif;
+}
+
+.bg-navy { background-color: var(--navy); }
+.bg-navy-light { background-color: var(--navy-light); }
+.bg-sage { background-color: var(--sage); }
+.bg-sage-light { background-color: var(--sage-light); }
+.bg-cream { background-color: var(--cream); }
+.bg-cream-dark { background-color: var(--cream-dark); }
+
+.text-navy { color: var(--navy); }
+.text-sage { color: var(--sage); }
+.text-gray-custom { color: var(--text-gray); }
+.text-accent-green { color: var(--accent-green); }
+.text-accent-red { color: var(--accent-red); }
+.text-accent-gold { color: var(--accent-gold); }
+
+.border-sage { border-color: var(--sage); }
+
+/* Cards moonexpertise style */
+.card-moon {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid var(--sage-light);
+  box-shadow: 0 1px 3px rgba(26, 34, 61, 0.06);
+  transition: box-shadow 0.2s ease;
+}
+.card-moon:hover {
+  box-shadow: 0 4px 12px rgba(26, 34, 61, 0.1);
+}
+
+/* KPI card style */
+.kpi-card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid var(--sage-light);
+  padding: 1.5rem;
+}
+
+/* Insight card */
+.insight-card {
+  background: var(--navy);
+  color: white;
+  border-radius: 12px;
+  padding: 2rem;
+}
+.insight-card h3 {
+  color: var(--sage);
+}
+
+/* Table style */
+.table-moon th {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-gray);
+  border-bottom: 2px solid var(--sage);
+  padding: 0.75rem 1rem;
+}
+.table-moon td {
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--sage-light);
+  font-size: 0.875rem;
+}
+.table-moon tr:hover td {
+  background-color: var(--cream);
+}
+.table-moon .row-total td {
+  font-weight: 700;
+  border-top: 2px solid var(--navy);
+  border-bottom: 2px solid var(--navy);
+  background-color: var(--cream-dark);
+}
+
+/* Tabs */
+.tab-active {
+  border-bottom: 3px solid var(--navy);
+  color: var(--navy);
+  font-weight: 600;
+}
+.tab-inactive {
+  border-bottom: 3px solid transparent;
+  color: var(--text-gray);
+}
+
+/* Variation badges */
+.badge-up { color: var(--accent-green); }
+.badge-down { color: var(--accent-red); }
+.badge-neutral { color: var(--text-gray); }
+
+/* Button primary */
+.btn-navy {
+  background-color: var(--navy);
+  color: white;
+  border-radius: 8px;
+  padding: 0.6rem 1.5rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+.btn-navy:hover {
+  background-color: var(--navy-light);
+}
