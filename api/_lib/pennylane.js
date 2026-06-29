@@ -84,20 +84,35 @@ function extractItems(payload) {
 }
 
 /**
- * Recupere toutes les pages d'un endpoint paginate par cursor.
+ * Recupere toutes les pages d'un endpoint, qu'il soit paginate par cursor
+ * (has_more / next_cursor) ou par page (total_pages / current_page / per_page).
  */
-async function plFetchAll(path, { params = {}, max = 50000 } = {}) {
-  const out = [];
-  let cursor = undefined;
+async function plFetchAll(path, { params = {}, max = 100000 } = {}) {
+  const first = await plFetch(path, { params: { limit: 1000, per_page: 100, ...params } });
+
+  // Pagination par page (ex: /companies)
+  if (first && typeof first === 'object' && first.total_pages !== undefined) {
+    const out = [...extractItems(first)];
+    const totalPages = first.total_pages || 1;
+    let page = (first.current_page || 1) + 1;
+    while (page <= totalPages && out.length < max) {
+      const pg = await plFetch(path, { params: { per_page: 100, ...params, page } });
+      out.push(...extractItems(pg));
+      page += 1;
+    }
+    return out;
+  }
+
+  // Pagination par cursor (ex: trial_balance, ledger_entry_lines)
+  const out = [...extractItems(first)];
+  let cursor = first && first.has_more ? first.next_cursor : undefined;
   let guard = 0;
-  do {
+  while (cursor && out.length < max && guard < 500) {
     const payload = await plFetch(path, { params: { limit: 1000, ...params, cursor } });
-    const items = extractItems(payload);
-    out.push(...items);
+    out.push(...extractItems(payload));
     cursor = payload && payload.has_more ? payload.next_cursor : undefined;
     guard += 1;
-    if (out.length >= max || guard > 200) break;
-  } while (cursor);
+  }
   return out;
 }
 

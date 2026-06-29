@@ -1836,13 +1836,11 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
   );
 }
 
-export default function MonthlyView({ company, fiscalYears = [] }) {
-  const clientId = company?.id;
+export default function MonthlyView({ companyId, data, loading = false }) {
+  const clientId = companyId;
   const balanceId = undefined;
   const navigate = () => {};
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const error = null;
 
   // Persister les preferences utilisateur dans localStorage
   const storageKey = `moon_prefs_${clientId || 'default'}`;
@@ -1871,42 +1869,6 @@ export default function MonthlyView({ company, fiscalYears = [] }) {
   }, [activeTab, decimals, granularity, fromMonth, toMonth, storageKey]);
 
   const isClientMode = true;
-
-  // Plage couvrant tout l'historique (tous les exercices) pour le slider multi-periodes
-  const fullRange = useMemo(() => {
-    const valid = fiscalYears.filter((f) => f.start && f.end);
-    if (!valid.length) return null;
-    const start = valid.map((f) => f.start).sort()[0];
-    const end = valid.map((f) => f.end).sort().slice(-1)[0];
-    return { start, end };
-  }, [fiscalYears]);
-
-  useEffect(() => {
-    if (!clientId || !fullRange) { setLoading(false); return; }
-    let cancel = false;
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await dataAPI.monthly({ company_id: clientId, period_start: fullRange.start, period_end: fullRange.end });
-        if (cancel) return;
-        const exercises = fiscalYears
-          .filter((f) => f.start && f.end)
-          .map((f) => ({ id: f.id, fiscal_year: f.year, period_start: f.start, period_end: f.end }));
-        setData({
-          monthly: { months: res.data.months, accountMonthly: res.data.accountMonthly },
-          monthlyCashflow: res.data.cashflow,
-          exercises,
-          client: { name: company?.name },
-        });
-      } catch (err) {
-        if (!cancel) setError(err.response?.data?.error || 'Impossible de charger les donnees.');
-      } finally {
-        if (!cancel) setLoading(false);
-      }
-    })();
-    return () => { cancel = true; };
-  }, [clientId, fullRange]);
 
   // Derive data based on mode
   const monthly = isClientMode ? data?.monthly : data?.reports?.monthly;
