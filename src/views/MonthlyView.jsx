@@ -458,7 +458,7 @@ const rawVal = (n) => (n === null || n === undefined ? '' : n === 0 ? 0 : Math.r
 
 const fmt = (n, decimals = '0') => {
   if (n === null || n === undefined) return '';
-  if (n === 0) return '-';
+  if (n === 0) return '0';
   if (decimals === 'k') {
     const k = n / 1000;
     return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(k);
@@ -539,29 +539,29 @@ const normalizeAccounts = (accountMonthly) => {
 // sign: +1 = produit (credit-debit deja positif), -1 = charge (debit-credit deja positif, on soustrait)
 const SIG_STRUCTURE = [
   // --- Ligne CA informative (tous les 70) ---
-  { key: 'ca', label: "CHIFFRE D'AFFAIRES", roots: ['70'], sign: 1, type: 'info' },
+  { key: 'ca', label: "Chiffre d'affaires", roots: ['70'], sign: 1, type: 'info' },
 
   // --- Marge commerciale ---
   { key: 'ventes_mch', label: 'Ventes de marchandises', roots: ['707','7097'], sign: 1, type: 'line' },
   { key: 'cout_mch', label: "Cout d'achat des marchandises vendues", roots: ['607','6037','6097'], sign: -1, type: 'line' },
-  { key: 'marge_co', label: 'MARGE COMMERCIALE', type: 'subtotal', formula: 'ventes_mch - cout_mch' },
+  { key: 'marge_co', label: 'Marge commerciale', type: 'subtotal', formula: 'ventes_mch - cout_mch' },
   { key: 'marge_co_pct', label: '% Marge commerciale / CA', type: 'pct', ref: 'marge_co', base: 'ca' },
 
   // --- Production de l'exercice ---
   { key: 'prod_vendue', label: 'Production vendue', roots: ['700','701','702','703','704','705','706','708','7090','7091','7092','7093','7094','7095','7096','7098','7099'], sign: 1, type: 'line' },
-  { key: 'prod_stockee', label: 'Production stockee / Destockage', roots: ['71'], sign: 1, type: 'line' },
-  { key: 'prod_immo', label: 'Production immobilisee', roots: ['72'], sign: 1, type: 'line' },
+  { key: 'prod_stockee', label: 'Production stockée / Déstockage', roots: ['71'], sign: 1, type: 'line' },
+  { key: 'prod_immo', label: 'Production immobilisée', roots: ['72'], sign: 1, type: 'line' },
   { key: 'production', label: 'PRODUCTION DE L\'EXERCICE', type: 'subtotal', sumOf: ['prod_vendue', 'prod_stockee', 'prod_immo'] },
 
   // --- Marge globale ---
   { key: 'autres_conso', label: 'Autres consommations', roots: ['600','601','602','604','605','606','608','6030','6031','6032','6033','6034','6035','6036','6038','6039','6090','6091','6092','6093','6094','6095','6096','6098','6099'], sign: -1, type: 'line' },
-  { key: 'marge', label: 'MARGE GLOBALE', type: 'subtotal', formula: 'marge_co + prod_vendue + prod_stockee + prod_immo - autres_conso' },
+  { key: 'marge', label: 'Marge globale', type: 'subtotal', formula: 'marge_co + prod_vendue + prod_stockee + prod_immo - autres_conso' },
   { key: 'marge_pct', label: '% Marge globale / CA', type: 'pct', ref: 'marge', base: 'ca' },
 
   // --- Valeur ajoutee ---
   { key: 'conso_tiers', label: "Autres consommations en provenance des tiers", roots: ['61','62'], sign: -1, type: 'line' },
   { key: 'subventions', label: "Subventions d'exploitation", roots: ['74'], sign: 1, type: 'line' },
-  { key: 'va', label: 'VALEUR AJOUTEE', type: 'subtotal', formula: 'marge - conso_tiers + subventions' },
+  { key: 'va', label: 'Valeur ajoutée', type: 'subtotal', formula: 'marge - conso_tiers + subventions' },
   { key: 'va_pct', label: '% Valeur ajoutee / CA', type: 'pct', ref: 'va', base: 'ca' },
 
   // --- EBE / EBITDA ---
@@ -580,13 +580,13 @@ const SIG_STRUCTURE = [
   { key: 'autres_charges', label: 'Autres charges', roots: ['651','652','653','654','656','658','659'], sign: -1, type: 'line' },
   { key: 'qp_commun_p', label: 'Quote-part resultat operations en commun (+)', roots: ['755'], sign: 1, type: 'line' },
   { key: 'qp_commun_c', label: 'Quote-part resultat operations en commun (-)', roots: ['655'], sign: -1, type: 'line' },
-  { key: 'rex', label: "RESULTAT D'EXPLOITATION", type: 'subtotal', formula: 'ebitda + reprises_expl - dotations_expl + subv_invest + cession_immo - vc_immo + autres_prod - autres_charges + qp_commun_p - qp_commun_c' },
+  { key: 'rex', label: "Résultat d'exploitation", type: 'subtotal', formula: 'ebitda + reprises_expl - dotations_expl + subv_invest + cession_immo - vc_immo + autres_prod - autres_charges + qp_commun_p - qp_commun_c' },
   { key: 'rex_pct', label: "% REX / CA", type: 'pct', ref: 'rex', base: 'ca' },
 
   // --- Resultat financier ---
   { key: 'produits_fin', label: 'Produits financiers', roots: ['76','786'], sign: 1, type: 'line' },
   { key: 'charges_fin', label: 'Charges financieres', roots: ['66','686'], sign: -1, type: 'line' },
-  { key: 'rcourant', label: 'RESULTAT COURANT AVANT IMPOTS', type: 'subtotal', formula: 'rex + produits_fin - charges_fin' },
+  { key: 'rcourant', label: 'Résultat courant avant impôts', type: 'subtotal', formula: 'rex + produits_fin - charges_fin' },
 
   // --- Resultat exceptionnel ---
   { key: 'produits_except', label: 'Produits exceptionnels', roots: ['77','787'], sign: 1, type: 'line' },
@@ -595,7 +595,7 @@ const SIG_STRUCTURE = [
   // --- Resultat net ---
   { key: 'participation', label: 'Participation des salaries', roots: ['691'], sign: -1, type: 'line' },
   { key: 'impots_benefices', label: 'Impots sur les benefices', roots: ['690','692','693','694','695','696','697','698','699'], sign: -1, type: 'line' },
-  { key: 'rnet', label: 'RESULTAT NET', type: 'subtotal', formula: 'rcourant + produits_except - charges_except - participation - impots_benefices' },
+  { key: 'rnet', label: 'Résultat net', type: 'subtotal', formula: 'rcourant + produits_except - charges_except - participation - impots_benefices' },
   { key: 'rnet_pct', label: '% Resultat net / CA', type: 'pct', ref: 'rnet', base: 'ca' },
 ];
 
@@ -652,7 +652,7 @@ function AmountCell({ value, decimals = 0, className = '' }) {
   const isZero = value === 0;
   const display = fmt(value, decimals);
   return (
-    <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] ${isNegative ? 'text-red-600' : ''} ${isZero ? 'text-gray-300' : ''} ${className}`}>
+    <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] ${isNegative ? 'text-slate-800' : ''} ${isZero ? 'text-gray-300' : ''} ${className}`}>
       {display}
     </td>
   );
@@ -669,13 +669,13 @@ function CategoryRow({ cat, months, expanded, onToggle, onClickMonth, onClickTot
         {cat.label}
       </td>
       {months.map((m) => (
-        <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${(cat.months[m] || 0) < 0 ? 'text-red-600' : (cat.months[m] || 0) === 0 ? 'text-gray-300' : ''}`}
+        <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${(cat.months[m] || 0) < 0 ? 'text-slate-800' : (cat.months[m] || 0) === 0 ? 'text-gray-300' : ''}`}
           onClick={(e) => { e.stopPropagation(); onClickMonth && onClickMonth(m); }}
         >
           {fmt(cat.months[m], decimals)}
         </td>
       ))}
-      <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${(cat.total || 0) < 0 ? 'text-red-600' : (cat.total || 0) === 0 ? 'text-gray-300' : ''}`}
+      <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${(cat.total || 0) < 0 ? 'text-slate-800' : (cat.total || 0) === 0 ? 'text-gray-300' : ''}`}
         onClick={(e) => { e.stopPropagation(); onClickTotal && onClickTotal(); }}
       >
         {fmt(cat.total, decimals)}
@@ -695,7 +695,7 @@ function AccountRow({ account, months, onClickAccount, onClickCell, decimals = 0
       {months.map((m) => (
         <td
           key={m}
-          className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 transition ${(account.months[m] || 0) < 0 ? 'text-red-600' : ''} ${(account.months[m] || 0) === 0 ? 'text-gray-300' : ''}`}
+          className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 transition ${(account.months[m] || 0) < 0 ? 'text-slate-800' : ''} ${(account.months[m] || 0) === 0 ? 'text-gray-300' : ''}`}
           onClick={() => onClickCell(m)}
         >
           {fmt(account.months[m] || 0, decimals)}
@@ -719,13 +719,13 @@ function SubtotalRow({ label, totals, months, decimals = 0, onClickMonth, onClic
         {label}
       </td>
       {months.map((m) => (
-        <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-200/70 ${(totals.months[m] || 0) < 0 ? 'text-red-600' : (totals.months[m] || 0) === 0 ? 'text-gray-300' : ''} ${onClickMonth ? 'cursor-pointer hover:bg-slate-300/50 transition' : ''}`}
+        <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-200/70 ${(totals.months[m] || 0) < 0 ? 'text-slate-800' : (totals.months[m] || 0) === 0 ? 'text-gray-300' : ''} ${onClickMonth ? 'cursor-pointer hover:bg-slate-300/50 transition' : ''}`}
           onClick={() => onClickMonth && onClickMonth(m)}
         >
           {fmt(totals.months[m], decimals)}
         </td>
       ))}
-      <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-200/70 ${(totals.total || 0) < 0 ? 'text-red-600' : (totals.total || 0) === 0 ? 'text-gray-300' : ''} ${onClickTotal ? 'cursor-pointer hover:bg-slate-300/50 transition' : ''}`}
+      <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-200/70 ${(totals.total || 0) < 0 ? 'text-slate-800' : (totals.total || 0) === 0 ? 'text-gray-300' : ''} ${onClickTotal ? 'cursor-pointer hover:bg-slate-300/50 transition' : ''}`}
         onClick={() => onClickTotal && onClickTotal()}
       >
         {fmt(totals.total, decimals)}
@@ -767,13 +767,13 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
           {node.label}
         </td>
         {months.map((m) => (
-          <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${monthTotals[m] < 0 ? 'text-red-600' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
+          <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${monthTotals[m] < 0 ? 'text-slate-800' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
             onClick={(e) => { e.stopPropagation(); if (catAccountNumbers) setModal({ number: catAccountNumbers, label: node.label, from: m, to: m }); }}
           >
             {fmt(monthTotals[m], decimals)}
           </td>
         ))}
-        <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${total < 0 ? 'text-red-600' : total === 0 ? 'text-gray-300' : ''}`}
+        <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${total < 0 ? 'text-slate-800' : total === 0 ? 'text-gray-300' : ''}`}
           onClick={(e) => { e.stopPropagation(); if (catAccountNumbers) setModal({ number: catAccountNumbers, label: node.label }); }}
         >
           {fmt(total, decimals)}
@@ -810,13 +810,13 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
           {node.label}
         </td>
         {months.map((m) => (
-          <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${monthTotals[m] < 0 ? 'text-red-600' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
+          <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${monthTotals[m] < 0 ? 'text-slate-800' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
             onClick={(e) => { e.stopPropagation(); if (groupAccountNumbers) setModal({ number: groupAccountNumbers, label: node.label, from: m, to: m }); }}
           >
             {fmt(monthTotals[m], decimals)}
           </td>
         ))}
-        <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${total < 0 ? 'text-red-600' : total === 0 ? 'text-gray-300' : ''}`}
+        <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${total < 0 ? 'text-slate-800' : total === 0 ? 'text-gray-300' : ''}`}
           onClick={(e) => { e.stopPropagation(); if (groupAccountNumbers) setModal({ number: groupAccountNumbers, label: node.label }); }}
         >
           {fmt(total, decimals)}
@@ -838,7 +838,7 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
             {months.map((m) => {
               const val = acc.months?.[m] || 0;
               return (
-                <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
+                <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 transition ${val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''}`}
                   onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label, from: m, to: m })}
                 >
                   {fmt(val, decimals)}
@@ -889,13 +889,13 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
           {node.label}
         </td>
         {months.map((m) => (
-          <td key={m} className={`py-1.5 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-200/70 cursor-pointer hover:bg-slate-300/50 transition ${monthTotals[m] < 0 ? 'text-red-600' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
+          <td key={m} className={`py-1.5 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-200/70 cursor-pointer hover:bg-slate-300/50 transition ${monthTotals[m] < 0 ? 'text-slate-800' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
             onClick={() => { if (subtotalAccountNumbers) setModal({ number: subtotalAccountNumbers, label: node.label, from: m, to: m }); }}
           >
             {fmt(monthTotals[m], decimals)}
           </td>
         ))}
-        <td className={`py-1.5 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-200/70 cursor-pointer hover:bg-slate-300/50 transition ${total < 0 ? 'text-red-600' : total === 0 ? 'text-gray-300' : ''}`}
+        <td className={`py-1.5 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-200/70 cursor-pointer hover:bg-slate-300/50 transition ${total < 0 ? 'text-slate-800' : total === 0 ? 'text-gray-300' : ''}`}
           onClick={() => { if (subtotalAccountNumbers) setModal({ number: subtotalAccountNumbers, label: node.label }); }}
         >
           {fmt(total, decimals)}
@@ -1231,13 +1231,13 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       const val = aggItem?.[col.key] || 0;
                       const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                       return (
-                        <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-50/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
+                        <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-50/50 transition ${val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''}`}
                           onClick={(e) => { e.stopPropagation(); if (accountNumbers) setModal({ number: accountNumbers, label: item.label, ...fromTo }); }}>
                           {fmt(val, decimals)}
                         </td>
                       );
                     })}
-                    <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-50/50 transition ${itemTotal < 0 ? 'text-red-600' : itemTotal === 0 ? 'text-gray-300' : ''}`}
+                    <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-50/50 transition ${itemTotal < 0 ? 'text-slate-800' : itemTotal === 0 ? 'text-gray-300' : ''}`}
                       onClick={(e) => { e.stopPropagation(); if (accountNumbers) setModal({ number: accountNumbers, label: item.label }); }}>
                       {fmt(itemTotal, decimals)}
                     </td>
@@ -1256,7 +1256,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                           const val = aggAcc?.[col.key] || 0;
                           const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                           return (
-                            <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
+                            <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''}`}
                               onClick={() => setModal({ number: acc.number, label: acc.label, ...fromTo })}>
                               {fmt(val, decimals)}
                             </td>
@@ -1282,10 +1282,10 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                 }) : [];
 
                 return [
-                  <tr key={key} className="bg-sky-50 border-y border-sky-200 cursor-pointer hover:bg-sky-100/50 transition" onClick={() => hasAccounts && toggle(key)}>
-                    <td className="py-2 px-3 font-semibold text-sky-900 sticky left-0 z-10 bg-sky-50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
+                  <tr key={key} className="bg-slate-100 border-y border-slate-200 cursor-pointer hover:bg-slate-200/50 transition" onClick={() => hasAccounts && toggle(key)}>
+                    <td className="py-2 px-3 font-semibold text-slate-800 sticky left-0 z-10 bg-slate-100 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
                       {hasAccounts && (
-                        <span className={`inline-block w-5 text-center mr-1 text-sky-400 transition-transform duration-200 text-xs ${isExpanded ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+                        <span className={`inline-block w-5 text-center mr-1 text-slate-400 transition-transform duration-200 text-xs ${isExpanded ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
                       )}
                       {item.label}
                     </td>
@@ -1293,14 +1293,14 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       const val = aggItem?.[col.key] || 0;
                       const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                       return (
-                        <td key={col.key} className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-sky-50 cursor-pointer hover:bg-sky-100 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : 'text-sky-900'}`}
+                        <td key={col.key} className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-100 cursor-pointer hover:bg-slate-200/60 transition ${val === 0 ? 'text-gray-300' : 'text-slate-800'}`}
                           onClick={(e) => { e.stopPropagation(); if (lineAccounts) setModal({ number: lineAccounts, label: item.label, ...fromTo }); }}
                         >
                           {fmt(val, decimals)}
                         </td>
                       );
                     })}
-                    <td className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-sky-50 cursor-pointer hover:bg-sky-100 transition ${itemTotal < 0 ? 'text-red-600' : itemTotal === 0 ? 'text-gray-300' : 'text-sky-900'}`}
+                    <td className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-sky-100/70 cursor-pointer hover:bg-sky-200/60 transition ${itemTotal === 0 ? 'text-gray-300' : 'text-slate-800'}`}
                       onClick={(e) => { e.stopPropagation(); if (lineAccounts) setModal({ number: lineAccounts, label: item.label }); }}
                     >
                       {fmt(itemTotal, decimals)}
@@ -1321,7 +1321,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                           const val = aggAcc?.[col.key] || 0;
                           const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                           return (
-                            <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
+                            <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''}`}
                               onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label, ...fromTo })}
                             >
                               {fmt(val, decimals)}
@@ -1360,12 +1360,12 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       const refVal = aggRef?.[col.key] || 0;
                       const pct = baseVal !== 0 ? Math.round(refVal / baseVal * 1000) / 10 : 0;
                       return (
-                        <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-amber-50 ${pct < 0 ? 'text-red-500' : pct === 0 ? 'text-gray-300' : 'text-slate-500'}`}>
+                        <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-amber-50 ${pct < 0 ? 'text-slate-600' : pct === 0 ? 'text-gray-300' : 'text-slate-500'}`}>
                           {pct === 0 ? '-' : `${pct.toFixed(1)}%`}
                         </td>
                       );
                     })}
-                    <td className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-amber-50 ${pctTotal < 0 ? 'text-red-500' : pctTotal === 0 ? 'text-gray-300' : 'text-slate-500'}`}>
+                    <td className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-amber-50 ${pctTotal < 0 ? 'text-slate-600' : pctTotal === 0 ? 'text-gray-300' : 'text-slate-500'}`}>
                       {pctTotal === 0 ? '-' : `${pctTotal.toFixed(1)}%`}
                     </td>
                   </tr>
@@ -1374,26 +1374,23 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
 
               if (item.type === 'subtotal') {
                 const accs = getSubtotalAccounts(item);
-                const bgClass = 'bg-slate-100 font-semibold border-y border-slate-200';
-                const stickyBg = 'bg-slate-100';
-                const textClass = 'text-slate-800';
                 return (
-                  <tr key={item.key} className={bgClass}>
-                    <td className={`py-2 px-3 font-semibold ${textClass} sticky left-0 z-10 ${stickyBg} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap`}>
+                  <tr key={item.key} className="bg-slate-100 border-y border-slate-200">
+                    <td className="py-2 px-3 font-semibold text-slate-800 sticky left-0 z-10 bg-slate-100 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
                       {item.label}
                     </td>
                     {cols.map((col) => {
                       const val = aggItem?.[col.key] || 0;
                       const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                       return (
-                        <td key={col.key} className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold ${stickyBg} cursor-pointer hover:opacity-80 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
+                        <td key={col.key} className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-100 cursor-pointer hover:bg-slate-200/60 transition ${val === 0 ? 'text-gray-300' : 'text-slate-800'}`}
                           onClick={() => { if (accs) setModal({ number: accs, label: item.label, ...fromTo }); }}
                         >
                           {fmt(val, decimals)}
                         </td>
                       );
                     })}
-                    <td className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold ${stickyBg} cursor-pointer hover:opacity-80 transition ${itemTotal < 0 ? 'text-red-600' : itemTotal === 0 ? 'text-gray-300' : ''}`}
+                    <td className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-sky-100/70 cursor-pointer hover:bg-sky-200/60 transition ${itemTotal === 0 ? 'text-gray-300' : 'text-slate-800'}`}
                       onClick={() => { if (accs) setModal({ number: accs, label: item.label }); }}
                     >
                       {fmt(itemTotal, decimals)}
@@ -1422,14 +1419,14 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                     const val = aggItem?.[col.key] || 0;
                     const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                     return (
-                      <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-50/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
+                      <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-50/50 transition ${val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''}`}
                         onClick={(e) => { e.stopPropagation(); if (lineAccounts) setModal({ number: lineAccounts, label: item.label, ...fromTo }); }}
                       >
                         {fmt(val, decimals)}
                       </td>
                     );
                   })}
-                  <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] bg-sky-50/70 cursor-pointer hover:bg-sky-100/70 transition ${itemTotal < 0 ? 'text-red-600' : itemTotal === 0 ? 'text-gray-300' : ''}`}
+                  <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] bg-sky-50/70 cursor-pointer hover:bg-sky-100/70 transition ${itemTotal < 0 ? 'text-slate-800' : itemTotal === 0 ? 'text-gray-300' : ''}`}
                     onClick={(e) => { e.stopPropagation(); if (lineAccounts) setModal({ number: lineAccounts, label: item.label }); }}
                   >
                     {fmt(itemTotal, decimals)}
@@ -1454,7 +1451,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                         const val = aggAcc?.[col.key] || 0;
                         const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                         return (
-                          <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
+                          <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''}`}
                             onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label, ...fromTo })}
                           >
                             {fmt(val, decimals)}
@@ -1490,7 +1487,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       </td>
                       {(columns || []).map(col => {
                         const val = aggAcc?.[col.key] || 0;
-                        return <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}>{fmt(val, decimals)}</td>;
+                        return <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] ${val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''}`}>{fmt(val, decimals)}</td>;
                       })}
                       <td className="py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px]">{fmt(accTotal, decimals)}</td>
                     </tr>
@@ -1601,7 +1598,7 @@ function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, acc
                     <td className="py-1.5 px-2 text-gray-600 whitespace-nowrap">{e.date}</td>
                     <td className="py-1.5 px-2">{e.label}</td>
                     <td className="py-1.5 px-2 text-xs text-gray-500">{e.counterpart}</td>
-                    <td className={`py-1.5 px-2 text-right tabular-nums font-medium ${e.amount < 0 ? 'text-red-600' : 'text-green-700'}`}>{fmtAmt(e.amount)}</td>
+                    <td className={`py-1.5 px-2 text-right tabular-nums font-medium ${e.amount < 0 ? 'text-slate-800' : 'text-green-700'}`}>{fmtAmt(e.amount)}</td>
                     <td className="py-1.5 px-2 text-center"><span className="bg-slate-100 text-gray-600 text-xs px-2 py-0.5 rounded">{e.journalCode}</span></td>
                   </tr>
                 ))}
@@ -1611,7 +1608,7 @@ function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, acc
         </div>
         <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 rounded-b-xl flex items-center justify-between">
           <span className="text-xs text-gray-400">{filtered.length} mouvement{filtered.length !== 1 ? 's' : ''}</span>
-          <span className={`tabular-nums text-sm font-semibold ${totalAmount < 0 ? 'text-red-600' : 'text-green-700'}`}>{fmtAmt(totalAmount)}</span>
+          <span className={`tabular-nums text-sm font-semibold ${totalAmount < 0 ? 'text-slate-800' : 'text-green-700'}`}>{fmtAmt(totalAmount)}</span>
         </div>
       </div>
     </div>
@@ -1774,7 +1771,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                     return (
                       <td key={col.key} className={`py-1.5 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] ${
                         row.isTotal ? (val >= 0 ? 'text-green-300' : 'text-red-400')
-                        : val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''
+                        : val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''
                       }`}>
                         {fmt(val, decimals)}
                       </td>
@@ -1782,7 +1779,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                   })}
                   <td className={`py-1.5 px-3 text-right tabular-nums font-semibold whitespace-nowrap min-w-[90px] ${
                     row.isTotal ? (rowTotal >= 0 ? 'text-green-300' : 'text-red-400')
-                    : rowTotal < 0 ? 'text-red-600' : rowTotal === 0 ? 'text-gray-300' : ''
+                    : rowTotal < 0 ? 'text-slate-800' : rowTotal === 0 ? 'text-gray-300' : ''
                   }`}>
                     {fmt(rowTotal, decimals)}
                   </td>
@@ -1813,7 +1810,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                         const val = aggAcc?.[col.key] || 0;
                         const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                         return (
-                          <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
+                          <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 ${val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''}`}
                             onClick={() => setModal({ category: row.key, label: row.label + ' — ' + acc.label, account: acc.number, month: fromTo.from })}
                           >
                             {fmt(val, decimals)}
