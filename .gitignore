@@ -9,3 +9,5 @@ deploy-*.zip
 # Secrets — ne jamais committer
 TOKEN_PENNYLANE.txt
 *token*.txt
+
+.vercel
