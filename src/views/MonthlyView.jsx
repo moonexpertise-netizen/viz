@@ -1350,8 +1350,8 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                 const pctTotal = baseTotalVisible !== 0 ? Math.round(refTotalVisible / baseTotalVisible * 1000) / 10 : 0;
 
                 return (
-                  <tr key={item.key} className="border-b border-amber-100 bg-amber-50/60">
-                    <td className="py-1 px-3 sticky left-0 z-10 bg-amber-50/60 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
+                  <tr key={item.key} className="border-b border-amber-100 bg-amber-50">
+                    <td className="py-1 px-3 sticky left-0 z-10 bg-amber-50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
                       <span className="inline-block w-5 mr-1" />
                       <span className="text-xs italic text-amber-700">{item.label}</span>
                     </td>
@@ -1360,12 +1360,12 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       const refVal = aggRef?.[col.key] || 0;
                       const pct = baseVal !== 0 ? Math.round(refVal / baseVal * 1000) / 10 : 0;
                       return (
-                        <td key={col.key} className={`py-1 px-3 text-right font-mono text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-amber-50/60 ${pct < 0 ? 'text-red-500' : pct === 0 ? 'text-gray-300' : 'text-amber-700'}`}>
+                        <td key={col.key} className={`py-1 px-3 text-right font-mono text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-amber-50 ${pct < 0 ? 'text-red-500' : pct === 0 ? 'text-gray-300' : 'text-amber-700'}`}>
                           {pct === 0 ? '-' : `${pct.toFixed(1)}%`}
                         </td>
                       );
                     })}
-                    <td className={`py-1 px-3 text-right font-mono text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-amber-50/60 ${pctTotal < 0 ? 'text-red-500' : pctTotal === 0 ? 'text-gray-300' : 'text-amber-700'}`}>
+                    <td className={`py-1 px-3 text-right font-mono text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-amber-50 ${pctTotal < 0 ? 'text-red-500' : pctTotal === 0 ? 'text-gray-300' : 'text-amber-700'}`}>
                       {pctTotal === 0 ? '-' : `${pctTotal.toFixed(1)}%`}
                     </td>
                   </tr>
@@ -1429,7 +1429,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       </td>
                     );
                   })}
-                  <td className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-50/50 transition ${itemTotal < 0 ? 'text-red-600' : itemTotal === 0 ? 'text-gray-300' : ''}`}
+                  <td className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] bg-sky-50/70 cursor-pointer hover:bg-sky-100/70 transition ${itemTotal < 0 ? 'text-red-600' : itemTotal === 0 ? 'text-gray-300' : ''}`}
                     onClick={(e) => { e.stopPropagation(); if (lineAccounts) setModal({ number: lineAccounts, label: item.label }); }}
                   >
                     {fmt(itemTotal, decimals)}
