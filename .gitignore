@@ -3,6 +3,9 @@ dist/
 .env
 .env*.local
 .vercel/
-backend/uploads/
 *.db
 deploy-*.zip
+
+# Secrets — ne jamais committer
+TOKEN_PENNYLANE.txt
+*token*.txt

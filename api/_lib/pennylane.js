@@ -127,7 +127,7 @@ function normalizeCompany(c) {
 
 function normalizeFiscalYear(fy) {
   const start = fy.start_date ?? fy.start ?? fy.from ?? fy.begin_at ?? null;
-  const end = fy.end_date ?? fy.end ?? fy.to ?? fy.finish_at ?? null;
+  const end = fy.finish ?? fy.end_date ?? fy.end ?? fy.to ?? fy.finish_at ?? fy.closure_date ?? null;
   const year = end ? String(end).slice(0, 4) : (start ? String(start).slice(0, 4) : '');
   return {
     id: fy.id ?? fy.fiscal_year_id ?? `${start}_${end}`,
