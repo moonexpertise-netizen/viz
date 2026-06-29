@@ -47,7 +47,7 @@ function SigWaterfall({ steps }) {
   const data = steps.map((s) => {
     if (s.total) {
       running = s.cumValue;
-      return { name: s.name, base: 0, bar: s.cumValue, fill: '#1a223d', display: s.cumValue };
+      return { name: s.name, base: 0, bar: s.cumValue, fill: '#01071B', display: s.cumValue };
     }
     const start = running;
     running += s.value;

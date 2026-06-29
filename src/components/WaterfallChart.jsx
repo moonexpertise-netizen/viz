@@ -20,7 +20,7 @@ export default function WaterfallChart({ data = [], height = 350 }) {
     return {
       name: item.name,
       value: item.value,
-      fill: isLast ? '#1a223d' : item.value >= 0 ? '#2d8a4e' : '#c0392b',
+      fill: isLast ? '#01071B' : item.value >= 0 ? '#2d8a4e' : '#c0392b',
       invisible: Math.min(start, start + item.value),
       visible: Math.abs(item.value),
     };

@@ -2,7 +2,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Ba
 import { Kpi } from '../components/ui';
 import { fmt, fmtPct } from '../lib/format';
 
-const COLORS = ['#c0392b', '#d4a84b', '#2d8a4e', '#2563eb', '#1a223d', '#8e44ad', '#16a085'];
+const COLORS = ['#c0392b', '#d4a84b', '#2d8a4e', '#2563eb', '#01071B', '#8e44ad', '#16a085'];
 
 export default function SyntheseView({ report }) {
   const sig = report.sig?.n || {};
@@ -50,7 +50,7 @@ export default function SyntheseView({ report }) {
               <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: '#6c757d' }} />
               <Tooltip formatter={(v) => fmt(v)} cursor={{ fill: '#f6f5f2' }} />
               <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                {sigBars.map((d, i) => <Cell key={i} fill={d.value >= 0 ? '#1a223d' : '#c0392b'} />)}
+                {sigBars.map((d, i) => <Cell key={i} fill={d.value >= 0 ? '#01071B' : '#c0392b'} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>

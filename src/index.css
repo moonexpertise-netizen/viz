@@ -5,13 +5,13 @@
 @tailwind utilities;
 
 :root {
-  --navy: #1a223d;
-  --navy-light: #2a3456;
+  --navy: #01071B;
+  --navy-light: #121a33;
   --sage: #ced5ce;
   --sage-light: #e8ece8;
   --cream: #f6f5f2;
   --cream-dark: #edecea;
-  --text-dark: #1a223d;
+  --text-dark: #01071B;
   --text-gray: #5b6470;     /* contraste renforcé (AA) */
   --text-light: #9ca3af;
   --accent-green: #1f7a45;  /* contraste renforcé */

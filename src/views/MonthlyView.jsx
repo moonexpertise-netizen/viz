@@ -201,14 +201,14 @@ const exportInteractiveHTML = (title, tableHTML, filename, rawData) => {
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#1e293b}
-    .header{background:#1a223d;color:white;padding:16px 24px}
+    .header{background:#01071B;color:white;padding:16px 24px}
     .header h1{font-size:18px;font-weight:600}
     .header .subtitle{font-size:12px;color:#ced5ce;margin-top:2px}
     .toolbar{padding:10px 24px;background:white;border-bottom:1px solid #e2e8f0;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
     .toolbar .sep{width:1px;height:24px;background:#e2e8f0;margin:0 4px}
     .btn{padding:5px 12px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;background:white;cursor:pointer;color:#64748b}
     .btn:hover{background:#f1f5f9;border-color:#cbd5e1}
-    .btn.active{background:#1a223d;color:white;border-color:#1a223d}
+    .btn.active{background:#01071B;color:white;border-color:#01071B}
     select.filter{padding:4px 8px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;color:#475569;background:white}
     .container{padding:16px 24px;max-width:100%;overflow-x:auto}
     table{border-collapse:collapse;font-size:13px}
@@ -242,7 +242,7 @@ const exportInteractiveHTML = (title, tableHTML, filename, rawData) => {
     .footer{padding:12px 24px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;margin-top:16px}
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:center;justify-content:center}
     .modal{background:white;border-radius:12px;max-width:900px;width:95%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-    .modal-header{background:#1a223d;color:white;padding:14px 20px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center}
+    .modal-header{background:#01071B;color:white;padding:14px 20px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center}
     .modal-header h2{font-size:15px;font-weight:600}
     .modal-close{background:rgba(255,255,255,.1);border:none;color:white;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px}
     .modal-body{flex:1;overflow:auto;padding:0}
@@ -1179,8 +1179,8 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
       <div className="overflow-x-auto">
         <table className="border-collapse text-sm">
           <thead>
-            <tr className="bg-[#1a223d] text-white text-xs">
-              <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-[#1a223d] z-20 min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
+            <tr className="bg-[#01071B] text-white text-xs">
+              <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-[#01071B] z-20 min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
                 Poste
               </th>
               {(columns || []).map((col) => (
@@ -1188,7 +1188,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                   {col.label}
                 </th>
               ))}
-              <th className="py-2 px-3 text-right font-semibold whitespace-nowrap min-w-[110px] bg-[#141b32]">
+              <th className="py-2 px-3 text-right font-semibold whitespace-nowrap min-w-[110px] bg-[#00040f]">
                 Total
               </th>
             </tr>
@@ -1666,7 +1666,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
   const FINANCIAL_KEYS = ['emprunts', 'autresFinanciers'];
 
   const getRowColor = (row) => {
-    if (row.isTotal) return { row: 'bg-[#1a223d] text-white font-semibold', sticky: 'bg-[#1a223d]', text: 'text-white' };
+    if (row.isTotal) return { row: 'bg-[#01071B] text-white font-semibold', sticky: 'bg-[#01071B]', text: 'text-white' };
     if (row.isSubtotal && row.key === 'fluxOperationnel') return { row: 'bg-emerald-100/80 font-semibold border-y border-emerald-200', sticky: 'bg-emerald-100', text: '' };
     if (row.isSubtotal && row.key === 'fluxFinancier') return { row: 'bg-sky-100/80 font-semibold border-y border-sky-200', sticky: 'bg-sky-100', text: '' };
     if (row.isTreso) return { row: 'bg-amber-50/80 italic border-y border-amber-200', sticky: 'bg-amber-50', text: '' };
@@ -1729,8 +1729,8 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
       <div className="overflow-x-auto">
         <table className="border-collapse text-sm">
           <thead>
-            <tr className="bg-[#1a223d] text-white text-xs">
-              <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-[#1a223d] z-20 min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
+            <tr className="bg-[#01071B] text-white text-xs">
+              <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-[#01071B] z-20 min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
                 Poste
               </th>
               {(columns || []).map((col) => (
@@ -1738,7 +1738,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                   {col.label}
                 </th>
               ))}
-              <th className="py-2 px-3 text-right font-semibold whitespace-nowrap min-w-[110px] bg-[#141b32]">
+              <th className="py-2 px-3 text-right font-semibold whitespace-nowrap min-w-[110px] bg-[#00040f]">
                 Total
               </th>
             </tr>
