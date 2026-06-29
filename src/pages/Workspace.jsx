@@ -7,9 +7,11 @@ import BilanView from '../views/BilanView';
 import ResultatView from '../views/ResultatView';
 import SIGView from '../views/SIGView';
 import RatiosView from '../views/RatiosView';
+import MonthlyView from '../views/MonthlyView';
 
 const TABS = [
   { key: 'synthese', label: 'Synthèse' },
+  { key: 'mensuel', label: 'Mensuel / Trésorerie' },
   { key: 'sig', label: 'SIG' },
   { key: 'resultat', label: 'Compte de résultat' },
   { key: 'bilan', label: 'Bilan' },
@@ -234,6 +236,7 @@ export default function Workspace({ onLogout }) {
             </div>
 
             {tab === 'synthese' && <SyntheseView report={report} meta={meta} />}
+            {tab === 'mensuel' && <MonthlyView meta={meta} />}
             {tab === 'sig' && <SIGView report={report} meta={meta} />}
             {tab === 'resultat' && <ResultatView report={report} meta={meta} />}
             {tab === 'bilan' && <BilanView report={report} meta={meta} />}

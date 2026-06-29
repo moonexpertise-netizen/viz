@@ -109,9 +109,29 @@ export async function getTrialBalance(companyId, periodStart, periodEnd) {
 }
 
 export async function getLedgerEntries(companyId, periodStart, periodEnd) {
+  // ledger_entries plafonne la pagination a 100 (et non 1000)
   return plFetchAll(`/companies/${companyId}/ledger_entries`, {
-    params: { period_start: periodStart, period_end: periodEnd },
+    params: { period_start: periodStart, period_end: periodEnd, limit: 100 },
   });
+}
+
+/** Lignes d'ecritures (debit/credit par compte) — base du P&L mensuel et du cashflow.
+ *  Le filtrage par date passe par le parametre `filter` (syntaxe Pennylane v2),
+ *  les params period_start/period_end etant ignores sur cet endpoint. */
+export async function getLedgerEntryLines(companyId, periodStart, periodEnd) {
+  const filter = JSON.stringify([
+    { field: 'date', operator: 'gteq', value: periodStart },
+    { field: 'date', operator: 'lteq', value: periodEnd },
+  ]);
+  return plFetchAll(`/companies/${companyId}/ledger_entry_lines`, {
+    params: { filter, limit: 100 },
+  });
+}
+
+/** Journaux (pour recuperer le code, ex 'AN' = a-nouveaux). */
+export async function getJournals(companyId) {
+  const raw = await plFetchAll(`/companies/${companyId}/journals`, { params: { limit: 100 } });
+  return raw;
 }
 
 // ── Normalisation des formes de reponse (champs variables selon versions) ──
