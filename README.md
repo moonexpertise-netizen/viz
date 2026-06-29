@@ -1,245 +1,67 @@
-# Balance Visualizer
+# MoonViz — Analyse financière des données Pennylane
 
-Un outil web complet pour importer des balances comptables Excel et générer des visualisations professionnelles avec **Bilan**, **Compte de Résultat (P&L)**, **Ratios financiers** et exports **PDF/Excel/HTML**.
+Outil web qui récupère **directement la donnée comptable via l'API Pennylane** (Firm API,
+multi-clients) et produit une analyse financière façon Finthesis : **Synthèse, SIG, Compte de
+résultat, Bilan et Ratios**, en comparatif N / N-1. Pensé pour un déploiement **Vercel**.
 
-## ✨ Fonctionnalités
+## Architecture
 
-- ✅ Authentification JWT sécurisée
-- ✅ Import Excel (format PCG - Plan Comptable Général)
-- ✅ Calcul automatique Bilan (Actif/Passif)
-- ✅ Calcul automatique P&L (Produits/Charges)
-- ✅ Ratios financiers (Liquidité, Solvabilité, Rentabilité)
-- ✅ Graphiques Recharts (Barres, P&L détaillé)
-- ✅ Exports PDF, Excel, HTML
-- ✅ Gestion multi-clients
-- ✅ Stockage local SQLite (données privées)
+```
+api/                      Fonctions serverless Vercel (Node, ESM)
+  _lib/pennylane.js       Client Pennylane Firm API (Bearer, pagination cursor)
+  _lib/normalize.js       trial_balance Pennylane → comptes N / N-1
+  _lib/accountingEngine.js Bilan · Résultat · SIG · Ratios
+  _lib/auth.js            Mot de passe partagé → cookie de session signé (HMAC)
+  login.js · logout.js · session.js
+  companies.js            Liste des sociétés du cabinet
+  fiscal-years.js         Exercices d'une société
+  report.js               Balance N (+N-1) → rapport complet
+src/                      Front React (Vite + Tailwind + Recharts)
+  pages/   Login · Workspace (sélecteur société/exercice + onglets)
+  views/   SyntheseView · SIGView · ResultatView · BilanView · RatiosView
+```
 
-## 📋 Prérequis
+Le token Pennylane reste **exclusivement côté serveur** (variable d'environnement) ; le
+navigateur ne le voit jamais et n'appelle que les fonctions `/api/*` de MoonViz.
 
-- **Node.js** >= 18.x
-- **npm** >= 9.x
-- **Chrome/Chromium** (pour export PDF via Puppeteer)
+## Variables d'environnement
 
-## 🚀 Installation & Démarrage
+| Variable | Rôle |
+|---|---|
+| `PENNYLANE_FIRM_TOKEN` | Token cabinet Pennylane (Réglages › Tokens du cabinet). Scopes : `companies:readonly`, `fiscal_years:readonly`, `trial_balance:readonly`. |
+| `APP_PASSWORD` | Mot de passe d'accès à l'application. |
+| `AUTH_SECRET` | Chaîne aléatoire longue pour signer le cookie de session. |
 
-### 1. Installer les dépendances
+Copier `.env.example` → `.env.local` et renseigner les valeurs pour le dev local.
+
+## Développement local
 
 ```bash
-# Backend
-cd backend
 npm install
-
-# Frontend
-cd ../frontend
-npm install
+npm i -g vercel        # une fois
+vercel dev             # front + fonctions /api sur http://localhost:3000
 ```
 
-### 2. Configurer l'environnement
+> `npm run dev` (Vite seul) sert le front sur `:5173` et proxifie `/api` vers `localhost:3000`
+> (donc à lancer en parallèle de `vercel dev`). Le plus simple est d'utiliser `vercel dev` seul.
 
-```bash
-# Dans backend/
-cp .env.example .env
-# Éditer .env si nécessaire (JWT_SECRET, PORT, etc.)
-```
+## Déploiement Vercel
 
-### 3. Démarrer les serveurs
+1. Pousser ce dossier sur un dépôt Git (GitHub/GitLab).
+2. Importer le projet sur Vercel — framework détecté : **Vite**.
+3. Renseigner les 3 variables d'environnement ci-dessus (Settings › Environment Variables).
+4. Déployer. Les fichiers de `api/` deviennent des fonctions serverless automatiquement.
 
-**Terminal 1 - Backend:**
-```bash
-cd backend
-npm start
-# Ou en développement avec hot-reload:
-npm run dev
-```
+## Logique comptable
 
-**Terminal 2 - Frontend:**
-```bash
-cd frontend
-npm run dev
-```
+- `solde = débit − crédit` par compte (convention débiteur positif).
+- Normalisation PCG : classe 1 (capitaux), 2/3/5 (actif), 4 (mixte selon signe),
+  6 (charges), 7 (produits).
+- SIG : marge commerciale → production → valeur ajoutée → EBE → résultat d'exploitation →
+  résultat courant → résultat net.
 
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:3001
+## Feuille de route
 
-## 📊 Guide d'utilisation
-
-### 1. Créer un compte
-- Accédez à `http://localhost:3000/login`
-- Cliquez sur "Register"
-- Entrez email + password (min 6 caractères)
-
-### 2. Créer un client
-- Depuis le Dashboard, cliquez "Upload Balance"
-- Cliquez "+ Create new client"
-- Entrez le nom de l'entreprise
-
-### 3. Importer une balance Excel
-- Format attendu (voir `EXAMPLE_BALANCE.md`):
-  - Colonne A: Numéro de compte (ex: 101, 401)
-  - Colonne B: Libellé du compte
-  - Colonne C: Montant (positif)
-  - Colonne D: Type ("Débit" ou "Crédit")
-- Sélectionnez le client et la période
-- Uploadez votre fichier .xlsx
-
-### 4. Visualiser les rapports
-- **Bilan**: Actif vs Passif (Immobilisations, Stocks, Trésorerie)
-- **P&L**: Revenues vs Expenses avec détails par catégorie
-- **Ratios**: Liquidité, Solvabilité, Rentabilité
-
-### 5. Exporter les résultats
-- Boutons PDF, Excel, HTML en haut de chaque rapport
-- Télécharge automatiquement le fichier
-
-## 🏗️ Architecture
-
-```
-balance-visualizer/
-├── backend/                    # Node.js + Express
-│   ├── src/
-│   │   ├── routes/
-│   │   │   ├── auth.js        # Register, Login, JWT
-│   │   │   ├── clients.js     # Gestion clients
-│   │   │   ├── upload.js      # Import Excel + Parsing
-│   │   │   ├── reports.js     # Récupération rapports
-│   │   │   └── export.js      # PDF/Excel/HTML
-│   │   ├── services/
-│   │   │   ├── parser.js      # Parsing Excel (SheetJS)
-│   │   │   ├── accountingEngine.js # Calcul Bilan + P&L
-│   │   │   └── exportService.js    # Exports (Puppeteer, ExcelJS)
-│   │   ├── middleware/
-│   │   │   └── auth.js        # JWT verification
-│   │   ├── utils/
-│   │   │   └── rateLimiter.js # Login rate limiting
-│   │   ├── db.js              # SQLite schema
-│   │   └── server.js          # Express app
-│   ├── uploads/               # Fichiers Excel uploadés
-│   ├── data.db               # Database SQLite
-│   └── package.json
-│
-└── frontend/                   # React + Vite
-    ├── src/
-    │   ├── pages/
-    │   │   ├── Login.jsx      # Authentification
-    │   │   ├── Dashboard.jsx  # Liste des balances
-    │   │   ├── Upload.jsx     # Import Excel
-    │   │   ├── BilanView.jsx  # Actif/Passif + Charts
-    │   │   └── PLView.jsx     # P&L + Charts
-    │   ├── components/
-    │   │   ├── BalanceSheetChart.jsx # Graphiques Bilan
-    │   │   ├── PLChart.jsx           # Graphiques P&L
-    │   │   └── RatioCards.jsx        # KPI Cards
-    │   ├── services/
-    │   │   └── api.js         # Axios client
-    │   ├── App.jsx            # React Router
-    │   ├── main.jsx
-    │   └── index.css
-    └── package.json
-```
-
-## 🔐 Sécurité
-
-- **Authentification**: JWT avec expiration 8h
-- **Passwords**: Hachés bcrypt (10 rounds)
-- **Rate Limiting**: 5 tentatives login/minute par email
-- **Données**: Stockées localement, jamais envoyées au cloud
-- **CORS**: Configuré pour frontend local uniquement
-
-## 💾 Base de données
-
-SQLite avec 4 tables:
-- `users` - Utilisateurs (email, password_hash)
-- `clients` - Clients par utilisateur
-- `balances` - Imports de balances (raw_data JSON)
-- `reports` - Rapports calculés (bilan, pl JSON)
-
-## 🛠️ Stack Technique
-
-### Backend
-- **Express.js** - Web framework
-- **better-sqlite3** - Base de données locale
-- **bcrypt** - Hachage passwords
-- **jsonwebtoken** - JWT auth
-- **xlsx** - Parsing Excel
-- **exceljs** - Génération Excel
-- **puppeteer** - Export PDF
-- **multer** - Upload fichiers
-- **cors** - Cross-origin
-
-### Frontend
-- **React 18** - UI framework
-- **Vite** - Build tool (fast HMR)
-- **React Router v6** - Navigation
-- **Recharts** - Data visualization
-- **Axios** - HTTP client
-- **Tailwind CSS** - Styling
-
-## 📈 Logique Comptable
-
-### PCG (Plan Comptable Général)
-- **Classe 1**: Capitaux propres → Passif
-- **Classe 2**: Immobilisations → Actif
-- **Classe 3**: Stocks → Actif
-- **Classe 4**: Tiers (Créances/Dettes) → Actif ou Passif
-- **Classe 5**: Trésorerie → Actif
-- **Classe 6**: Charges → P&L
-- **Classe 7**: Produits → P&L
-
-### Équation Comptable
-```
-Actif = Passif
-Produits - Charges = Résultat Net
-```
-
-## 📝 Format Excel Attendu
-
-Voir `EXAMPLE_BALANCE.md` pour les détails du format et un exemple complet.
-
-Résumé:
-```
-Numéro | Libellé                 | Montant | Type
-101    | Capital social          | 50000   | Crédit
-201    | Constructions           | 100000  | Débit
-512    | Banque                  | 15000   | Débit
-601    | Achat matières          | 30000   | Débit
-701    | Ventes produits         | 80000   | Crédit
-```
-
-## 🧪 Tester l'application
-
-### Créer un compte de test
-```
-Email: test@example.com
-Password: Test123456
-```
-
-### Tester avec un Excel
-1. Préparez un Excel avec au moins 5-10 comptes
-2. Uploadez via Dashboard → Upload Balance
-3. Visualisez les graphiques Bilan et P&L
-
-## 🚨 Troubleshooting
-
-### Port déjà utilisé
-```bash
-# Changer dans backend/.env
-PORT=3002
-```
-
-### Chrome/Puppeteer non trouvé
-- Installer Chrome/Chromium système
-- Ou ajouter le chemin à `~/.puppeteerrc.cjs`
-
-### Fichier Excel non lu
-- Vérifier format: .xlsx ou .xls
-- Vérifier colonnes: A (numéro), B (libellé), C (montant), D (type)
-- Pas d'en-têtes vides
-
-## 📄 Licence
-
-Utilise les meilleures pratiques open source.
-Crédits: Express, React, Recharts, SheetJS, Puppeteer, ExcelJS
-
----
-
-**Prêt à utiliser !** Installe Node.js et lance `npm install` dans backend/ et frontend/.
+- [ ] Vue **mensuelle** + **trésorerie** (via `ledger_entries` Pennylane).
+- [ ] **Exports** PDF / Excel.
+- [ ] Mémorisation des sociétés favorites.
