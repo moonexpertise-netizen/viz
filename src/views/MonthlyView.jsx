@@ -1798,7 +1798,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                   return cols.some(c => (agg?.[c.key] || 0) !== 0);
                 });
                 visibleAccounts.forEach((acc) => {
-                  const paddedNum = acc.number.padEnd(maxLen, '0');
+                  const paddedNum = /^\d+$/.test(acc.number) ? acc.number.padEnd(maxLen, '0') : acc.number;
                   const aggAcc = aggregateValues ? aggregateValues(acc.months) : acc.months;
                   const accTotal = cols.reduce((s, c) => s + (aggAcc?.[c.key] || 0), 0);
                   rowElements.push(

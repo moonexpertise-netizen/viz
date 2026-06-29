@@ -128,9 +128,9 @@ export async function getFiscalYears(companyId) {
   return raw.map(normalizeFiscalYear).sort((a, b) => (b.end || '').localeCompare(a.end || ''));
 }
 
-export async function getTrialBalance(companyId, periodStart, periodEnd) {
+export async function getTrialBalance(companyId, periodStart, periodEnd, isAuxiliary = false) {
   return plFetchAll(`/companies/${companyId}/trial_balance`, {
-    params: { period_start: periodStart, period_end: periodEnd, is_auxiliary: false },
+    params: { period_start: periodStart, period_end: periodEnd, is_auxiliary: isAuxiliary },
   });
 }
 

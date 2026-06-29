@@ -17,10 +17,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const [lines, journals, tb, entries] = await Promise.all([
+    const [lines, journals, tb, tbAux, entries] = await Promise.all([
       getLedgerEntryLines(cid, period_start, period_end),
       getJournals(cid),
       getTrialBalance(cid, period_start, period_end),
+      getTrialBalance(cid, period_start, period_end, true), // auxiliaire : noms clients/fournisseurs
       getLedgerEntries(cid, period_start, period_end),
     ]);
 
@@ -28,9 +29,9 @@ export default async function handler(req, res) {
     const journalCode = new Map();
     for (const j of journals) journalCode.set(j.id, j.code || j.label || '');
 
-    // Map numero compte -> libelle (depuis la balance)
+    // Map numero compte -> libelle (balance generale + auxiliaire pour les tiers clients/fournisseurs)
     const labelMap = {};
-    for (const it of tb) {
+    for (const it of [...tb, ...tbAux]) {
       const num = String(it.number ?? it.formatted_number ?? '').trim();
       if (num && it.label) labelMap[num] = it.label;
     }
