@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { LogOut, RefreshCw, Building2, Search } from 'lucide-react';
+import { LogOut, RefreshCw, Building2 } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
+import Combobox from '../components/Combobox';
 import SyntheseView from '../views/SyntheseView';
 import BilanView from '../views/BilanView';
 import ResultatView from '../views/ResultatView';
@@ -21,7 +22,6 @@ const TABS = [
 export default function Workspace({ onLogout }) {
   const [companies, setCompanies] = useState([]);
   const [companyId, setCompanyId] = useState('');
-  const [companyQuery, setCompanyQuery] = useState('');
   const [fiscalYears, setFiscalYears] = useState([]);
   const [fyId, setFyId] = useState('');
   const [report, setReport] = useState(null);
@@ -37,7 +37,8 @@ export default function Workspace({ onLogout }) {
       setError('');
       try {
         const { data } = await dataAPI.companies();
-        setCompanies(data.companies || []);
+        const sorted = (data.companies || []).slice().sort((a, b) => String(a.name).localeCompare(b.name, 'fr'));
+        setCompanies(sorted);
       } catch (err) {
         setError(describe(err));
       } finally {
@@ -113,14 +114,6 @@ export default function Workspace({ onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId, fyId, fiscalYears]);
 
-  const filteredCompanies = useMemo(() => {
-    const q = companyQuery.trim().toLowerCase();
-    if (!q) return companies;
-    return companies.filter((c) =>
-      String(c.name).toLowerCase().includes(q) ||
-      String(c.registrationNumber || '').toLowerCase().includes(q));
-  }, [companies, companyQuery]);
-
   return (
     <div className="min-h-screen bg-cream">
       {/* Header */}
@@ -144,25 +137,13 @@ export default function Workspace({ onLogout }) {
             <label className="block text-xs uppercase tracking-wide text-gray-custom mb-1">
               <Building2 size={12} className="inline mr-1" /> Société cliente
             </label>
-            <div className="relative">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-custom" />
-              <input
-                list="companies-list"
-                value={companyQuery}
-                onChange={(e) => {
-                  setCompanyQuery(e.target.value);
-                  const match = companies.find((c) => c.name === e.target.value);
-                  if (match) setCompanyId(String(match.id));
-                }}
-                placeholder={loading.companies ? 'Chargement des clients…' : 'Rechercher une société…'}
-                className="w-full border border-sage rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-navy"
-              />
-              <datalist id="companies-list">
-                {filteredCompanies.map((c) => (
-                  <option key={c.id} value={c.name}>{c.registrationNumber || ''}</option>
-                ))}
-              </datalist>
-            </div>
+            <Combobox
+              items={companies}
+              value={companyId}
+              onChange={setCompanyId}
+              loading={loading.companies}
+              placeholder="Choisir une société…"
+            />
           </div>
 
           <div>
