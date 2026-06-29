@@ -1620,6 +1620,17 @@ function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, acc
 // Cash Flow Tab
 function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, clientId, decimals = 0, exercises = [] }) {
   const rows = cashflow.rows || [];
+
+  // Trésorerie d'ouverture/clôture = soldes progressifs : on ne somme JAMAIS.
+  // Ouverture d'une période = solde du 1er mois ; clôture = solde du dernier mois.
+  const tresoPick = (row, monthList) => {
+    if (!monthList || !monthList.length) return 0;
+    const s = [...monthList].sort();
+    const m = row.key === 'tresorerieOuverture' ? s[0] : s[s.length - 1];
+    return row.months?.[m] || 0;
+  };
+  const cellValue = (row, col) => (row.isTreso ? tresoPick(row, col.months) : ((aggregateValues ? aggregateValues(row.months) : row.months)?.[col.key] || 0));
+  const totalValue = (row, cols) => (row.isTreso ? tresoPick(row, months) : cols.reduce((s, c) => s + (cellValue(row, c) || 0), 0));
   const [expanded, setExpanded] = useState({});
   const [modal, setModal] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -1640,9 +1651,8 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
     const headers = ['Poste', ...cols.map(c => c.label), 'Total'];
     const exportRows = [];
     rows.forEach((row) => {
-      const aggRow = aggregateValues ? aggregateValues(row.months) : row.months;
-      const rowTotal = cols.reduce((s, c) => s + (aggRow?.[c.key] || 0), 0);
-      exportRows.push([row.label, ...cols.map(c => rawVal(aggRow?.[c.key] || 0)), rawVal(rowTotal)]);
+      const rowTotal = totalValue(row, cols);
+      exportRows.push([row.label, ...cols.map(c => rawVal(cellValue(row, c))), rawVal(rowTotal)]);
       if (row.accounts) {
         row.accounts.forEach((acc) => {
           const aggAcc = aggregateValues ? aggregateValues(acc.months) : acc.months;
@@ -1744,7 +1754,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
               const expandable = isExpandable(row);
               const isExpanded = expanded[row.key];
               const aggRow = aggregateValues ? aggregateValues(row.months) : row.months;
-              const rowTotal = cols.reduce((s, c) => s + (aggRow?.[c.key] || 0), 0);
+              const rowTotal = totalValue(row, cols);
               const rowElements = [];
 
               // Category row
@@ -1759,7 +1769,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                     {row.label}
                   </td>
                   {cols.map((col) => {
-                    const val = aggRow?.[col.key] || 0;
+                    const val = cellValue(row, col);
                     return (
                       <td key={col.key} className={`py-1.5 px-3 text-right font-mono tabular-nums whitespace-nowrap min-w-[90px] ${
                         row.isTotal ? (val >= 0 ? 'text-green-300' : 'text-red-400')
