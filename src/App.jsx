@@ -5,11 +5,13 @@ import Workspace from './pages/Workspace';
 
 export default function App() {
   const [authed, setAuthed] = useState(null); // null = inconnu, false, true
+  const [sso, setSso] = useState({ enabled: false, domain: null });
 
   const refresh = useCallback(async () => {
     try {
       const { data } = await authAPI.session();
       setAuthed(Boolean(data.authenticated));
+      setSso({ enabled: Boolean(data.sso), domain: data.domain });
     } catch {
       setAuthed(false);
     }
@@ -35,6 +37,6 @@ export default function App() {
     );
   }
 
-  if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
+  if (!authed) return <Login onSuccess={() => setAuthed(true)} sso={sso} />;
   return <Workspace onLogout={logout} />;
 }

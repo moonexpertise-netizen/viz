@@ -33,7 +33,7 @@ function verifySession(token) {
   return Number.isFinite(exp) && exp > Math.floor(Date.now() / 1000);
 }
 
-function parseCookies(req) {
+export function parseCookies(req) {
   const header = req.headers.cookie || '';
   const out = {};
   header.split(';').forEach((part) => {
@@ -43,16 +43,45 @@ function parseCookies(req) {
   return out;
 }
 
+export function getCookie(req, name) {
+  return parseCookies(req)[name];
+}
+
+/** Ajoute un cookie sans ecraser les precedents (plusieurs Set-Cookie). */
+function appendCookie(res, str) {
+  const prev = res.getHeader('Set-Cookie');
+  if (!prev) res.setHeader('Set-Cookie', str);
+  else res.setHeader('Set-Cookie', Array.isArray(prev) ? [...prev, str] : [prev, str]);
+}
+
+const SECURE = () => (process.env.NODE_ENV === 'production' ? ' Secure;' : '');
+
 export function setSessionCookie(res, token) {
-  const secure = process.env.NODE_ENV === 'production' ? ' Secure;' : '';
-  res.setHeader(
-    'Set-Cookie',
-    `${COOKIE}=${token}; HttpOnly;${secure} Path=/; Max-Age=${MAX_AGE}; SameSite=Lax`,
-  );
+  appendCookie(res, `${COOKIE}=${token}; HttpOnly;${SECURE()} Path=/; Max-Age=${MAX_AGE}; SameSite=Lax`);
 }
 
 export function clearSessionCookie(res) {
-  res.setHeader('Set-Cookie', `${COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`);
+  appendCookie(res, `${COOKIE}=; HttpOnly;${SECURE()} Path=/; Max-Age=0; SameSite=Lax`);
+}
+
+/** Cookie temporaire (state / PKCE) pour le flux OAuth. */
+export function setTempCookie(res, name, value, maxAge = 600) {
+  appendCookie(res, `${name}=${value}; HttpOnly;${SECURE()} Path=/; Max-Age=${maxAge}; SameSite=Lax`);
+}
+export function clearTempCookie(res, name) {
+  appendCookie(res, `${name}=; HttpOnly;${SECURE()} Path=/; Max-Age=0; SameSite=Lax`);
+}
+
+/** Config SSO Microsoft Entra (null si non configuree -> repli mot de passe). */
+export function ssoConfig() {
+  const tenant = process.env.AZURE_TENANT_ID;
+  const clientId = process.env.AZURE_CLIENT_ID;
+  const clientSecret = process.env.AZURE_CLIENT_SECRET;
+  if (!tenant || !clientId || !clientSecret) return null;
+  return {
+    tenant, clientId, clientSecret,
+    domain: (process.env.ALLOWED_EMAIL_DOMAIN || 'moonexpertise.fr').toLowerCase(),
+  };
 }
 
 export function isAuthenticated(req) {
