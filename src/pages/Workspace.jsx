@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { LogOut, RefreshCw, Building2, Check, Cloud, CloudOff } from 'lucide-react';
+import { LogOut, RefreshCw, Building2, Check, Cloud, CloudOff, CalendarRange, X, ChevronRight } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
 import Combobox from '../components/Combobox';
@@ -13,12 +13,11 @@ import RatiosView from '../views/RatiosView';
 import MonthlyView from '../views/MonthlyView';
 
 const TABS = [
-  { key: 'synthese', label: 'Synthèse', perExercise: true },
-  { key: 'mensuel', label: 'Mensuel / Trésorerie', perExercise: false },
-  { key: 'sig', label: 'SIG', perExercise: true },
-  { key: 'resultat', label: 'Compte de résultat', perExercise: true },
-  { key: 'bilan', label: 'Bilan', perExercise: true },
-  { key: 'ratios', label: 'Ratios', perExercise: true },
+  { key: 'synthese', label: 'Synthèse' },
+  { key: 'sig', label: 'SIG' },
+  { key: 'resultat', label: 'Compte de résultat' },
+  { key: 'bilan', label: 'Bilan' },
+  { key: 'ratios', label: 'Ratios' },
 ];
 
 export default function Workspace({ onLogout }) {
@@ -26,14 +25,14 @@ export default function Workspace({ onLogout }) {
   const [companyId, setCompanyId] = useState('');
   const [fiscalYears, setFiscalYears] = useState([]);
   const [fyId, setFyId] = useState('');
-  const [synced, setSynced] = useState({});      // { fyId: entry }
-  const [syncing, setSyncing] = useState({});     // { fyId: bool }
+  const [synced, setSynced] = useState({});
+  const [syncing, setSyncing] = useState({});
   const [dismissedPrompt, setDismissedPrompt] = useState(false);
   const [tab, setTab] = useState('synthese');
+  const [periodicOpen, setPeriodicOpen] = useState(false);
   const [loading, setLoading] = useState({ companies: false, fy: false });
   const [error, setError] = useState('');
 
-  // Sociétés du cabinet
   useEffect(() => {
     (async () => {
       setLoading((l) => ({ ...l, companies: true }));
@@ -49,10 +48,11 @@ export default function Workspace({ onLogout }) {
     })();
   }, []);
 
-  // Changement de société : charger exercices (métadonnées) + cache local, sans appeler Pennylane
   useEffect(() => {
     if (!companyId) { setFiscalYears([]); setFyId(''); setSynced({}); return; }
     setDismissedPrompt(false);
+    setPeriodicOpen(false);
+    setTab('synthese');
     setSynced(loadSync(companyId));
     (async () => {
       setLoading((l) => ({ ...l, fy: true }));
@@ -125,60 +125,81 @@ export default function Workspace({ onLogout }) {
   };
 
   const showPrompt = companyId && !anySynced && selectedFy && !dismissedPrompt && !syncing[selectedFy?.id];
+  const goHome = () => { setCompanyId(''); setPeriodicOpen(false); };
 
   return (
-    <div className="min-h-screen bg-cream">
-      <header className="bg-navy text-white">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-4">
-          <img src="/moon-logo.png" alt="" className="w-9 h-9" />
-          <div className="flex-1">
-            <h1 className="text-xl font-display text-white leading-none">MoonViz</h1>
-            <p className="text-xs text-sage mt-0.5">Analyse financière · données Pennylane</p>
-          </div>
+    <div className="min-h-screen bg-cream flex flex-col">
+      {/* Header */}
+      <header className="bg-navy text-white shadow-sm">
+        <div className="mx-auto max-w-[1700px] w-full px-6 py-3.5 flex items-center gap-4">
+          <button onClick={goHome} className="flex items-center gap-3 group" title="Retour à l'accueil">
+            <img src="/moon-logo.png" alt="MoonViz" className="w-9 h-9 rounded-lg transition-transform group-hover:scale-105" />
+            <div className="text-left leading-tight">
+              <h1 className="text-lg font-display text-white">MoonViz</h1>
+              <p className="text-[11px] text-sage/90 group-hover:text-sage transition-colors">Analyse financière · Pennylane</p>
+            </div>
+          </button>
+          <div className="flex-1" />
+          {company && (
+            <button onClick={goHome} className="hidden sm:flex items-center gap-1.5 text-sm text-sage hover:text-white transition">
+              Accueil
+            </button>
+          )}
           <button onClick={onLogout} className="flex items-center gap-2 text-sm text-sage hover:text-white transition">
             <LogOut size={16} /> Déconnexion
           </button>
         </div>
       </header>
 
-      {/* Sélection société */}
-      <div className="bg-white border-b border-sage">
-        <div className="max-w-7xl mx-auto px-6 py-4 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
-          <div>
-            <label className="block text-xs uppercase tracking-wide text-gray-custom mb-1">
-              <Building2 size={12} className="inline mr-1" /> Société cliente
-              {!loading.companies && companies.length > 0 && <span className="ml-2 text-gray-custom normal-case">({companies.length} dossiers)</span>}
-            </label>
+      {/* Barre de sélection société */}
+      <div className="bg-white border-b border-sage/70 sticky top-0 z-20">
+        <div className="mx-auto max-w-[1700px] w-full px-6 py-3 flex flex-wrap items-center gap-4">
+          <label className="text-xs font-semibold uppercase tracking-wide text-gray-custom flex items-center gap-1.5 shrink-0">
+            <Building2 size={14} /> Société
+            {!loading.companies && companies.length > 0 && <span className="font-normal normal-case text-gray-custom/80">· {companies.length} dossiers</span>}
+          </label>
+          <div className="w-full sm:w-[420px] max-w-full">
             <Combobox items={companies} value={companyId} onChange={setCompanyId} loading={loading.companies} placeholder="Choisir une société…" />
           </div>
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-6 py-6">
-        {error && <div className="bg-red-50 border border-red-200 text-accent-red rounded-lg px-4 py-3 mb-4 text-sm">{error}</div>}
+      <main className="flex-1 mx-auto max-w-[1700px] w-full px-6 py-6">
+        {error && <div className="bg-red-50 border border-red-200 text-accent-red rounded-xl px-4 py-3 mb-4 text-sm">{error}</div>}
 
-        {!companyId && <EmptyState text="Choisissez une société cliente pour démarrer." />}
+        {!companyId && <Home companiesCount={companies.length} />}
 
         {companyId && (
           <>
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            {/* En-tête société + action plein écran */}
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-2xl font-display text-navy">{company?.name}</h2>
-                <p className="text-sm text-gray-custom">{fiscalYears.length} exercice{fiscalYears.length > 1 ? 's' : ''} · synchronisation à la demande</p>
+                <h2 className="text-2xl font-display text-navy leading-tight">{company?.name}</h2>
+                <p className="text-sm text-gray-custom mt-0.5">
+                  {company?.registrationNumber ? `SIREN ${company.registrationNumber} · ` : ''}
+                  {fiscalYears.length} exercice{fiscalYears.length > 1 ? 's' : ''}
+                </p>
               </div>
+              <button
+                onClick={() => setPeriodicOpen(true)}
+                disabled={!anySynced}
+                className="inline-flex items-center gap-2 rounded-xl bg-navy text-white px-4 py-2.5 text-sm font-medium shadow-sm hover:bg-navy-light transition disabled:opacity-40 disabled:cursor-not-allowed"
+                title={anySynced ? 'Ouvrir la vision périodique en plein écran' : 'Synchronisez un exercice pour activer la vision périodique'}
+              >
+                <CalendarRange size={17} /> Vision périodique
+              </button>
             </div>
 
-            {/* Demande de synchro à l'entrée du dossier */}
             {showPrompt && (
-              <div className="bg-navy text-white rounded-xl p-5 mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div className="bg-navy text-white rounded-2xl p-5 mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <Cloud size={22} className="text-sage" />
+                  <Cloud size={22} className="text-sage shrink-0" />
                   <div>
                     <p className="font-medium">Synchroniser les données de ce dossier ?</p>
                     <p className="text-sm text-sage">Les données ne sont récupérées de Pennylane que sur demande, une fois par exercice.</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <button onClick={() => doSync(selectedFy)} className="bg-white text-navy rounded-lg px-4 py-2 text-sm font-medium hover:bg-sage transition">
                     Synchroniser {selectedFy?.label}
                   </button>
@@ -187,7 +208,6 @@ export default function Workspace({ onLogout }) {
               </div>
             )}
 
-            {/* Suivi des synchronisations */}
             <SyncPanel
               fiscalYears={fiscalYears}
               synced={synced}
@@ -198,28 +218,66 @@ export default function Workspace({ onLogout }) {
               onSync={doSync}
             />
 
-            {/* Onglets */}
             {anySynced && (
               <>
-                <div className="flex gap-6 border-b border-sage mb-6 mt-6 overflow-x-auto">
+                <div className="flex gap-1 mt-6 mb-6 p-1 bg-white rounded-xl border border-sage/60 w-fit max-w-full overflow-x-auto">
                   {TABS.map((t) => (
                     <button key={t.key} onClick={() => setTab(t.key)}
-                      className={cls('pb-3 px-1 whitespace-nowrap text-sm', tab === t.key ? 'tab-active' : 'tab-inactive')}>
+                      className={cls('px-4 py-2 rounded-lg text-sm whitespace-nowrap transition',
+                        tab === t.key ? 'bg-navy text-white font-medium shadow-sm' : 'text-gray-custom hover:text-navy hover:bg-cream')}>
                       {t.label}
                     </button>
                   ))}
                 </div>
 
-                {tab === 'mensuel'
-                  ? <MonthlyView companyId={companyId} data={mergedMonthly} />
-                  : active
-                    ? <PerExerciseTab tab={tab} report={active.report.report} meta={reportMeta} />
-                    : <NotSynced fy={selectedFy} syncing={syncing[selectedFy?.id]} onSync={() => doSync(selectedFy)} />}
+                {active
+                  ? <PerExerciseTab tab={tab} report={active.report.report} meta={reportMeta} />
+                  : <NotSynced fy={selectedFy} syncing={syncing[selectedFy?.id]} onSync={() => doSync(selectedFy)} />}
               </>
             )}
           </>
         )}
       </main>
+
+      {/* Vision périodique — plein écran */}
+      {periodicOpen && (
+        <PeriodicFullscreen
+          companyName={company?.name}
+          companyId={companyId}
+          data={mergedMonthly}
+          onClose={() => setPeriodicOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function PeriodicFullscreen({ companyName, companyId, data, onClose }) {
+  useEffect(() => {
+    const onEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onEsc);
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', onEsc); document.body.style.overflow = ''; };
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-cream flex flex-col">
+      <header className="bg-navy text-white shrink-0">
+        <div className="px-5 py-3 flex items-center gap-3">
+          <CalendarRange size={20} className="text-sage" />
+          <div className="leading-tight">
+            <h2 className="font-display text-lg">Vision périodique</h2>
+            <p className="text-[11px] text-sage">{companyName}</p>
+          </div>
+          <div className="flex-1" />
+          <button onClick={onClose} className="flex items-center gap-2 text-sm text-sage hover:text-white transition rounded-lg px-3 py-1.5 hover:bg-white/10">
+            <X size={18} /> Fermer
+          </button>
+        </div>
+      </header>
+      <div className="flex-1 overflow-auto px-4 py-4">
+        <MonthlyView companyId={companyId} data={data} />
+      </div>
     </div>
   );
 }
@@ -240,43 +298,71 @@ function SyncPanel({ fiscalYears, synced, syncing, loading, selectedFyId, onSele
   if (loading) return <div className="card-moon p-4 text-sm text-gray-custom">Chargement des exercices…</div>;
   if (!fiscalYears.length) return null;
   return (
-    <div className="card-moon divide-y divide-sage/40">
-      {fiscalYears.map((fy) => {
-        const entry = synced[fy.id];
-        const busy = syncing[fy.id];
-        const isSel = String(fy.id) === String(selectedFyId);
-        return (
-          <div key={fy.id} className={cls('flex flex-wrap items-center gap-3 px-4 py-3', isSel && 'bg-cream')}>
-            <button onClick={() => onSelect(String(fy.id))} className="flex items-center gap-2 text-left flex-1 min-w-[200px]">
-              <span className={cls('w-2 h-2 rounded-full', entry ? 'bg-accent-green' : 'bg-gray-300')} />
-              <span className="font-medium text-navy">{fy.label}</span>
-              {fy.start && <span className="text-xs text-gray-custom">{fy.start} → {fy.end}</span>}
-            </button>
-            <div className="flex items-center gap-3">
-              {entry ? (
-                <span className="text-xs text-gray-custom flex items-center gap-1">
-                  <Check size={13} className="text-accent-green" /> synchronisé {fmtDate(entry.syncedAt)}
-                </span>
-              ) : (
-                <span className="text-xs text-gray-custom flex items-center gap-1"><CloudOff size={13} /> non synchronisé</span>
-              )}
-              <button onClick={() => onSync(fy)} disabled={busy || !fy.start}
-                className="btn-navy flex items-center gap-2 text-sm disabled:opacity-50 py-1.5 px-3">
-                <RefreshCw size={14} className={busy ? 'animate-spin' : ''} />
-                {entry ? 'Mettre à jour' : 'Synchroniser'}
-              </button>
+    <div className="card-moon overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-sage/50 text-xs font-semibold uppercase tracking-wide text-gray-custom bg-cream/60">
+        Synchronisation des exercices
+      </div>
+      <div className="divide-y divide-sage/40">
+        {fiscalYears.map((fy) => {
+          const entry = synced[fy.id];
+          const busy = syncing[fy.id];
+          const isSel = String(fy.id) === String(selectedFyId);
+          const rowCls = isSel
+            ? 'bg-emerald-50 border-l-4 border-accent-green'
+            : entry
+              ? 'bg-emerald-50/40 border-l-4 border-accent-green/60 hover:bg-emerald-50/70'
+              : 'border-l-4 border-transparent hover:bg-cream/60';
+          return (
+            <div key={fy.id} className={cls('flex flex-wrap items-center gap-3 px-4 py-3 transition-colors', rowCls)}>
+              <div className="flex items-center gap-2.5 flex-1 min-w-[200px]">
+                <span className={cls('w-2.5 h-2.5 rounded-full shrink-0', entry ? 'bg-accent-green' : 'bg-gray-300')} />
+                <span className="font-semibold text-navy">{fy.label}</span>
+                {fy.start && <span className="text-xs text-gray-custom">{fr(fy.start)} → {fr(fy.end)}</span>}
+                {entry && (
+                  <span className={cls('text-[11px] font-medium px-2 py-0.5 rounded-full',
+                    isSel ? 'bg-accent-green text-white' : 'bg-emerald-100 text-emerald-700')}>
+                    {isSel ? 'Affiché' : 'Chargé'}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                {entry ? (
+                  <span className="text-xs text-gray-custom flex items-center gap-1 mr-1"><Check size={13} className="text-accent-green" /> {fmtDate(entry.syncedAt)}</span>
+                ) : (
+                  <span className="text-xs text-gray-custom flex items-center gap-1 mr-1"><CloudOff size={13} /> non synchronisé</span>
+                )}
+
+                {entry && !isSel && (
+                  <button onClick={() => onSelect(String(fy.id))}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-accent-green text-white px-3 py-1.5 text-sm font-medium hover:brightness-95 transition">
+                    <ChevronRight size={15} /> Consulter cet exercice
+                  </button>
+                )}
+                {entry && isSel && (
+                  <span className="inline-flex items-center gap-1.5 text-sm text-accent-green font-medium px-2">
+                    <Check size={15} /> Exercice affiché
+                  </span>
+                )}
+
+                <button onClick={() => onSync(fy)} disabled={busy || !fy.start}
+                  className={cls('inline-flex items-center gap-2 rounded-lg text-sm py-1.5 px-3 transition disabled:opacity-50',
+                    entry ? 'border border-sage text-navy hover:bg-cream' : 'btn-navy')}>
+                  <RefreshCw size={14} className={busy ? 'animate-spin' : ''} />
+                  {entry ? 'Mettre à jour' : 'Synchroniser'}
+                </button>
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 function NotSynced({ fy, syncing, onSync }) {
   return (
-    <div className="card-moon p-10 text-center flex flex-col items-center gap-3">
-      <CloudOff className="text-gray-custom" />
+    <div className="card-moon p-12 text-center flex flex-col items-center gap-3">
+      <CloudOff className="text-gray-custom" size={28} />
       <p className="text-gray-custom">L'exercice {fy?.label} n'est pas encore synchronisé.</p>
       <button onClick={onSync} disabled={syncing} className="btn-navy flex items-center gap-2 disabled:opacity-50">
         <RefreshCw size={15} className={syncing ? 'animate-spin' : ''} /> Synchroniser cet exercice
@@ -285,8 +371,21 @@ function NotSynced({ fy, syncing, onSync }) {
   );
 }
 
-function EmptyState({ text }) {
-  return <div className="card-moon p-12 text-center text-gray-custom">{text}</div>;
+function Home({ companiesCount }) {
+  return (
+    <div className="card-moon p-12 md:p-16 text-center flex flex-col items-center gap-4 mt-6">
+      <img src="/moon-logo.png" alt="" className="w-16 h-16 rounded-2xl opacity-90" />
+      <div>
+        <h2 className="text-2xl font-display text-navy">Bienvenue sur MoonViz</h2>
+        <p className="text-gray-custom mt-2 max-w-md mx-auto">
+          Analyse financière de vos dossiers Pennylane — bilan, compte de résultat, SIG, ratios et vision périodique.
+        </p>
+      </div>
+      <p className="text-sm text-gray-custom">
+        {companiesCount > 0 ? <>Sélectionnez une société parmi vos <strong className="text-navy">{companiesCount} dossiers</strong> ci-dessus pour commencer.</> : 'Sélectionnez une société ci-dessus pour commencer.'}
+      </p>
+    </div>
+  );
 }
 
 function describe(err) {
@@ -300,6 +399,11 @@ function describe(err) {
 function shiftYear(dateStr, delta) {
   const [y, m, d] = String(dateStr).split('-');
   return `${parseInt(y, 10) + delta}-${m}-${d}`;
+}
+
+function fr(d) {
+  const [y, m, dd] = String(d).split('-');
+  return dd && m && y ? `${dd}/${m}/${y}` : d;
 }
 
 function fmtDate(iso) {

@@ -12,13 +12,28 @@
   --cream: #f6f5f2;
   --cream-dark: #edecea;
   --text-dark: #1a223d;
-  --text-gray: #6c757d;
+  --text-gray: #5b6470;     /* contraste renforcé (AA) */
   --text-light: #9ca3af;
-  --accent-green: #2d8a4e;
+  --accent-green: #1f7a45;  /* contraste renforcé */
   --accent-red: #c0392b;
   --accent-blue: #2563eb;
   --accent-gold: #d4a84b;
 }
+
+/* Accessibilité : focus visible cohérent au clavier */
+:where(button, a, input, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection { background: rgba(26, 34, 61, 0.12); }
+
+/* Scrollbars discrètes (tableaux larges) */
+* { scrollbar-width: thin; scrollbar-color: var(--sage) transparent; }
+*::-webkit-scrollbar { height: 10px; width: 10px; }
+*::-webkit-scrollbar-thumb { background: var(--sage); border-radius: 6px; }
+*::-webkit-scrollbar-thumb:hover { background: #b6bfb6; }
 
 * {
   margin: 0;
@@ -32,13 +47,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--cream);
   color: var(--text-dark);
+  line-height: 1.5;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Funnel Display', Georgia, serif;
   font-weight: 600;
   color: var(--navy);
+  letter-spacing: -0.01em;
 }
+
+/* Chiffres alignés partout (lisibilité des montants) */
+.tabular-nums { font-variant-numeric: tabular-nums; }
 
 .font-display {
   font-family: 'Funnel Display', Georgia, serif;
@@ -63,21 +83,26 @@ h1, h2, h3, h4, h5, h6 {
 /* Cards moonexpertise style */
 .card-moon {
   background: white;
-  border-radius: 12px;
+  border-radius: 14px;
   border: 1px solid var(--sage-light);
-  box-shadow: 0 1px 3px rgba(26, 34, 61, 0.06);
-  transition: box-shadow 0.2s ease;
+  box-shadow: 0 1px 2px rgba(26, 34, 61, 0.04), 0 1px 3px rgba(26, 34, 61, 0.06);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 .card-moon:hover {
-  box-shadow: 0 4px 12px rgba(26, 34, 61, 0.1);
+  box-shadow: 0 6px 18px rgba(26, 34, 61, 0.1);
 }
 
 /* KPI card style */
 .kpi-card {
   background: white;
-  border-radius: 12px;
+  border-radius: 14px;
   border: 1px solid var(--sage-light);
-  padding: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.kpi-card:hover {
+  box-shadow: 0 6px 18px rgba(26, 34, 61, 0.08);
+  border-color: var(--sage);
 }
 
 /* Insight card */
@@ -94,19 +119,21 @@ h1, h2, h3, h4, h5, h6 {
 /* Table style */
 .table-moon th {
   font-family: 'Inter', sans-serif;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-gray);
   border-bottom: 2px solid var(--sage);
-  padding: 0.75rem 1rem;
+  padding: 0.7rem 1rem;
 }
 .table-moon td {
   padding: 0.6rem 1rem;
   border-bottom: 1px solid var(--sage-light);
   font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
 }
+.table-moon tbody tr { transition: background-color 0.12s ease; }
 .table-moon tr:hover td {
   background-color: var(--cream);
 }
@@ -137,11 +164,12 @@ h1, h2, h3, h4, h5, h6 {
 .btn-navy {
   background-color: var(--navy);
   color: white;
-  border-radius: 8px;
+  border-radius: 9px;
   padding: 0.6rem 1.5rem;
   font-weight: 500;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.08s ease;
 }
+.btn-navy:active { transform: translateY(1px); }
 .btn-navy:hover {
   background-color: var(--navy-light);
 }
