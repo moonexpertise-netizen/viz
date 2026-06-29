@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LogOut, RefreshCw, Building2, Check, Cloud, CloudOff, CalendarRange, X, ChevronRight, Home as HomeIcon, List, Command } from 'lucide-react';
+import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, X, ChevronRight, ChevronDown, Home as HomeIcon, List, Command } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
 import Combobox from '../components/Combobox';
@@ -32,7 +32,6 @@ export default function Workspace({ onLogout }) {
   const [fyId, setFyId] = useState(initialUI.fyId || '');
   const [synced, setSynced] = useState({});
   const [syncing, setSyncing] = useState({});
-  const [dismissedPrompt, setDismissedPrompt] = useState(false);
   const [tab, setTab] = useState(initialUI.tab || 'synthese');
   const [periodicOpen, setPeriodicOpen] = useState(Boolean(initialUI.periodicOpen));
   const [loading, setLoading] = useState({ companies: false, fy: false });
@@ -78,11 +77,11 @@ export default function Workspace({ onLogout }) {
     const isRestore = !restoreConsumed.current && String(companyId) === String(initialUI.companyId);
     restoreConsumed.current = true;
     if (!isRestore) {
-      setDismissedPrompt(false);
       setPeriodicOpen(false);
       setTab('synthese');
     }
-    setSynced(loadSync(companyId));
+    const sync = loadSync(companyId);
+    setSynced(sync);
     (async () => {
       setLoading((l) => ({ ...l, fy: true }));
       setError('');
@@ -93,7 +92,9 @@ export default function Workspace({ onLogout }) {
         if (isRestore && fys.some((f) => String(f.id) === String(initialUI.fyId))) {
           setFyId(String(initialUI.fyId));
         } else {
-          setFyId(fys[0]?.id ? String(fys[0].id) : '');
+          // Par defaut : dernier exercice deja synchronise, sinon le plus recent
+          const firstSynced = fys.find((f) => sync[f.id]);
+          setFyId(String((firstSynced || fys[0])?.id || ''));
         }
       } catch (err) {
         setFiscalYears([]);
@@ -157,7 +158,6 @@ export default function Workspace({ onLogout }) {
     counts: active.report?.counts,
   };
 
-  const showPrompt = companyId && !anySynced && selectedFy && !dismissedPrompt && !syncing[selectedFy?.id];
   const goHome = () => { setCompanyId(''); setPeriodicOpen(false); };
 
   // Commandes de la palette (Ctrl/⌘+K)
@@ -268,35 +268,19 @@ export default function Workspace({ onLogout }) {
               </button>
             </div>
 
-            {showPrompt && (
-              <div className="bg-navy text-white rounded-2xl p-5 mb-5 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <Cloud size={22} className="text-sage shrink-0" />
-                  <div>
-                    <p className="font-medium">Synchroniser les données de ce dossier ?</p>
-                    <p className="text-sm text-sage">Les données ne sont récupérées de Pennylane que sur demande, une fois par exercice.</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => doSync(selectedFy)} className="bg-white text-navy rounded-lg px-4 py-2 text-sm font-medium hover:bg-sage transition">
-                    Synchroniser {selectedFy?.label}
-                  </button>
-                  <button onClick={() => setDismissedPrompt(true)} className="text-sage hover:text-white text-sm px-3 py-2">Plus tard</button>
-                </div>
-              </div>
-            )}
-
             <SyncPanel
+              key={companyId}
               fiscalYears={fiscalYears}
               synced={synced}
               syncing={syncing}
               loading={loading.fy}
+              anySynced={anySynced}
               selectedFyId={fyId}
               onSelect={setFyId}
               onSync={doSync}
             />
 
-            {anySynced && (
+            {active && (
               <>
                 <div className="flex gap-1 mt-6 mb-6 p-1 bg-white rounded-xl border border-sage/60 w-fit max-w-full overflow-x-auto">
                   {TABS.map((t) => (
@@ -307,11 +291,17 @@ export default function Workspace({ onLogout }) {
                     </button>
                   ))}
                 </div>
-
-                {active
-                  ? <PerExerciseTab tab={tab} report={active.report.report} meta={reportMeta} />
-                  : <NotSynced fy={selectedFy} syncing={syncing[selectedFy?.id]} onSync={() => doSync(selectedFy)} />}
+                <PerExerciseTab tab={tab} report={active.report.report} meta={reportMeta} />
               </>
+            )}
+
+            {!active && anySynced && (
+              <NotSynced fy={selectedFy} syncing={syncing[selectedFy?.id]} onSync={() => doSync(selectedFy)} />
+            )}
+            {!active && !anySynced && !loading.fy && fiscalYears.length > 0 && (
+              <div className="card-moon p-10 text-center text-gray-custom mt-4">
+                Synchronisez un exercice ci-dessus pour démarrer l'analyse.
+              </div>
             )}
           </>
         )}
@@ -374,67 +364,73 @@ function PerExerciseTab({ tab, report, meta }) {
   );
 }
 
-function SyncPanel({ fiscalYears, synced, syncing, loading, selectedFyId, onSelect, onSync }) {
-  if (loading) return <div className="card-moon p-4 text-sm text-gray-custom">Chargement des exercices…</div>;
+function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedFyId, onSelect, onSync }) {
+  const [open, setOpen] = useState(!anySynced);
+  if (loading) return <div className="card-moon p-3 text-sm text-gray-custom">Chargement des exercices…</div>;
   if (!fiscalYears.length) return null;
+  const syncedList = fiscalYears.filter((f) => synced[f.id]);
+
   return (
     <div className="card-moon overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-sage/50 text-xs font-semibold uppercase tracking-wide text-gray-custom bg-cream/60">
-        Synchronisation des exercices
+      {/* Barre compacte (repliée) */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
+        <span className="text-xs font-semibold uppercase tracking-wide text-gray-custom shrink-0">Exercice</span>
+        {syncedList.length > 0 ? (
+          <select value={selectedFyId} onChange={(e) => onSelect(e.target.value)}
+            className="border border-sage rounded-lg px-3 py-1.5 text-sm bg-white text-navy font-medium focus:outline-none focus:ring-2 focus:ring-navy">
+            {syncedList.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+          </select>
+        ) : (
+          <span className="text-sm text-gray-custom">Aucun exercice synchronisé</span>
+        )}
+        <span className="text-xs text-gray-custom">· {syncedList.length}/{fiscalYears.length} synchronisé{syncedList.length > 1 ? 's' : ''}</span>
+        <div className="flex-1" />
+        <button onClick={() => setOpen((o) => !o)}
+          className="inline-flex items-center gap-1.5 text-sm text-navy hover:bg-cream rounded-lg px-2.5 py-1.5 transition">
+          <RefreshCw size={14} /> Synchronisation
+          <ChevronDown size={15} className={cls('transition-transform', open && 'rotate-180')} />
+        </button>
       </div>
-      <div className="divide-y divide-sage/40">
-        {fiscalYears.map((fy) => {
-          const entry = synced[fy.id];
-          const busy = syncing[fy.id];
-          const isSel = String(fy.id) === String(selectedFyId);
-          const rowCls = isSel
-            ? 'bg-emerald-50 border-l-4 border-accent-green'
-            : entry
-              ? 'bg-emerald-50/40 border-l-4 border-accent-green/60 hover:bg-emerald-50/70'
-              : 'border-l-4 border-transparent hover:bg-cream/60';
-          return (
-            <div key={fy.id} className={cls('flex flex-wrap items-center gap-3 px-4 py-3 transition-colors', rowCls)}>
-              <div className="flex items-center gap-2.5 flex-1 min-w-[200px]">
-                <span className={cls('w-2.5 h-2.5 rounded-full shrink-0', entry ? 'bg-accent-green' : 'bg-gray-300')} />
-                <span className="font-semibold text-navy">{fy.label}</span>
-                {fy.start && <span className="text-xs text-gray-custom">{fr(fy.start)} → {fr(fy.end)}</span>}
-                {entry && (
-                  <span className={cls('text-[11px] font-medium px-2 py-0.5 rounded-full',
-                    isSel ? 'bg-accent-green text-white' : 'bg-emerald-100 text-emerald-700')}>
-                    {isSel ? 'Affiché' : 'Chargé'}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2 flex-wrap justify-end">
-                {entry ? (
-                  <span className="text-xs text-gray-custom flex items-center gap-1 mr-1"><Check size={13} className="text-accent-green" /> {fmtDate(entry.syncedAt)}</span>
-                ) : (
-                  <span className="text-xs text-gray-custom flex items-center gap-1 mr-1"><CloudOff size={13} /> non synchronisé</span>
-                )}
 
-                {entry && !isSel && (
-                  <button onClick={() => onSelect(String(fy.id))}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-accent-green text-white px-3 py-1.5 text-sm font-medium hover:brightness-95 transition">
-                    <ChevronRight size={15} /> Consulter cet exercice
+      {/* Gestion dépliée */}
+      {open && (
+        <div className="border-t border-sage/50 divide-y divide-sage/40">
+          {fiscalYears.map((fy) => {
+            const entry = synced[fy.id];
+            const busy = syncing[fy.id];
+            const isSel = String(fy.id) === String(selectedFyId);
+            return (
+              <div key={fy.id} className={cls('flex flex-wrap items-center gap-3 px-4 py-2.5 transition-colors',
+                isSel ? 'bg-emerald-50' : entry ? 'bg-emerald-50/40' : 'hover:bg-cream/60')}>
+                <div className="flex items-center gap-2.5 flex-1 min-w-[200px]">
+                  <span className={cls('w-2 h-2 rounded-full shrink-0', entry ? 'bg-accent-green' : 'bg-gray-300')} />
+                  <span className="font-medium text-navy">{fy.label}</span>
+                  {fy.start && <span className="text-xs text-gray-custom">{fr(fy.start)} → {fr(fy.end)}</span>}
+                  {entry && (
+                    <span className={cls('text-[11px] font-medium px-2 py-0.5 rounded-full',
+                      isSel ? 'bg-accent-green text-white' : 'bg-emerald-100 text-emerald-700')}>{isSel ? 'Affiché' : 'Chargé'}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  {entry && <span className="text-xs text-gray-custom hidden md:flex items-center gap-1 mr-1"><Check size={13} className="text-accent-green" />{fmtDate(entry.syncedAt)}</span>}
+                  {entry && !isSel && (
+                    <button onClick={() => onSelect(String(fy.id))}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-accent-green text-white px-3 py-1.5 text-sm font-medium hover:brightness-95 transition">
+                      <ChevronRight size={15} /> Consulter
+                    </button>
+                  )}
+                  <button onClick={() => onSync(fy)} disabled={busy || !fy.start}
+                    className={cls('inline-flex items-center gap-2 rounded-lg text-sm py-1.5 px-3 transition disabled:opacity-50',
+                      entry ? 'border border-sage text-navy hover:bg-cream' : 'btn-navy')}>
+                    <RefreshCw size={14} className={busy ? 'animate-spin' : ''} />
+                    {entry ? 'Mettre à jour' : 'Synchroniser'}
                   </button>
-                )}
-                {entry && isSel && (
-                  <span className="inline-flex items-center gap-1.5 text-sm text-accent-green font-medium px-2">
-                    <Check size={15} /> Exercice affiché
-                  </span>
-                )}
-
-                <button onClick={() => onSync(fy)} disabled={busy || !fy.start}
-                  className={cls('inline-flex items-center gap-2 rounded-lg text-sm py-1.5 px-3 transition disabled:opacity-50',
-                    entry ? 'border border-sage text-navy hover:bg-cream' : 'btn-navy')}>
-                  <RefreshCw size={14} className={busy ? 'animate-spin' : ''} />
-                  {entry ? 'Mettre à jour' : 'Synchroniser'}
-                </button>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
