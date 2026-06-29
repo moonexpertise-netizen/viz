@@ -1,115 +1,153 @@
-import { Fragment, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronRight, SlidersHorizontal, Check } from 'lucide-react';
 import { fmt, fmtPct, cls } from '../lib/format';
 
 /**
- * Tableau financier unifié (style Finthesis) — utilisé par tous les onglets.
+ * Tableau financier unifié (style Finthesis) avec colonnes masquables.
  *
- * columns : [{ key, label, kind: 'money'|'var'|'pct', tinted? }]
- * rows    : [{ label, type: 'line'|'subtotal'|'total'|'section', sign?, values:{...},
- *             accounts?: [{ number, label, values }] }]
+ * id      : clé de persistance de la visibilité des colonnes (localStorage)
+ * columns : [{ key, label, kind: 'money'|'varabs'|'varpct'|'pct', tinted? }]
+ * rows    : [{ label, type: 'line'|'subtotal'|'total'|'section', sign?, values:{...}, accounts? }]
  */
-export default function FinTable({ columns, rows, firstColLabel = 'Poste' }) {
-  const [open, setOpen] = useState({});
-  const toggle = (k) => setOpen((o) => ({ ...o, [k]: !o[k] }));
+export default function FinTable({ id = 'fin', columns, rows, firstColLabel = 'Poste' }) {
+  const storageKey = `mv:cols:${id}`;
+  const [hidden, setHidden] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(storageKey) || '[]')); } catch { return new Set(); }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(storageKey, JSON.stringify([...hidden])); } catch { /* noop */ }
+  }, [hidden, storageKey]);
 
-  const moneyCell = (v, sign = 1, opts = {}) => {
-    const val = (v || 0) * sign;
-    return (
-      <span className={cls('tabular-nums', val < 0 && !opts.strong && 'text-accent-red', val < 0 && opts.strong && 'text-red-500', val === 0 && 'text-gray-300')}>
-        {val === 0 ? '—' : fmt(val)}
-      </span>
-    );
-  };
-
-  const varCell = (variation, pct) => {
-    if (variation === null || variation === undefined) return <span className="text-gray-300">—</span>;
-    const up = variation > 0, down = variation < 0;
-    return (
-      <span className={cls('tabular-nums text-xs', up && 'text-accent-green', down && 'text-accent-red', !up && !down && 'text-gray-custom')}>
-        {up ? '+' : ''}{fmt(variation)}{pct != null ? ` (${up ? '+' : ''}${fmtPct(pct)})` : ''}
-      </span>
-    );
-  };
-
-  const pctCell = (v) => (
-    <span className={cls('tabular-nums text-xs italic', v == null ? 'text-gray-300' : 'text-gray-custom')}>
-      {v == null ? '—' : fmtPct(v)}
-    </span>
-  );
-
-  const renderCells = (row, vals, sign, strong) =>
-    columns.map((c) => {
-      let content;
-      if (c.kind === 'var') content = varCell(vals.variation == null ? null : vals.variation * sign, vals.variationPct);
-      else if (c.kind === 'pct') content = pctCell(vals[c.key]);
-      else content = moneyCell(vals[c.key], sign, { strong });
-      return (
-        <td key={c.key} className={cls('px-3 py-2 text-right whitespace-nowrap', c.tinted && !strong && 'bg-sky-50/60')}>
-          {content}
-        </td>
-      );
-    });
+  const visibleCols = useMemo(() => columns.filter((c) => !hidden.has(c.key)), [columns, hidden]);
+  const toggleCol = (key) => setHidden((h) => { const n = new Set(h); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm bg-white">
-      <table className="w-full min-w-max text-sm">
-        <thead>
-          <tr className="bg-navy text-white">
-            <th className="px-4 py-2.5 text-left font-semibold text-xs uppercase tracking-wide sticky left-0 bg-navy z-10">{firstColLabel}</th>
-            {columns.map((c) => (
-              <th key={c.key} className={cls('px-3 py-2.5 text-right font-semibold text-xs uppercase tracking-wide whitespace-nowrap', c.tinted && 'bg-navy-light')}>
-                {c.label}
-              </th>
-            ))}
+    <div>
+      <div className="flex justify-end mb-2">
+        <ColumnsMenu columns={columns} hidden={hidden} onToggle={toggleCol} />
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm bg-white">
+        <table className="w-full min-w-max text-sm">
+          <thead>
+            <tr className="bg-navy text-white">
+              <th className="px-4 py-2.5 text-left font-semibold text-xs uppercase tracking-wide sticky left-0 bg-navy z-10">{firstColLabel}</th>
+              {visibleCols.map((c) => (
+                <th key={c.key} className={cls('px-3 py-2.5 text-right font-semibold text-xs uppercase tracking-wide whitespace-nowrap', c.tinted && 'bg-navy-light')}>
+                  {c.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => <Row key={i} row={row} columns={visibleCols} index={i} />)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  function Row({ row, columns, index }) {
+    const [open, setOpen] = useState(false);
+    if (row.type === 'section') {
+      return (
+        <tr className="bg-slate-50">
+          <td colSpan={columns.length + 1} className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 sticky left-0 bg-slate-50">{row.label}</td>
+        </tr>
+      );
+    }
+    const isSub = row.type === 'subtotal';
+    const isTot = row.type === 'total';
+    const strong = isSub || isTot;
+    const sign = row.sign || 1;
+    const hasAccounts = row.accounts && row.accounts.length > 0;
+    const rowCls = isTot
+      ? 'bg-slate-100 font-semibold border-y border-slate-300'
+      : isSub
+        ? 'bg-slate-50 font-medium border-y border-slate-200'
+        : 'border-b border-slate-100 hover:bg-sky-50/40';
+    const stickyBg = isTot ? 'bg-slate-100' : isSub ? 'bg-slate-50' : 'bg-white';
+    return (
+      <Fragment>
+        <tr className={cls(rowCls, hasAccounts && 'cursor-pointer')} onClick={() => hasAccounts && setOpen((o) => !o)}>
+          <td className={cls('px-4 py-2 text-left whitespace-nowrap sticky left-0 z-10 text-navy', stickyBg)}>
+            {hasAccounts
+              ? <ChevronRight size={13} className={cls('inline mr-1.5 text-slate-400 transition-transform', open && 'rotate-90')} />
+              : <span className="inline-block w-[19px]" />}
+            {row.label}
+          </td>
+          {renderCells(row.values, sign, columns, strong)}
+        </tr>
+        {open && hasAccounts && row.accounts.map((acc, j) => (
+          <tr key={j} className="bg-slate-50/40 hover:bg-sky-50/40 border-b border-slate-100 text-[13px]">
+            <td className="px-4 py-1.5 pl-10 text-left whitespace-nowrap sticky left-0 bg-white z-10 text-gray-custom">
+              <span className="text-xs text-slate-400 mr-2 tabular-nums">{acc.number}</span>{acc.label}
+            </td>
+            {renderCells(acc.values, sign, columns, false)}
           </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => {
-            if (row.type === 'section') {
-              return (
-                <tr key={i} className="bg-slate-50">
-                  <td colSpan={columns.length + 1} className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 sticky left-0 bg-slate-50">{row.label}</td>
-                </tr>
-              );
-            }
-            const isSub = row.type === 'subtotal';
-            const isTot = row.type === 'total';
-            const strong = isSub || isTot;
-            const sign = row.sign || 1;
-            const hasAccounts = row.accounts && row.accounts.length > 0;
-            const rowKey = `r${i}`;
-            const isOpen = open[rowKey];
-            const rowCls = isTot
-              ? 'bg-slate-100 font-semibold border-y border-slate-300'
-              : isSub
-                ? 'bg-slate-50 font-medium border-y border-slate-200'
-                : 'border-b border-slate-100 hover:bg-sky-50/40';
-            const stickyBg = isTot ? 'bg-slate-100' : isSub ? 'bg-slate-50' : 'bg-white';
+        ))}
+      </Fragment>
+    );
+  }
+}
+
+function renderCells(vals, sign, columns, strong) {
+  return columns.map((c) => (
+    <td key={c.key} className={cls('px-3 py-2 text-right whitespace-nowrap', c.tinted && !strong && 'bg-sky-50/60')}>
+      {cellContent(c, vals, sign)}
+    </td>
+  ));
+}
+
+function cellContent(c, vals, sign) {
+  if (c.kind === 'varabs') return signedMoney(vals.variation, sign);
+  if (c.kind === 'varpct') return signedPct(vals.variationPct, sign);
+  if (c.kind === 'pct') {
+    const v = vals[c.key];
+    return <span className={cls('tabular-nums text-xs italic', v == null ? 'text-gray-300' : 'text-gray-custom')}>{v == null ? '—' : fmtPct(v)}</span>;
+  }
+  const val = (vals[c.key] || 0) * sign;
+  return <span className={cls('tabular-nums', val < 0 && 'text-accent-red', val === 0 && 'text-gray-300')}>{val === 0 ? '—' : fmt(val)}</span>;
+}
+
+function signedMoney(variation, sign) {
+  if (variation == null) return <span className="text-gray-300">—</span>;
+  const v = variation * sign;
+  return <span className={cls('tabular-nums text-xs', v > 0 && 'text-accent-green', v < 0 && 'text-accent-red', v === 0 && 'text-gray-custom')}>{v > 0 ? '+' : ''}{fmt(v)}</span>;
+}
+function signedPct(pct, sign) {
+  if (pct == null) return <span className="text-gray-300">—</span>;
+  const v = pct * sign;
+  return <span className={cls('tabular-nums text-xs', v > 0 && 'text-accent-green', v < 0 && 'text-accent-red', v === 0 && 'text-gray-custom')}>{v > 0 ? '+' : ''}{fmtPct(v)}</span>;
+}
+
+function ColumnsMenu({ columns, hidden, onToggle }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, []);
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-1.5 text-sm text-gray-custom hover:text-navy border border-sage rounded-lg px-3 py-1.5 hover:bg-cream transition">
+        <SlidersHorizontal size={14} /> Colonnes
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1 z-30 bg-white border border-sage rounded-lg shadow-lg py-1 min-w-[180px]">
+          {columns.map((c) => {
+            const visible = !hidden.has(c.key);
             return (
-              <Fragment key={i}>
-                <tr className={cls(rowCls, hasAccounts && 'cursor-pointer')} onClick={() => hasAccounts && toggle(rowKey)}>
-                  <td className={cls('px-4 py-2 text-left whitespace-nowrap sticky left-0 z-10 text-navy', stickyBg)}>
-                    {hasAccounts
-                      ? <ChevronRight size={13} className={cls('inline mr-1.5 text-slate-400 transition-transform', isOpen && 'rotate-90')} />
-                      : <span className="inline-block w-[19px]" />}
-                    {row.label}
-                  </td>
-                  {renderCells(row, row.values, sign, strong)}
-                </tr>
-                {isOpen && hasAccounts && row.accounts.map((acc, j) => (
-                  <tr key={`${i}-${j}`} className="bg-slate-50/40 hover:bg-sky-50/40 border-b border-slate-100 text-[13px]">
-                    <td className="px-4 py-1.5 pl-10 text-left whitespace-nowrap sticky left-0 bg-white z-10 text-gray-custom">
-                      <span className="font-mono text-xs text-slate-400 mr-2">{acc.number}</span>{acc.label}
-                    </td>
-                    {renderCells({}, acc.values, sign, false)}
-                  </tr>
-                ))}
-              </Fragment>
+              <button key={c.key} onClick={() => onToggle(c.key)}
+                className="w-full flex items-center justify-between gap-3 px-3 py-1.5 text-sm text-left hover:bg-cream">
+                <span className={cls(visible ? 'text-navy' : 'text-gray-custom')}>{c.label}</span>
+                {visible && <Check size={14} className="text-accent-green" />}
+              </button>
             );
           })}
-        </tbody>
-      </table>
+        </div>
+      )}
     </div>
   );
 }

@@ -16,7 +16,8 @@ const PASSIF = [
 const COLUMNS = [
   { key: 'soldeN', label: 'N', kind: 'money', tinted: true },
   { key: 'soldeN1', label: 'N-1', kind: 'money' },
-  { key: 'variation', label: 'Variation', kind: 'var' },
+  { key: 'variation', label: 'Var. €', kind: 'varabs' },
+  { key: 'variationPct', label: 'Var. %', kind: 'varpct' },
 ];
 
 const catRow = (cat, label) => ({
@@ -50,7 +51,7 @@ export default function BilanView({ report }) {
         <Kpi label="Équilibre actif / passif" value={fmt(equilibre)} accent={Math.abs(equilibre) > 1 ? 'neg' : 'pos'}
              sub={Math.abs(equilibre) > 1 ? 'écart à analyser' : 'équilibré ✓'} />
       </div>
-      <FinTable columns={COLUMNS} rows={actifRows} />
+      <FinTable id="bilan" columns={COLUMNS} rows={actifRows} />
     </div>
   );
 }

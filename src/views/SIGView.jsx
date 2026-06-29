@@ -5,7 +5,8 @@ import { fmt } from '../lib/format';
 const COLUMNS = [
   { key: 'soldeN', label: 'N', kind: 'money', tinted: true },
   { key: 'soldeN1', label: 'N-1', kind: 'money' },
-  { key: 'variation', label: 'Variation', kind: 'var' },
+  { key: 'variation', label: 'Var. €', kind: 'varabs' },
+  { key: 'variationPct', label: 'Var. %', kind: 'varpct' },
   { key: 'pctCA', label: '% CA', kind: 'pct' },
 ];
 
@@ -36,7 +37,7 @@ export default function SIGView({ report }) {
   return (
     <div className="space-y-5">
       <SigWaterfall steps={waterfall} />
-      <FinTable columns={COLUMNS} rows={rows} />
+      <FinTable id="sig" columns={COLUMNS} rows={rows} />
     </div>
   );
 }

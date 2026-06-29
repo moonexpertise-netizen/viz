@@ -24,7 +24,8 @@ const CHARGES = [
 const COLUMNS = [
   { key: 'soldeN', label: 'N', kind: 'money', tinted: true },
   { key: 'soldeN1', label: 'N-1', kind: 'money' },
-  { key: 'variation', label: 'Variation', kind: 'var' },
+  { key: 'variation', label: 'Var. €', kind: 'varabs' },
+  { key: 'variationPct', label: 'Var. %', kind: 'varpct' },
 ];
 
 const catRow = (cat, label, sign = 1) => ({
@@ -57,7 +58,7 @@ export default function ResultatView({ report }) {
         <Kpi label="Total charges" value={fmt(s.totalChargesN)} sub={`N-1 : ${fmt(s.totalChargesN1)}`} />
         <Kpi label="Résultat net" value={fmt(s.resultatN)} accent={s.resultatN < 0 ? 'neg' : 'pos'} sub={`Marge ${fmtPct(s.margeN)}`} />
       </div>
-      <FinTable columns={COLUMNS} rows={rows} />
+      <FinTable id="resultat" columns={COLUMNS} rows={rows} />
     </div>
   );
 }
