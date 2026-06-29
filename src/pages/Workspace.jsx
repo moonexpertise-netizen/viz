@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, X, ChevronRight, ChevronDown, Home as HomeIcon, List, Command } from 'lucide-react';
+import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronDown, Home as HomeIcon, List, Command } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
 import Combobox from '../components/Combobox';
@@ -15,6 +15,7 @@ import MonthlyView from '../views/MonthlyView';
 
 const TABS = [
   { key: 'synthese', label: 'Synthèse' },
+  { key: 'periodic', label: 'Vision périodique', wide: true },
   { key: 'sig', label: 'SIG' },
   { key: 'resultat', label: 'Compte de résultat' },
   { key: 'bilan', label: 'Bilan' },
@@ -33,7 +34,6 @@ export default function Workspace({ onLogout }) {
   const [synced, setSynced] = useState({});
   const [syncing, setSyncing] = useState({});
   const [tab, setTab] = useState(initialUI.tab || 'synthese');
-  const [periodicOpen, setPeriodicOpen] = useState(Boolean(initialUI.periodicOpen));
   const [loading, setLoading] = useState({ companies: false, fy: false });
   const [error, setError] = useState('');
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -53,8 +53,8 @@ export default function Workspace({ onLogout }) {
 
   // Persister l'etat de navigation (pour rester au meme endroit au rechargement)
   useEffect(() => {
-    try { localStorage.setItem(UI_KEY, JSON.stringify({ companyId, fyId, tab, periodicOpen })); } catch { /* noop */ }
-  }, [companyId, fyId, tab, periodicOpen]);
+    try { localStorage.setItem(UI_KEY, JSON.stringify({ companyId, fyId, tab })); } catch { /* noop */ }
+  }, [companyId, fyId, tab]);
 
   useEffect(() => {
     (async () => {
@@ -77,7 +77,6 @@ export default function Workspace({ onLogout }) {
     const isRestore = !restoreConsumed.current && String(companyId) === String(initialUI.companyId);
     restoreConsumed.current = true;
     if (!isRestore) {
-      setPeriodicOpen(false);
       setTab('synthese');
     }
     const sync = loadSync(companyId);
@@ -158,7 +157,7 @@ export default function Workspace({ onLogout }) {
     counts: active.report?.counts,
   };
 
-  const goHome = () => { setCompanyId(''); setPeriodicOpen(false); };
+  const goHome = () => { setCompanyId(''); };
 
   // Commandes de la palette (Ctrl/⌘+K)
   const commandGroups = useMemo(() => {
@@ -166,9 +165,9 @@ export default function Workspace({ onLogout }) {
     if (companyId) {
       const nav = TABS.map((t) => ({
         id: `tab-${t.key}`, label: t.label, hint: 'onglet', keywords: `onglet ${t.label}`,
-        icon: <List size={16} />, run: () => { setPeriodicOpen(false); setTab(t.key); },
+        icon: <List size={16} />, run: () => setTab(t.key),
       }));
-      if (anySynced) nav.push({ id: 'periodic', label: 'Vision périodique (plein écran)', keywords: 'mensuel trésorerie cashflow périodique', icon: <CalendarRange size={16} />, run: () => setPeriodicOpen(true) });
+      if (anySynced) nav.push({ id: 'periodic', label: 'Vision périodique', keywords: 'mensuel trésorerie cashflow périodique', icon: <CalendarRange size={16} />, run: () => setTab('periodic') });
       nav.push({ id: 'home', label: 'Accueil', keywords: 'accueil home retour', icon: <HomeIcon size={16} />, run: goHome });
       groups.push({ title: 'Navigation', items: nav });
 
@@ -178,7 +177,7 @@ export default function Workspace({ onLogout }) {
           items: fiscalYears.map((fy) => ({
             id: `fy-${fy.id}`, label: fy.label, hint: synced[fy.id] ? 'consulter' : 'à synchroniser',
             keywords: `exercice ${fy.label} ${fy.year || ''}`, icon: <CalendarRange size={16} />,
-            run: () => { setPeriodicOpen(false); setFyId(String(fy.id)); if (!synced[fy.id]) doSync(fy); },
+            run: () => { setFyId(String(fy.id)); if (!synced[fy.id]) doSync(fy); },
           })),
         });
       }
@@ -249,23 +248,13 @@ export default function Workspace({ onLogout }) {
 
         {companyId && (
           <>
-            {/* En-tête société + action plein écran */}
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-display text-navy leading-tight">{company?.name}</h2>
-                <p className="text-sm text-gray-custom mt-0.5">
-                  {company?.registrationNumber ? `SIREN ${company.registrationNumber} · ` : ''}
-                  {fiscalYears.length} exercice{fiscalYears.length > 1 ? 's' : ''}
-                </p>
-              </div>
-              <button
-                onClick={() => setPeriodicOpen(true)}
-                disabled={!anySynced}
-                className="inline-flex items-center gap-2 rounded-xl bg-navy text-white px-4 py-2.5 text-sm font-medium shadow-sm hover:bg-navy-light transition disabled:opacity-40 disabled:cursor-not-allowed"
-                title={anySynced ? 'Ouvrir la vision périodique en plein écran' : 'Synchronisez un exercice pour activer la vision périodique'}
-              >
-                <CalendarRange size={17} /> Vision périodique
-              </button>
+            {/* En-tête société */}
+            <div className="mb-5">
+              <h2 className="text-2xl font-display text-navy leading-tight">{company?.name}</h2>
+              <p className="text-sm text-gray-custom mt-0.5">
+                {company?.registrationNumber ? `SIREN ${company.registrationNumber} · ` : ''}
+                {fiscalYears.length} exercice{fiscalYears.length > 1 ? 's' : ''}
+              </p>
             </div>
 
             <SyncPanel
@@ -280,74 +269,37 @@ export default function Workspace({ onLogout }) {
               onSync={doSync}
             />
 
-            {active && (
+            {anySynced ? (
               <>
                 <div className="flex gap-1 mt-6 mb-6 p-1 bg-white rounded-xl border border-sage/60 w-fit max-w-full overflow-x-auto">
                   {TABS.map((t) => (
                     <button key={t.key} onClick={() => setTab(t.key)}
-                      className={cls('px-4 py-2 rounded-lg text-sm whitespace-nowrap transition',
+                      className={cls('px-4 py-2 rounded-lg text-sm whitespace-nowrap transition flex items-center gap-1.5',
                         tab === t.key ? 'bg-navy text-white font-medium shadow-sm' : 'text-gray-custom hover:text-navy hover:bg-cream')}>
+                      {t.key === 'periodic' && <CalendarRange size={15} />}
                       {t.label}
                     </button>
                   ))}
                 </div>
-                <PerExerciseTab tab={tab} report={active.report.report} meta={reportMeta} />
-              </>
-            )}
 
-            {!active && anySynced && (
-              <NotSynced fy={selectedFy} syncing={syncing[selectedFy?.id]} onSync={() => doSync(selectedFy)} />
-            )}
-            {!active && !anySynced && !loading.fy && fiscalYears.length > 0 && (
-              <div className="card-moon p-10 text-center text-gray-custom mt-4">
-                Synchronisez un exercice ci-dessus pour démarrer l'analyse.
-              </div>
+                {tab === 'periodic'
+                  ? <div className="w-screen relative left-1/2 -translate-x-1/2 px-3"><MonthlyView companyId={companyId} data={mergedMonthly} /></div>
+                  : active
+                    ? <PerExerciseTab tab={tab} report={active.report.report} meta={reportMeta} />
+                    : <NotSynced fy={selectedFy} syncing={syncing[selectedFy?.id]} onSync={() => doSync(selectedFy)} />}
+              </>
+            ) : (
+              !loading.fy && fiscalYears.length > 0 && (
+                <div className="card-moon p-10 text-center text-gray-custom mt-4">
+                  Synchronisez un exercice ci-dessus pour démarrer l'analyse.
+                </div>
+              )
             )}
           </>
         )}
       </main>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} groups={commandGroups} />
-
-      {/* Vision périodique — plein écran */}
-      {periodicOpen && mergedMonthly && (
-        <PeriodicFullscreen
-          companyName={company?.name}
-          companyId={companyId}
-          data={mergedMonthly}
-          onClose={() => setPeriodicOpen(false)}
-        />
-      )}
-    </div>
-  );
-}
-
-function PeriodicFullscreen({ companyName, companyId, data, onClose }) {
-  useEffect(() => {
-    const onEsc = (e) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onEsc);
-    document.body.style.overflow = 'hidden';
-    return () => { document.removeEventListener('keydown', onEsc); document.body.style.overflow = ''; };
-  }, [onClose]);
-
-  return (
-    <div className="fixed inset-0 z-50 bg-cream flex flex-col">
-      <header className="bg-navy text-white shrink-0">
-        <div className="px-5 py-3 flex items-center gap-3">
-          <CalendarRange size={20} className="text-sage" />
-          <div className="leading-tight">
-            <h2 className="font-display text-lg">Vision périodique</h2>
-            <p className="text-[11px] text-sage">{companyName}</p>
-          </div>
-          <div className="flex-1" />
-          <button onClick={onClose} className="flex items-center gap-2 text-sm text-sage hover:text-white transition rounded-lg px-3 py-1.5 hover:bg-white/10">
-            <X size={18} /> Fermer
-          </button>
-        </div>
-      </header>
-      <div className="flex-1 overflow-auto px-4 py-4">
-        <MonthlyView companyId={companyId} data={data} />
-      </div>
     </div>
   );
 }
