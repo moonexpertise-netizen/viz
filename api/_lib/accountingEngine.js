@@ -57,15 +57,29 @@ export const normalizeBalance = (accounts) => {
 /* ───────────────── Bilan ───────────────── */
 
 export const calculateBilan = (normalized) => {
-  const { assets, liabilities } = normalized;
+  const { assets, liabilities, revenues, expenses } = normalized;
   const categories = {
     immobilisations: assets.filter((a) => a.number.charAt(0) === '2'),
     stocks: assets.filter((a) => a.number.charAt(0) === '3'),
     creances: assets.filter((a) => a.number.charAt(0) === '4'),
     tresorerie: assets.filter((a) => a.number.charAt(0) === '5'),
   };
+
+  // Capitaux propres = capitaux hors resultat (classe 1) + RESULTAT A DATE (produits - charges).
+  // Indispensable pour equilibrer le bilan : Actif = Passif.
+  const resultatN = round2(sumField(revenues, 'soldeN') - sumField(expenses, 'soldeN'));
+  const resultatN1 = round2(sumField(revenues, 'soldeN1') - sumField(expenses, 'soldeN1'));
+  const resultatEntry = {
+    number: '120', label: "Résultat de l'exercice",
+    soldeN: resultatN, soldeN1: resultatN1,
+    variation: round2(resultatN - resultatN1),
+    variationPct: pct(resultatN - resultatN1, resultatN1),
+    totalDebit: 0, totalCredit: 0,
+  };
+  const capitauxPropresAccounts = [...liabilities.filter((a) => a.number.charAt(0) === '1'), resultatEntry];
+
   const passifCategories = {
-    capitauxPropres: liabilities.filter((a) => a.number.charAt(0) === '1'),
+    capitauxPropres: capitauxPropresAccounts,
     dettes: liabilities.filter((a) => a.number.charAt(0) === '4'),
   };
 
@@ -79,8 +93,9 @@ export const calculateBilan = (normalized) => {
 
   const totalAssetsN = round2(sumField(assets, 'soldeN'));
   const totalAssetsN1 = round2(sumField(assets, 'soldeN1'));
-  const totalLiabilitiesN = round2(sumField(liabilities, 'soldeN'));
-  const totalLiabilitiesN1 = round2(sumField(liabilities, 'soldeN1'));
+  // Total passif inclut le resultat a date (via capitaux propres)
+  const totalLiabilitiesN = round2(sumField(liabilities, 'soldeN') + resultatN);
+  const totalLiabilitiesN1 = round2(sumField(liabilities, 'soldeN1') + resultatN1);
 
   return {
     summary: {
