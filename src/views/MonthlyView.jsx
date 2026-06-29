@@ -652,7 +652,7 @@ function AmountCell({ value, decimals = 0, className = '' }) {
   const isZero = value === 0;
   const display = fmt(value, decimals);
   return (
-    <td className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] ${isNegative ? 'text-red-600' : ''} ${isZero ? 'text-gray-300' : ''} ${className}`}>
+    <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] ${isNegative ? 'text-red-600' : ''} ${isZero ? 'text-gray-300' : ''} ${className}`}>
       {display}
     </td>
   );
@@ -669,13 +669,13 @@ function CategoryRow({ cat, months, expanded, onToggle, onClickMonth, onClickTot
         {cat.label}
       </td>
       {months.map((m) => (
-        <td key={m} className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${(cat.months[m] || 0) < 0 ? 'text-red-600' : (cat.months[m] || 0) === 0 ? 'text-gray-300' : ''}`}
+        <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${(cat.months[m] || 0) < 0 ? 'text-red-600' : (cat.months[m] || 0) === 0 ? 'text-gray-300' : ''}`}
           onClick={(e) => { e.stopPropagation(); onClickMonth && onClickMonth(m); }}
         >
           {fmt(cat.months[m], decimals)}
         </td>
       ))}
-      <td className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${(cat.total || 0) < 0 ? 'text-red-600' : (cat.total || 0) === 0 ? 'text-gray-300' : ''}`}
+      <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${(cat.total || 0) < 0 ? 'text-red-600' : (cat.total || 0) === 0 ? 'text-gray-300' : ''}`}
         onClick={(e) => { e.stopPropagation(); onClickTotal && onClickTotal(); }}
       >
         {fmt(cat.total, decimals)}
@@ -689,20 +689,20 @@ function AccountRow({ account, months, onClickAccount, onClickCell, decimals = 0
   return (
     <tr className="bg-white hover:bg-sky-50/30 transition border-b border-slate-100">
       <td className="py-1.5 px-3 pl-12 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap cursor-pointer" onClick={onClickAccount}>
-        <span className="font-mono text-xs text-gray-400 mr-2">{account.number}</span>
+        <span className="text-xs text-gray-400 mr-2">{account.number}</span>
         <span className="text-sm">{account.label}</span>
       </td>
       {months.map((m) => (
         <td
           key={m}
-          className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 transition ${(account.months[m] || 0) < 0 ? 'text-red-600' : ''} ${(account.months[m] || 0) === 0 ? 'text-gray-300' : ''}`}
+          className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 transition ${(account.months[m] || 0) < 0 ? 'text-red-600' : ''} ${(account.months[m] || 0) === 0 ? 'text-gray-300' : ''}`}
           onClick={() => onClickCell(m)}
         >
           {fmt(account.months[m] || 0, decimals)}
         </td>
       ))}
       <td
-        className="py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 transition"
+        className="py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 transition"
         onClick={onClickAccount}
       >
         {fmt(account.total, decimals)}
@@ -714,18 +714,18 @@ function AccountRow({ account, months, onClickAccount, onClickCell, decimals = 0
 // Subtotal row
 function SubtotalRow({ label, totals, months, decimals = 0, onClickMonth, onClickTotal }) {
   return (
-    <tr className="bg-slate-200/70 font-bold text-slate-800 border-y border-slate-300">
-      <td className="py-1.5 px-3 font-bold text-slate-800 sticky left-0 z-10 bg-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
+    <tr className="bg-slate-200/70 font-semibold text-slate-800 border-y border-slate-300">
+      <td className="py-1.5 px-3 font-semibold text-slate-800 sticky left-0 z-10 bg-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
         {label}
       </td>
       {months.map((m) => (
-        <td key={m} className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] font-bold bg-slate-200/70 ${(totals.months[m] || 0) < 0 ? 'text-red-600' : (totals.months[m] || 0) === 0 ? 'text-gray-300' : ''} ${onClickMonth ? 'cursor-pointer hover:bg-slate-300/50 transition' : ''}`}
+        <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-200/70 ${(totals.months[m] || 0) < 0 ? 'text-red-600' : (totals.months[m] || 0) === 0 ? 'text-gray-300' : ''} ${onClickMonth ? 'cursor-pointer hover:bg-slate-300/50 transition' : ''}`}
           onClick={() => onClickMonth && onClickMonth(m)}
         >
           {fmt(totals.months[m], decimals)}
         </td>
       ))}
-      <td className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] font-bold bg-slate-200/70 ${(totals.total || 0) < 0 ? 'text-red-600' : (totals.total || 0) === 0 ? 'text-gray-300' : ''} ${onClickTotal ? 'cursor-pointer hover:bg-slate-300/50 transition' : ''}`}
+      <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-200/70 ${(totals.total || 0) < 0 ? 'text-red-600' : (totals.total || 0) === 0 ? 'text-gray-300' : ''} ${onClickTotal ? 'cursor-pointer hover:bg-slate-300/50 transition' : ''}`}
         onClick={() => onClickTotal && onClickTotal()}
       >
         {fmt(totals.total, decimals)}
@@ -767,13 +767,13 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
           {node.label}
         </td>
         {months.map((m) => (
-          <td key={m} className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${monthTotals[m] < 0 ? 'text-red-600' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
+          <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${monthTotals[m] < 0 ? 'text-red-600' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
             onClick={(e) => { e.stopPropagation(); if (catAccountNumbers) setModal({ number: catAccountNumbers, label: node.label, from: m, to: m }); }}
           >
             {fmt(monthTotals[m], decimals)}
           </td>
         ))}
-        <td className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${total < 0 ? 'text-red-600' : total === 0 ? 'text-gray-300' : ''}`}
+        <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${total < 0 ? 'text-red-600' : total === 0 ? 'text-gray-300' : ''}`}
           onClick={(e) => { e.stopPropagation(); if (catAccountNumbers) setModal({ number: catAccountNumbers, label: node.label }); }}
         >
           {fmt(total, decimals)}
@@ -810,13 +810,13 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
           {node.label}
         </td>
         {months.map((m) => (
-          <td key={m} className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${monthTotals[m] < 0 ? 'text-red-600' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
+          <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${monthTotals[m] < 0 ? 'text-red-600' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
             onClick={(e) => { e.stopPropagation(); if (groupAccountNumbers) setModal({ number: groupAccountNumbers, label: node.label, from: m, to: m }); }}
           >
             {fmt(monthTotals[m], decimals)}
           </td>
         ))}
-        <td className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${total < 0 ? 'text-red-600' : total === 0 ? 'text-gray-300' : ''}`}
+        <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${total < 0 ? 'text-red-600' : total === 0 ? 'text-gray-300' : ''}`}
           onClick={(e) => { e.stopPropagation(); if (groupAccountNumbers) setModal({ number: groupAccountNumbers, label: node.label }); }}
         >
           {fmt(total, decimals)}
@@ -832,20 +832,20 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
             <td className="py-1.5 px-3 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap cursor-pointer" style={{ paddingLeft: `${28 + depth * 16}px` }}
               onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label })}
             >
-              <span className="font-mono text-xs text-gray-400 mr-2">{acc.number}</span>
+              <span className="text-xs text-gray-400 mr-2">{acc.number}</span>
               <span className="text-sm">{acc.label}</span>
             </td>
             {months.map((m) => {
               const val = acc.months?.[m] || 0;
               return (
-                <td key={m} className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
+                <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
                   onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label, from: m, to: m })}
                 >
                   {fmt(val, decimals)}
                 </td>
               );
             })}
-            <td className="py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 transition"
+            <td className="py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 transition"
               onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label })}
             >
               {fmt(accTotal, decimals)}
@@ -884,18 +884,18 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
     const subtotalAccountNumbers = referencedAccounts.map(([k, a]) => a.originalNumber || k).filter(Boolean).join(',');
 
     elements.push(
-      <tr key={`custom_${node.id}`} className="bg-slate-200/70 font-bold text-slate-800 border-y border-slate-300">
-        <td className="py-1.5 px-3 font-bold text-slate-800 sticky left-0 z-10 bg-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
+      <tr key={`custom_${node.id}`} className="bg-slate-200/70 font-semibold text-slate-800 border-y border-slate-300">
+        <td className="py-1.5 px-3 font-semibold text-slate-800 sticky left-0 z-10 bg-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
           {node.label}
         </td>
         {months.map((m) => (
-          <td key={m} className={`py-1.5 px-3 text-right font-mono tabular-nums whitespace-nowrap min-w-[90px] font-bold bg-slate-200/70 cursor-pointer hover:bg-slate-300/50 transition ${monthTotals[m] < 0 ? 'text-red-600' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
+          <td key={m} className={`py-1.5 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-200/70 cursor-pointer hover:bg-slate-300/50 transition ${monthTotals[m] < 0 ? 'text-red-600' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
             onClick={() => { if (subtotalAccountNumbers) setModal({ number: subtotalAccountNumbers, label: node.label, from: m, to: m }); }}
           >
             {fmt(monthTotals[m], decimals)}
           </td>
         ))}
-        <td className={`py-1.5 px-3 text-right font-mono tabular-nums whitespace-nowrap min-w-[90px] font-bold bg-slate-200/70 cursor-pointer hover:bg-slate-300/50 transition ${total < 0 ? 'text-red-600' : total === 0 ? 'text-gray-300' : ''}`}
+        <td className={`py-1.5 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-200/70 cursor-pointer hover:bg-slate-300/50 transition ${total < 0 ? 'text-red-600' : total === 0 ? 'text-gray-300' : ''}`}
           onClick={() => { if (subtotalAccountNumbers) setModal({ number: subtotalAccountNumbers, label: node.label }); }}
         >
           {fmt(total, decimals)}
@@ -1179,8 +1179,8 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
       <div className="overflow-x-auto">
         <table className="border-collapse text-sm">
           <thead>
-            <tr className="bg-slate-800 text-white text-xs">
-              <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-slate-800 z-20 min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
+            <tr className="bg-[#1a223d] text-white text-xs">
+              <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-[#1a223d] z-20 min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
                 Poste
               </th>
               {(columns || []).map((col) => (
@@ -1188,7 +1188,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                   {col.label}
                 </th>
               ))}
-              <th className="py-2 px-3 text-right font-bold whitespace-nowrap min-w-[110px] bg-slate-900">
+              <th className="py-2 px-3 text-right font-semibold whitespace-nowrap min-w-[110px] bg-[#141b32]">
                 Total
               </th>
             </tr>
@@ -1231,13 +1231,13 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       const val = aggItem?.[col.key] || 0;
                       const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                       return (
-                        <td key={col.key} className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-50/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
+                        <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-50/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
                           onClick={(e) => { e.stopPropagation(); if (accountNumbers) setModal({ number: accountNumbers, label: item.label, ...fromTo }); }}>
                           {fmt(val, decimals)}
                         </td>
                       );
                     })}
-                    <td className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-50/50 transition ${itemTotal < 0 ? 'text-red-600' : itemTotal === 0 ? 'text-gray-300' : ''}`}
+                    <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-50/50 transition ${itemTotal < 0 ? 'text-red-600' : itemTotal === 0 ? 'text-gray-300' : ''}`}
                       onClick={(e) => { e.stopPropagation(); if (accountNumbers) setModal({ number: accountNumbers, label: item.label }); }}>
                       {fmt(itemTotal, decimals)}
                     </td>
@@ -1249,20 +1249,20 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       <tr key={`${key}_${acc.number}`} className="bg-slate-50/50 hover:bg-sky-50/30 transition border-b border-slate-100">
                         <td className="py-1 px-3 pl-12 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap cursor-pointer"
                           onClick={() => setModal({ number: acc.number, label: acc.label })}>
-                          <span className="font-mono text-xs text-gray-400 mr-2">{acc.number}</span>
+                          <span className="text-xs text-gray-400 mr-2">{acc.number}</span>
                           <span className="text-xs text-gray-600">{acc.label}</span>
                         </td>
                         {cols.map(col => {
                           const val = aggAcc?.[col.key] || 0;
                           const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                           return (
-                            <td key={col.key} className={`py-1 px-3 text-right font-mono text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
+                            <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
                               onClick={() => setModal({ number: acc.number, label: acc.label, ...fromTo })}>
                               {fmt(val, decimals)}
                             </td>
                           );
                         })}
-                        <td className="py-1 px-3 text-right font-mono text-xs tabular-nums whitespace-nowrap min-w-[90px]">{fmt(accTotal, decimals)}</td>
+                        <td className="py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px]">{fmt(accTotal, decimals)}</td>
                       </tr>
                     );
                   }) : []),
@@ -1293,14 +1293,14 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       const val = aggItem?.[col.key] || 0;
                       const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                       return (
-                        <td key={col.key} className={`py-2 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-sky-50 cursor-pointer hover:bg-sky-100 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : 'text-sky-900'}`}
+                        <td key={col.key} className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-sky-50 cursor-pointer hover:bg-sky-100 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : 'text-sky-900'}`}
                           onClick={(e) => { e.stopPropagation(); if (lineAccounts) setModal({ number: lineAccounts, label: item.label, ...fromTo }); }}
                         >
                           {fmt(val, decimals)}
                         </td>
                       );
                     })}
-                    <td className={`py-2 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-sky-50 cursor-pointer hover:bg-sky-100 transition ${itemTotal < 0 ? 'text-red-600' : itemTotal === 0 ? 'text-gray-300' : 'text-sky-900'}`}
+                    <td className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-sky-50 cursor-pointer hover:bg-sky-100 transition ${itemTotal < 0 ? 'text-red-600' : itemTotal === 0 ? 'text-gray-300' : 'text-sky-900'}`}
                       onClick={(e) => { e.stopPropagation(); if (lineAccounts) setModal({ number: lineAccounts, label: item.label }); }}
                     >
                       {fmt(itemTotal, decimals)}
@@ -1314,21 +1314,21 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                         <td className="py-1 px-3 pl-12 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap cursor-pointer"
                           onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label })}
                         >
-                          <span className="font-mono text-xs text-gray-400 mr-2">{acc.number}</span>
+                          <span className="text-xs text-gray-400 mr-2">{acc.number}</span>
                           <span className="text-xs text-gray-600">{acc.label}</span>
                         </td>
                         {cols.map((col) => {
                           const val = aggAcc?.[col.key] || 0;
                           const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                           return (
-                            <td key={col.key} className={`py-1 px-3 text-right font-mono text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
+                            <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
                               onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label, ...fromTo })}
                             >
                               {fmt(val, decimals)}
                             </td>
                           );
                         })}
-                        <td className="py-1 px-3 text-right font-mono text-xs tabular-nums whitespace-nowrap min-w-[90px]">
+                        <td className="py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px]">
                           {fmt(accTotal, decimals)}
                         </td>
                       </tr>
@@ -1353,19 +1353,19 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                   <tr key={item.key} className="border-b border-amber-100 bg-amber-50">
                     <td className="py-1 px-3 sticky left-0 z-10 bg-amber-50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
                       <span className="inline-block w-5 mr-1" />
-                      <span className="text-xs italic text-amber-700">{item.label}</span>
+                      <span className="text-xs italic text-slate-500">{item.label}</span>
                     </td>
                     {cols.map((col) => {
                       const baseVal = aggBase?.[col.key] || 0;
                       const refVal = aggRef?.[col.key] || 0;
                       const pct = baseVal !== 0 ? Math.round(refVal / baseVal * 1000) / 10 : 0;
                       return (
-                        <td key={col.key} className={`py-1 px-3 text-right font-mono text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-amber-50 ${pct < 0 ? 'text-red-500' : pct === 0 ? 'text-gray-300' : 'text-amber-700'}`}>
+                        <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-amber-50 ${pct < 0 ? 'text-red-500' : pct === 0 ? 'text-gray-300' : 'text-slate-500'}`}>
                           {pct === 0 ? '-' : `${pct.toFixed(1)}%`}
                         </td>
                       );
                     })}
-                    <td className={`py-1 px-3 text-right font-mono text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-amber-50 ${pctTotal < 0 ? 'text-red-500' : pctTotal === 0 ? 'text-gray-300' : 'text-amber-700'}`}>
+                    <td className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-amber-50 ${pctTotal < 0 ? 'text-red-500' : pctTotal === 0 ? 'text-gray-300' : 'text-slate-500'}`}>
                       {pctTotal === 0 ? '-' : `${pctTotal.toFixed(1)}%`}
                     </td>
                   </tr>
@@ -1379,21 +1379,21 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                 const textClass = 'text-slate-800';
                 return (
                   <tr key={item.key} className={bgClass}>
-                    <td className={`py-2 px-3 font-bold ${textClass} sticky left-0 z-10 ${stickyBg} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap`}>
+                    <td className={`py-2 px-3 font-semibold ${textClass} sticky left-0 z-10 ${stickyBg} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap`}>
                       {item.label}
                     </td>
                     {cols.map((col) => {
                       const val = aggItem?.[col.key] || 0;
                       const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                       return (
-                        <td key={col.key} className={`py-2 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] font-bold ${stickyBg} cursor-pointer hover:opacity-80 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
+                        <td key={col.key} className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold ${stickyBg} cursor-pointer hover:opacity-80 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
                           onClick={() => { if (accs) setModal({ number: accs, label: item.label, ...fromTo }); }}
                         >
                           {fmt(val, decimals)}
                         </td>
                       );
                     })}
-                    <td className={`py-2 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] font-bold ${stickyBg} cursor-pointer hover:opacity-80 transition ${itemTotal < 0 ? 'text-red-600' : itemTotal === 0 ? 'text-gray-300' : ''}`}
+                    <td className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold ${stickyBg} cursor-pointer hover:opacity-80 transition ${itemTotal < 0 ? 'text-red-600' : itemTotal === 0 ? 'text-gray-300' : ''}`}
                       onClick={() => { if (accs) setModal({ number: accs, label: item.label }); }}
                     >
                       {fmt(itemTotal, decimals)}
@@ -1422,14 +1422,14 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                     const val = aggItem?.[col.key] || 0;
                     const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                     return (
-                      <td key={col.key} className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-50/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
+                      <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-50/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
                         onClick={(e) => { e.stopPropagation(); if (lineAccounts) setModal({ number: lineAccounts, label: item.label, ...fromTo }); }}
                       >
                         {fmt(val, decimals)}
                       </td>
                     );
                   })}
-                  <td className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] bg-sky-50/70 cursor-pointer hover:bg-sky-100/70 transition ${itemTotal < 0 ? 'text-red-600' : itemTotal === 0 ? 'text-gray-300' : ''}`}
+                  <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] bg-sky-50/70 cursor-pointer hover:bg-sky-100/70 transition ${itemTotal < 0 ? 'text-red-600' : itemTotal === 0 ? 'text-gray-300' : ''}`}
                     onClick={(e) => { e.stopPropagation(); if (lineAccounts) setModal({ number: lineAccounts, label: item.label }); }}
                   >
                     {fmt(itemTotal, decimals)}
@@ -1447,21 +1447,21 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       <td className="py-1 px-3 pl-12 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap cursor-pointer"
                         onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label })}
                       >
-                        <span className="font-mono text-xs text-gray-400 mr-2">{acc.number}</span>
+                        <span className="text-xs text-gray-400 mr-2">{acc.number}</span>
                         <span className="text-xs text-gray-600">{acc.label}</span>
                       </td>
                       {cols.map((col) => {
                         const val = aggAcc?.[col.key] || 0;
                         const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                         return (
-                          <td key={col.key} className={`py-1 px-3 text-right font-mono text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
+                          <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
                             onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label, ...fromTo })}
                           >
                             {fmt(val, decimals)}
                           </td>
                         );
                       })}
-                      <td className="py-1 px-3 text-right font-mono text-xs tabular-nums whitespace-nowrap min-w-[90px]">
+                      <td className="py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px]">
                         {fmt(accTotal, decimals)}
                       </td>
                     </tr>
@@ -1485,14 +1485,14 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                     <tr key={`unassigned_${acc.number}`} className="bg-amber-50/30 border-b border-amber-100">
                       <td className="py-1 px-3 pl-6 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap cursor-pointer"
                         onClick={() => setModal({ number: acc.number, label: acc.label })}>
-                        <span className="font-mono text-xs text-amber-600 mr-2">{acc.number}</span>
+                        <span className="text-xs text-amber-600 mr-2">{acc.number}</span>
                         <span className="text-xs text-amber-800">{acc.label}</span>
                       </td>
                       {(columns || []).map(col => {
                         const val = aggAcc?.[col.key] || 0;
-                        return <td key={col.key} className={`py-1 px-3 text-right font-mono text-xs tabular-nums whitespace-nowrap min-w-[90px] ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}>{fmt(val, decimals)}</td>;
+                        return <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}>{fmt(val, decimals)}</td>;
                       })}
-                      <td className="py-1 px-3 text-right font-mono text-xs tabular-nums whitespace-nowrap min-w-[90px]">{fmt(accTotal, decimals)}</td>
+                      <td className="py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px]">{fmt(accTotal, decimals)}</td>
                     </tr>
                   );
                 })}
@@ -1601,8 +1601,8 @@ function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, acc
                     <td className="py-1.5 px-2 text-gray-600 whitespace-nowrap">{e.date}</td>
                     <td className="py-1.5 px-2">{e.label}</td>
                     <td className="py-1.5 px-2 text-xs text-gray-500">{e.counterpart}</td>
-                    <td className={`py-1.5 px-2 text-right font-mono tabular-nums font-medium ${e.amount < 0 ? 'text-red-600' : 'text-green-700'}`}>{fmtAmt(e.amount)}</td>
-                    <td className="py-1.5 px-2 text-center"><span className="bg-slate-100 text-gray-600 text-xs font-mono px-2 py-0.5 rounded">{e.journalCode}</span></td>
+                    <td className={`py-1.5 px-2 text-right tabular-nums font-medium ${e.amount < 0 ? 'text-red-600' : 'text-green-700'}`}>{fmtAmt(e.amount)}</td>
+                    <td className="py-1.5 px-2 text-center"><span className="bg-slate-100 text-gray-600 text-xs px-2 py-0.5 rounded">{e.journalCode}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -1611,7 +1611,7 @@ function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, acc
         </div>
         <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 rounded-b-xl flex items-center justify-between">
           <span className="text-xs text-gray-400">{filtered.length} mouvement{filtered.length !== 1 ? 's' : ''}</span>
-          <span className={`font-mono tabular-nums text-sm font-bold ${totalAmount < 0 ? 'text-red-600' : 'text-green-700'}`}>{fmtAmt(totalAmount)}</span>
+          <span className={`tabular-nums text-sm font-semibold ${totalAmount < 0 ? 'text-red-600' : 'text-green-700'}`}>{fmtAmt(totalAmount)}</span>
         </div>
       </div>
     </div>
@@ -1669,7 +1669,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
   const FINANCIAL_KEYS = ['emprunts', 'autresFinanciers'];
 
   const getRowColor = (row) => {
-    if (row.isTotal) return { row: 'bg-slate-800 text-white font-bold', sticky: 'bg-slate-800', text: 'text-white' };
+    if (row.isTotal) return { row: 'bg-[#1a223d] text-white font-semibold', sticky: 'bg-[#1a223d]', text: 'text-white' };
     if (row.isSubtotal && row.key === 'fluxOperationnel') return { row: 'bg-emerald-100/80 font-semibold border-y border-emerald-200', sticky: 'bg-emerald-100', text: '' };
     if (row.isSubtotal && row.key === 'fluxFinancier') return { row: 'bg-sky-100/80 font-semibold border-y border-sky-200', sticky: 'bg-sky-100', text: '' };
     if (row.isTreso) return { row: 'bg-amber-50/80 italic border-y border-amber-200', sticky: 'bg-amber-50', text: '' };
@@ -1732,8 +1732,8 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
       <div className="overflow-x-auto">
         <table className="border-collapse text-sm">
           <thead>
-            <tr className="bg-slate-800 text-white text-xs">
-              <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-slate-800 z-20 min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
+            <tr className="bg-[#1a223d] text-white text-xs">
+              <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-[#1a223d] z-20 min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
                 Poste
               </th>
               {(columns || []).map((col) => (
@@ -1741,7 +1741,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                   {col.label}
                 </th>
               ))}
-              <th className="py-2 px-3 text-right font-bold whitespace-nowrap min-w-[110px] bg-slate-900">
+              <th className="py-2 px-3 text-right font-semibold whitespace-nowrap min-w-[110px] bg-[#141b32]">
                 Total
               </th>
             </tr>
@@ -1772,7 +1772,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                   {cols.map((col) => {
                     const val = cellValue(row, col);
                     return (
-                      <td key={col.key} className={`py-1.5 px-3 text-right font-mono tabular-nums whitespace-nowrap min-w-[90px] ${
+                      <td key={col.key} className={`py-1.5 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] ${
                         row.isTotal ? (val >= 0 ? 'text-green-300' : 'text-red-400')
                         : val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''
                       }`}>
@@ -1780,7 +1780,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                       </td>
                     );
                   })}
-                  <td className={`py-1.5 px-3 text-right font-mono tabular-nums font-bold whitespace-nowrap min-w-[90px] ${
+                  <td className={`py-1.5 px-3 text-right tabular-nums font-semibold whitespace-nowrap min-w-[90px] ${
                     row.isTotal ? (rowTotal >= 0 ? 'text-green-300' : 'text-red-400')
                     : rowTotal < 0 ? 'text-red-600' : rowTotal === 0 ? 'text-gray-300' : ''
                   }`}>
@@ -1806,21 +1806,21 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                       <td className={`py-1.5 px-3 pl-12 sticky left-0 ${accColors.sticky} z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap cursor-pointer`}
                         onClick={() => setModal({ category: row.key, label: row.label + ' — ' + acc.label, account: acc.number })}
                       >
-                        <span className="font-mono text-xs text-gray-400 mr-2">{paddedNum}</span>
+                        <span className="text-xs text-gray-400 mr-2">{paddedNum}</span>
                         <span className="text-sm">{acc.label}</span>
                       </td>
                       {cols.map((col) => {
                         const val = aggAcc?.[col.key] || 0;
                         const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                         return (
-                          <td key={col.key} className={`py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
+                          <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 ${val < 0 ? 'text-red-600' : val === 0 ? 'text-gray-300' : ''}`}
                             onClick={() => setModal({ category: row.key, label: row.label + ' — ' + acc.label, account: acc.number, month: fromTo.from })}
                           >
                             {fmt(val, decimals)}
                           </td>
                         );
                       })}
-                      <td className="py-1.5 px-3 text-right font-mono text-sm tabular-nums whitespace-nowrap min-w-[90px]">
+                      <td className="py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px]">
                         {fmt(accTotal, decimals)}
                       </td>
                     </tr>

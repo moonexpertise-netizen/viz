@@ -366,6 +366,12 @@ function PerExerciseTab({ tab, report, meta }) {
 
 function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedFyId, onSelect, onSync }) {
   const [open, setOpen] = useState(!anySynced);
+  // Se rabat automatiquement au défilement vers le bas
+  useEffect(() => {
+    const onScroll = () => { if (window.scrollY > 80) setOpen(false); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
   if (loading) return <div className="card-moon p-3 text-sm text-gray-custom">Chargement des exercices…</div>;
   if (!fiscalYears.length) return null;
   const syncedList = fiscalYears.filter((f) => synced[f.id]);

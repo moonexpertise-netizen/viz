@@ -81,11 +81,11 @@ export default function FinTable({ columns, rows, firstColLabel = 'Poste' }) {
             const rowKey = `r${i}`;
             const isOpen = open[rowKey];
             const rowCls = isTot
-              ? 'bg-slate-200/70 font-bold border-y-2 border-slate-300'
+              ? 'bg-slate-100 font-semibold border-y border-slate-300'
               : isSub
-                ? 'bg-slate-100 font-semibold border-y border-slate-200'
+                ? 'bg-slate-50 font-medium border-y border-slate-200'
                 : 'border-b border-slate-100 hover:bg-sky-50/40';
-            const stickyBg = isTot ? 'bg-slate-200' : isSub ? 'bg-slate-100' : 'bg-white';
+            const stickyBg = isTot ? 'bg-slate-100' : isSub ? 'bg-slate-50' : 'bg-white';
             return (
               <Fragment key={i}>
                 <tr className={cls(rowCls, hasAccounts && 'cursor-pointer')} onClick={() => hasAccounts && toggle(rowKey)}>
