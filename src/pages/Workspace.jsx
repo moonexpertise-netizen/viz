@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronDown, Home as HomeIcon, List, Command, ExternalLink } from 'lucide-react';
+import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronDown, Home as HomeIcon, List, Search, ExternalLink } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
 import Combobox from '../components/Combobox';
@@ -264,30 +264,28 @@ export default function Workspace({ onLogout }) {
 
   return (
     <div className="min-h-screen bg-cream flex flex-col">
-      {/* Header */}
-      <header className="bg-navy text-white shadow-sm">
-        <div className="mx-auto max-w-[1700px] w-full px-6 py-3.5 flex items-center gap-4">
-          <button onClick={goHome} className="flex items-center gap-3 group" title="Retour à l'accueil">
-            <img src="/moon-logo.png" alt="MoonViz" className="w-9 h-9 rounded-lg transition-transform group-hover:scale-105" />
-            <div className="text-left leading-tight">
-              <h1 className="text-lg font-display text-white">MoonViz</h1>
-              <p className="text-[11px] text-sage/90 group-hover:text-sage transition-colors">Analyse financière · Pennylane</p>
-            </div>
+      {/* Header — style MOON CRM : barre claire translucide, fine bordure basse */}
+      <header className="bg-cream/85 backdrop-blur-md border-b border-sage/70">
+        <div className="mx-auto max-w-[1700px] w-full px-6 h-14 flex items-center gap-3">
+          <button onClick={goHome} className="flex items-center gap-2.5 group" title="Retour à l'accueil">
+            <img src="/moon-logo.png" alt="MoonViz" className="w-8 h-8 rounded-lg transition-transform group-hover:scale-105" />
+            <span className="text-[17px] font-display text-navy tracking-tight">MoonViz</span>
           </button>
           <div className="flex-1" />
-          <button onClick={() => setPaletteOpen(true)}
-            className="flex items-center gap-2 text-sm text-sage hover:text-white transition rounded-lg border border-white/15 hover:border-white/30 px-2.5 py-1.5"
-            title="Recherche & commandes (Ctrl/⌘ + K)">
-            <Command size={14} /> <span className="hidden sm:inline">Rechercher</span>
-            <kbd className="hidden sm:inline text-[10px] bg-white/10 rounded px-1.5 py-0.5">⌘K</kbd>
-          </button>
           {company && (
-            <button onClick={goHome} className="hidden sm:flex items-center gap-1.5 text-sm text-sage hover:text-white transition">
-              Accueil
+            <button onClick={goHome} className="hidden sm:flex items-center gap-1.5 text-sm text-gray-custom hover:text-navy transition rounded-lg hover:bg-white px-2.5 py-1.5">
+              <HomeIcon size={15} /> Accueil
             </button>
           )}
-          <button onClick={onLogout} className="flex items-center gap-2 text-sm text-sage hover:text-white transition">
-            <LogOut size={16} /> <span className="hidden sm:inline">Déconnexion</span>
+          <button onClick={() => setPaletteOpen(true)}
+            className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-lg border border-sage bg-white hover:bg-cream hover:border-gray-300 text-gray-custom hover:text-navy text-xs transition-colors min-w-[150px] sm:min-w-[200px]"
+            title="Recherche & commandes (Ctrl/⌘ + K)">
+            <Search size={13} />
+            <span className="flex-1 text-left">Rechercher…</span>
+            <kbd className="inline-flex items-center px-1.5 py-0.5 rounded-md border border-sage bg-cream text-[10px] font-medium text-gray-custom">⌘K</kbd>
+          </button>
+          <button onClick={onLogout} className="inline-flex items-center gap-1.5 text-sm text-gray-custom hover:text-navy transition rounded-lg hover:bg-white px-2.5 py-1.5">
+            <LogOut size={15} /> <span className="hidden sm:inline">Déconnexion</span>
           </button>
         </div>
       </header>
@@ -317,7 +315,7 @@ export default function Workspace({ onLogout }) {
 
         {!companyId && (
           companies.length > 0
-            ? <div className="w-screen relative left-1/2 -translate-x-1/2 px-4"><PortfolioDashboard companies={companies} onOpenCompany={setCompanyId} /></div>
+            ? <PortfolioDashboard companies={companies} onOpenCompany={setCompanyId} />
             : <Home companiesCount={companies.length} />
         )}
 
