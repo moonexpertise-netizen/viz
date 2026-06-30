@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronDown, Home as HomeIcon, List, Search, ExternalLink } from 'lucide-react';
+import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronDown, Home as HomeIcon, List, Search, ExternalLink, LayoutGrid, LayoutDashboard, Layers, FileText, Scale, Gauge } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
 import Combobox from '../components/Combobox';
@@ -18,12 +18,12 @@ import RatiosView from '../views/RatiosView';
 import MonthlyView from '../views/MonthlyView';
 
 const TABS = [
-  { key: 'synthese', label: 'Synthèse' },
-  { key: 'periodic', label: 'Vision périodique', wide: true },
-  { key: 'sig', label: 'SIG' },
-  { key: 'resultat', label: 'Compte de résultat' },
-  { key: 'bilan', label: 'Bilan' },
-  { key: 'ratios', label: 'Ratios' },
+  { key: 'synthese', label: 'Synthèse', Icon: LayoutDashboard },
+  { key: 'periodic', label: 'Vision périodique', wide: true, Icon: CalendarRange },
+  { key: 'sig', label: 'SIG', Icon: Layers },
+  { key: 'resultat', label: 'Compte de résultat', Icon: FileText },
+  { key: 'bilan', label: 'Bilan', Icon: Scale },
+  { key: 'ratios', label: 'Ratios', Icon: Gauge },
 ];
 
 const UI_KEY = 'mv:ui';
@@ -263,117 +263,142 @@ export default function Workspace({ onLogout }) {
   }, [companyId, companies, fiscalYears, synced, anySynced, selectedFy, fyId]);
 
   return (
-    <div className="min-h-screen bg-cream flex flex-col">
-      {/* Header — navy #01071B, structure épurée façon MOON CRM */}
-      <header className="bg-navy border-b border-white/[0.06]">
-        <div className="mx-auto max-w-[1700px] w-full px-6 h-14 flex items-center gap-3">
-          <button onClick={goHome} className="flex items-center gap-2 group min-w-0" title="Retour à l'accueil">
+    <div className="min-h-screen bg-cream flex">
+      {/* Bandeau latéral — navy #01071B, façon MOON CRM */}
+      <aside className="w-60 shrink-0 bg-navy text-white flex flex-col sticky top-0 self-start h-screen z-30">
+        {/* Marque */}
+        <div className="h-14 flex items-center px-4 border-b border-white/[0.08] shrink-0">
+          <button onClick={goHome} className="flex items-center gap-2 group min-w-0" title="Retour au tableau de bord">
             <img src="/moon-icon.svg" alt="MoonViz" className="h-7 w-7 opacity-95 group-hover:opacity-100 transition-opacity shrink-0" />
-            <span className="font-display text-lg font-semibold tracking-tight text-white/95 group-hover:text-white transition-colors">MoonViz</span>
+            <span className="font-display text-lg font-semibold tracking-tight text-white/95 group-hover:text-white transition-colors truncate">MoonViz</span>
           </button>
-          <div className="flex-1" />
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+          <SideItem icon={<LayoutGrid size={17} />} label="Tableau de bord" active={!companyId} onClick={goHome} />
+
           {company && (
-            <button onClick={goHome} className="hidden sm:flex items-center gap-1.5 text-sm text-sage hover:text-white transition rounded-lg hover:bg-white/[0.06] px-2.5 py-1.5">
-              <HomeIcon size={15} /> Accueil
-            </button>
+            <div className="pt-4">
+              <div className="px-3 pb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-sage/70">
+                <Building2 size={12} className="shrink-0" />
+                <span className="truncate">{company.name}</span>
+              </div>
+              {anySynced ? (
+                TABS.map((t) => (
+                  <SideItem key={t.key} icon={<t.Icon size={17} />} label={t.label}
+                    active={tab === t.key} onClick={() => setTab(t.key)} />
+                ))
+              ) : (
+                <div className="px-3 py-2 text-xs text-sage/60 leading-snug">Synchronisez un exercice pour démarrer l'analyse.</div>
+              )}
+            </div>
           )}
+        </nav>
+
+        {/* Bas : recherche + déconnexion */}
+        <div className="border-t border-white/[0.08] p-2 space-y-1 shrink-0">
           <button onClick={() => setPaletteOpen(true)}
-            className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-lg border border-white/[0.10] bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/20 text-sage hover:text-white text-xs transition-colors min-w-[150px] sm:min-w-[200px]"
+            className="w-full inline-flex items-center gap-2 pl-3 pr-1.5 py-2 rounded-lg border border-white/[0.10] bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/20 text-sage hover:text-white text-xs transition-colors"
             title="Recherche & commandes (Ctrl/⌘ + K)">
-            <Search size={13} />
+            <Search size={14} />
             <span className="flex-1 text-left">Rechercher…</span>
             <kbd className="inline-flex items-center px-1.5 py-0.5 rounded-md border border-white/[0.10] bg-white/[0.06] text-[10px] font-medium text-sage">⌘K</kbd>
           </button>
-          <button onClick={onLogout} className="inline-flex items-center gap-1.5 text-sm text-sage hover:text-white transition rounded-lg hover:bg-white/[0.06] px-2.5 py-1.5">
-            <LogOut size={15} /> <span className="hidden sm:inline">Déconnexion</span>
+          <button onClick={onLogout}
+            className="w-full inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-sage hover:text-white hover:bg-white/[0.06] transition">
+            <LogOut size={16} /> Déconnexion
           </button>
         </div>
-      </header>
+      </aside>
 
-      {/* Barre de sélection société */}
-      <div className="bg-white border-b border-sage/70 sticky top-0 z-20">
-        <div className="mx-auto max-w-[1700px] w-full px-6 py-3 flex flex-wrap items-center gap-4">
-          <label className="text-xs font-semibold uppercase tracking-wide text-gray-custom flex items-center gap-1.5 shrink-0">
-            <Building2 size={14} /> Société
-            {!loading.companies && companies.length > 0 && <span className="font-normal normal-case text-gray-custom/80">· {companies.length} dossiers</span>}
-          </label>
-          <div className="w-full sm:w-[420px] max-w-full">
-            <Combobox items={companies} value={companyId} onChange={setCompanyId} loading={loading.companies} placeholder="Choisir une société…" />
-          </div>
-          {companyId && (
-            <a href={pennylaneCompanyUrl(companyId)} target="_blank" rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-gold hover:brightness-95 rounded-md px-2.5 py-1.5 transition shrink-0 shadow-sm"
-              title="Ouvrir ce dossier dans Pennylane">
-              <ExternalLink size={13} /> Pennylane
-            </a>
-          )}
-        </div>
-      </div>
-
-      <main className="flex-1 mx-auto max-w-[1700px] w-full px-6 py-6">
-        {error && <div className="bg-red-50 border border-red-200 text-accent-red rounded-xl px-4 py-3 mb-4 text-sm">{error}</div>}
-
-        {!companyId && (
-          companies.length > 0
-            ? <PortfolioDashboard companies={companies} onOpenCompany={setCompanyId} />
-            : <Home companiesCount={companies.length} />
-        )}
-
-        {companyId && (
-          <>
-            {/* En-tête société */}
-            <div className="mb-5">
-              <h2 className="text-2xl font-display text-navy leading-tight">{company?.name}</h2>
-              <p className="text-sm text-gray-custom mt-0.5">
-                {company?.registrationNumber ? `SIREN ${company.registrationNumber} · ` : ''}
-                {fiscalYears.length} exercice{fiscalYears.length > 1 ? 's' : ''}
-              </p>
+      {/* Contenu */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        {/* Topbar — sélecteur société, clair façon CRM */}
+        <header className="bg-cream/85 backdrop-blur-md border-b border-sage/70 sticky top-0 z-20">
+          <div className="px-5 md:px-6 py-3 flex flex-wrap items-center gap-3 md:gap-4">
+            <label className="text-xs font-semibold uppercase tracking-wide text-gray-custom flex items-center gap-1.5 shrink-0">
+              <Building2 size={14} /> Société
+              {!loading.companies && companies.length > 0 && <span className="font-normal normal-case text-gray-custom/80">· {companies.length} dossiers</span>}
+            </label>
+            <div className="w-full sm:w-[420px] max-w-full">
+              <Combobox items={companies} value={companyId} onChange={setCompanyId} loading={loading.companies} placeholder="Choisir une société…" />
             </div>
-
-            <SyncPanel
-              key={companyId}
-              fiscalYears={fiscalYears}
-              synced={synced}
-              syncing={syncing}
-              loading={loading.fy}
-              anySynced={anySynced}
-              selectedFyId={fyId}
-              onSelect={setFyId}
-              onSync={doSync}
-            />
-
-            {anySynced ? (
-              <>
-                <div className="flex gap-1 mt-6 mb-6 p-1 bg-white rounded-xl border border-sage/60 w-fit max-w-full overflow-x-auto">
-                  {TABS.map((t) => (
-                    <button key={t.key} onClick={() => setTab(t.key)}
-                      className={cls('px-4 py-2 rounded-lg text-sm whitespace-nowrap transition flex items-center gap-1.5',
-                        tab === t.key ? 'bg-navy text-white font-medium shadow-sm' : 'text-gray-custom hover:text-navy hover:bg-cream')}>
-                      {t.key === 'periodic' && <CalendarRange size={15} />}
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-
-                {tab === 'periodic'
-                  ? <div className="w-screen relative left-1/2 -translate-x-1/2 px-3"><MonthlyView companyId={companyId} data={mergedMonthly} /></div>
-                  : active
-                    ? <PerExerciseTab tab={tab} report={active.report.report} meta={reportMeta} />
-                    : <NotSynced fy={selectedFy} syncing={syncing[selectedFy?.id]} onSync={() => doSync(selectedFy)} />}
-              </>
-            ) : (
-              !loading.fy && fiscalYears.length > 0 && (
-                <div className="card-moon p-10 text-center text-gray-custom mt-4">
-                  Synchronisez un exercice ci-dessus pour démarrer l'analyse.
-                </div>
-              )
+            {companyId && (
+              <a href={pennylaneCompanyUrl(companyId)} target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-gold hover:brightness-95 rounded-md px-2.5 py-1.5 transition shrink-0 shadow-sm"
+                title="Ouvrir ce dossier dans Pennylane">
+                <ExternalLink size={13} /> Pennylane
+              </a>
             )}
-          </>
-        )}
-      </main>
+          </div>
+        </header>
+
+        <main className="flex-1 min-w-0 px-5 md:px-6 py-6">
+          {error && <div className="bg-red-50 border border-red-200 text-accent-red rounded-xl px-4 py-3 mb-4 text-sm">{error}</div>}
+
+          {!companyId && (
+            companies.length > 0
+              ? <PortfolioDashboard companies={companies} onOpenCompany={setCompanyId} />
+              : <Home companiesCount={companies.length} />
+          )}
+
+          {companyId && (
+            <>
+              {/* En-tête société */}
+              <div className="mb-5">
+                <h2 className="text-2xl font-display text-navy leading-tight">{company?.name}</h2>
+                <p className="text-sm text-gray-custom mt-0.5">
+                  {company?.registrationNumber ? `SIREN ${company.registrationNumber} · ` : ''}
+                  {fiscalYears.length} exercice{fiscalYears.length > 1 ? 's' : ''}
+                </p>
+              </div>
+
+              <SyncPanel
+                key={companyId}
+                fiscalYears={fiscalYears}
+                synced={synced}
+                syncing={syncing}
+                loading={loading.fy}
+                anySynced={anySynced}
+                selectedFyId={fyId}
+                onSelect={setFyId}
+                onSync={doSync}
+              />
+
+              {anySynced ? (
+                <div className="mt-6">
+                  {tab === 'periodic'
+                    ? <div className="-mx-5 md:-mx-6"><MonthlyView companyId={companyId} data={mergedMonthly} /></div>
+                    : active
+                      ? <PerExerciseTab tab={tab} report={active.report.report} meta={reportMeta} />
+                      : <NotSynced fy={selectedFy} syncing={syncing[selectedFy?.id]} onSync={() => doSync(selectedFy)} />}
+                </div>
+              ) : (
+                !loading.fy && fiscalYears.length > 0 && (
+                  <div className="card-moon p-10 text-center text-gray-custom mt-4">
+                    Synchronisez un exercice ci-dessus pour démarrer l'analyse.
+                  </div>
+                )
+              )}
+            </>
+          )}
+        </main>
+      </div>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} groups={commandGroups} />
     </div>
+  );
+}
+
+function SideItem({ icon, label, active, onClick }) {
+  return (
+    <button onClick={onClick}
+      className={cls('w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left',
+        active ? 'bg-white/[0.10] text-white font-medium' : 'text-sage hover:text-white hover:bg-white/[0.06]')}>
+      <span className="shrink-0 opacity-90">{icon}</span>
+      <span className="truncate">{label}</span>
+    </button>
   );
 }
 
