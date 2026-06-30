@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { RefreshCw, ArrowUpDown, AlertTriangle, Search } from 'lucide-react';
+import { cloneElement, useEffect, useMemo, useRef, useState } from 'react';
+import { RefreshCw, ArrowUpDown, AlertTriangle, Search, SlidersHorizontal, Check, GripVertical } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { REPORT_VERSION } from '../lib/syncStore';
 import { fmt, fmtNum, cls } from '../lib/format';
@@ -22,19 +22,30 @@ function health(r) {
 }
 
 const COLS = [
-  { key: 'name', label: 'Société', align: 'left' },
-  { key: 'fy', label: 'Exercice', align: 'left', sort: (r) => r?.fy?.start || '' },
-  { key: 'ca', label: 'CA', sort: (r) => r?.ca },
-  { key: 'ebitda', label: 'EBITDA', sort: (r) => r?.ebitda },
-  { key: 'resultat', label: 'Résultat', sort: (r) => r?.resultat },
-  { key: 'capitauxPropres', label: 'Capitaux propres', sort: (r) => r?.capitauxPropres },
-  { key: 'capital', label: 'Capital (101)', sort: (r) => r?.capital },
-  { key: 'ratioCpCapital', label: 'CP / Capital', sort: (r) => r?.ratioCpCapital },
-  { key: 'tresorerie', label: 'Trésorerie', sort: (r) => r?.tresorerie },
-  { key: 'cashburn', label: 'Cashburn /mois', sort: (r) => (r?.cashburn == null ? -Infinity : r.cashburn) },
-  { key: 'runway', label: 'Runway (mois)', sort: (r) => (r?.runway == null ? Infinity : r.runway) },
-  { key: 'santé', label: 'Santé', sort: (r) => health(r).rank },
+  { key: 'name', label: 'Société', align: 'left', fixed: true },
+  { key: 'fy', label: 'Exercice', align: 'left', sort: (r) => r?.fy?.start || '', render: (r) => <td className="px-2.5 py-2 text-left text-xs text-gray-custom whitespace-nowrap">{r.fy?.label}{r.fy?.inProgress ? ' (en cours)' : ''}</td> },
+  { key: 'ca', label: 'CA', sort: (r) => r?.ca, render: (r) => <Money v={r.ca} /> },
+  { key: 'ebitda', label: 'EBITDA', sort: (r) => r?.ebitda, render: (r) => <Money v={r.ebitda} signed /> },
+  { key: 'resultat', label: 'Résultat', sort: (r) => r?.resultat, render: (r) => <Money v={r.resultat} signed /> },
+  { key: 'capitauxPropres', label: 'Capitaux propres', sort: (r) => r?.capitauxPropres, render: (r) => <Money v={r.capitauxPropres} signed danger={r.capitauxPropres < 0} /> },
+  { key: 'capital', label: 'Capital (101)', sort: (r) => r?.capital, render: (r) => <Money v={r.capital} /> },
+  { key: 'ratioCpCapital', label: 'CP / Capital', sort: (r) => r?.ratioCpCapital, render: (r) => <Ratio v={r.ratioCpCapital} danger={r.ratioCpCapital != null && r.ratioCpCapital < 0.5} warn={r.ratioCpCapital != null && r.ratioCpCapital < 1} /> },
+  { key: 'tresorerie', label: 'Trésorerie', sort: (r) => r?.tresorerie, render: (r) => <Money v={r.tresorerie} signed danger={r.tresorerie < 0} /> },
+  { key: 'cashburn', label: 'Cashburn /mois', sort: (r) => (r?.cashburn == null ? -Infinity : r.cashburn), render: (r) => <Cashburn v={r.cashburn} /> },
+  { key: 'runway', label: 'Runway (mois)', sort: (r) => (r?.runway == null ? Infinity : r.runway), render: (r) => <Runway v={r.runway} /> },
+  { key: 'santé', label: 'Santé', sort: (r) => health(r).rank, render: (r) => { const h = health(r); return <td className="px-2.5 py-2 text-right"><span className={cls('inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full', h.key === 'red' ? 'bg-red-50 text-accent-red' : h.key === 'orange' ? 'bg-amber-50 text-amber-700' : h.key === 'green' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-gray-custom')}>{h.label}</span></td>; } },
 ];
+
+const COLCFG_KEY = 'mv:dashcols';
+const ALL_KEYS = COLS.map((c) => c.key);
+function loadColCfg() {
+  try {
+    const c = JSON.parse(localStorage.getItem(COLCFG_KEY) || 'null');
+    if (!c) throw 0;
+    const order = [...(c.order || []).filter((k) => ALL_KEYS.includes(k)), ...ALL_KEYS.filter((k) => !(c.order || []).includes(k))];
+    return { order, hidden: (c.hidden || []).filter((k) => ALL_KEYS.includes(k) && k !== 'name'), widths: c.widths || {} };
+  } catch { return { order: ALL_KEYS, hidden: [], widths: {} }; }
+}
 
 export default function PortfolioDashboard({ companies, onOpenCompany }) {
   const [rows, setRows] = useState(() => loadCache());
@@ -42,7 +53,30 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
   const [sort, setSort] = useState({ key: 'santé', dir: 'asc' });
   const [query, setQuery] = useState('');
   const [segment, setSegment] = useState('all');
+  const [colCfg, setColCfg] = useState(loadColCfg);
   const cancelRef = useRef(false);
+  const dragKey = useRef(null);
+  const resizingRef = useRef(false);
+
+  useEffect(() => { try { localStorage.setItem(COLCFG_KEY, JSON.stringify(colCfg)); } catch { /* noop */ } }, [colCfg]);
+  const orderedCols = useMemo(() => colCfg.order.map((k) => COLS.find((c) => c.key === k)).filter(Boolean), [colCfg.order]);
+  const visibleCols = useMemo(() => orderedCols.filter((c) => c.key === 'name' || !colCfg.hidden.includes(c.key)), [orderedCols, colCfg.hidden]);
+  const toggleHidden = (key) => setColCfg((c) => ({ ...c, hidden: c.hidden.includes(key) ? c.hidden.filter((k) => k !== key) : [...c.hidden, key] }));
+  const moveCol = (from, to) => setColCfg((c) => {
+    if (from === to || from === 'name' || to === 'name') return c;
+    const order = [...c.order]; const i = order.indexOf(from); const j = order.indexOf(to);
+    if (i < 0 || j < 0) return c; order.splice(j, 0, order.splice(i, 1)[0]); return { ...c, order };
+  });
+  const resetCols = () => setColCfg({ order: ALL_KEYS, hidden: [], widths: {} });
+  const startResize = (e, key) => {
+    e.preventDefault(); e.stopPropagation();
+    resizingRef.current = true;
+    const th = e.currentTarget.parentElement;
+    const startX = e.clientX; const startW = colCfg.widths[key] || th.offsetWidth;
+    const onMove = (ev) => setColCfg((c) => ({ ...c, widths: { ...c.widths, [key]: Math.max(60, Math.round(startW + (ev.clientX - startX))) } }));
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); setTimeout(() => { resizingRef.current = false; }, 0); };
+    document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
+  };
 
   const fetchAll = async (force = false) => {
     cancelRef.current = false;
@@ -141,18 +175,31 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
           ))}
         </div>
         {filtered.length !== companies.length && <span className="text-xs text-gray-custom">{filtered.length} affiché{filtered.length > 1 ? 's' : ''}</span>}
+        <div className="ml-auto"><ColumnsMenu cols={COLS} hidden={colCfg.hidden} onToggle={toggleHidden} onReset={resetCols} /></div>
       </div>
 
       <div className="overflow-auto rounded-xl border border-slate-200 shadow-sm bg-white max-h-[calc(100vh-250px)]">
-        <table className="w-full min-w-max text-sm">
+        <table className="text-sm" style={{ minWidth: 'max-content' }}>
+          <colgroup>
+            {visibleCols.map((c) => <col key={c.key} style={colCfg.widths[c.key] ? { width: `${colCfg.widths[c.key]}px` } : undefined} />)}
+          </colgroup>
           <thead>
             <tr className="bg-navy text-white">
-              {COLS.map((c) => (
+              {visibleCols.map((c) => (
                 <th key={c.key}
-                  onClick={() => toggleSort(c.key)}
-                  className={cls('px-2.5 py-2.5 font-semibold text-xs uppercase tracking-wide whitespace-nowrap cursor-pointer select-none bg-navy sticky top-0 hover:bg-navy-light',
-                    c.align === 'left' ? 'text-left' : 'text-right', c.key === 'name' ? 'left-0 z-30' : 'z-20')}>
-                  <span className="inline-flex items-center gap-1">{c.label}{sort.key === c.key && <ArrowUpDown size={11} />}</span>
+                  draggable={!c.fixed}
+                  onDragStart={(e) => { if (resizingRef.current) { e.preventDefault(); return; } dragKey.current = c.key; }}
+                  onDragOver={(e) => { if (dragKey.current && !c.fixed) e.preventDefault(); }}
+                  onDrop={(e) => { e.preventDefault(); if (dragKey.current) moveCol(dragKey.current, c.key); dragKey.current = null; }}
+                  onClick={() => { if (!resizingRef.current) toggleSort(c.key); }}
+                  className={cls('relative px-2.5 py-2.5 font-semibold text-xs uppercase tracking-wide whitespace-nowrap select-none bg-navy sticky top-0 hover:bg-navy-light',
+                    c.align === 'left' ? 'text-left' : 'text-right', c.key === 'name' ? 'left-0 z-30' : 'z-20', c.fixed ? 'cursor-pointer' : 'cursor-move')}>
+                  <span className="inline-flex items-center gap-1">
+                    {!c.fixed && <GripVertical size={11} className="opacity-40" />}
+                    {c.label}{sort.key === c.key && <ArrowUpDown size={11} />}
+                  </span>
+                  <span onMouseDown={(e) => startResize(e, c.key)} onClick={(e) => e.stopPropagation()}
+                    className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-white/40" />
                 </th>
               ))}
             </tr>
@@ -161,6 +208,7 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
             {filtered.map(({ company, r }) => {
               const h = health(r);
               const pending = !r;
+              const dataCols = visibleCols.filter((c) => c.key !== 'name');
               return (
                 <tr key={company.id} onClick={() => onOpenCompany(String(company.id))}
                   className="border-b border-slate-100 hover:bg-sky-50/50 cursor-pointer">
@@ -168,28 +216,11 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
                     <span className={cls('inline-block w-2 h-2 rounded-full mr-2 align-middle', h.color)} />{company.name}
                   </td>
                   {pending ? (
-                    <td colSpan={COLS.length - 1} className="px-2.5 py-2 text-gray-300">{progress.running ? 'chargement…' : '—'}</td>
+                    <td colSpan={dataCols.length} className="px-2.5 py-2 text-gray-300">{progress.running ? 'chargement…' : '—'}</td>
                   ) : r.error || r.empty ? (
-                    <td colSpan={COLS.length - 1} className="px-2.5 py-2 text-gray-custom">{r.error ? <span className="inline-flex items-center gap-1 text-accent-red"><AlertTriangle size={13} /> {r.error}</span> : 'aucun exercice'}</td>
+                    <td colSpan={dataCols.length} className="px-2.5 py-2 text-gray-custom">{r.error ? <span className="inline-flex items-center gap-1 text-accent-red"><AlertTriangle size={13} /> {r.error}</span> : 'aucun exercice'}</td>
                   ) : (
-                    <>
-                      <td className="px-2.5 py-2 text-left text-xs text-gray-custom whitespace-nowrap">{r.fy?.label}{r.fy?.inProgress ? ' (en cours)' : ''}</td>
-                      <Money v={r.ca} />
-                      <Money v={r.ebitda} signed />
-                      <Money v={r.resultat} signed />
-                      <Money v={r.capitauxPropres} signed danger={r.capitauxPropres < 0} />
-                      <Money v={r.capital} />
-                      <Ratio v={r.ratioCpCapital} danger={r.ratioCpCapital != null && r.ratioCpCapital < 0.5} warn={r.ratioCpCapital != null && r.ratioCpCapital < 1} />
-                      <Money v={r.tresorerie} signed danger={r.tresorerie < 0} />
-                      <Cashburn v={r.cashburn} />
-                      <Runway v={r.runway} />
-                      <td className="px-2.5 py-2 text-right">
-                        <span className={cls('inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full',
-                          h.key === 'red' ? 'bg-red-50 text-accent-red' : h.key === 'orange' ? 'bg-amber-50 text-amber-700' : h.key === 'green' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-gray-custom')}>
-                          {h.label}
-                        </span>
-                      </td>
-                    </>
+                    dataCols.map((c) => cloneElement(c.render(r), { key: c.key }))
                   )}
                 </tr>
               );
@@ -197,7 +228,42 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-gray-custom">Cliquez sur une ligne pour ouvrir le dossier. Runway = trésorerie ÷ cashburn mensuel moyen ; « ∞ » si la trésorerie augmente.</p>
+      <p className="text-xs text-gray-custom">Glissez les en-têtes pour réordonner, tirez leur bord pour redimensionner, « Colonnes » pour masquer/afficher. Clic sur une ligne = ouvrir le dossier.</p>
+    </div>
+  );
+}
+
+function ColumnsMenu({ cols, hidden, onToggle, onReset }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, []);
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-1.5 text-sm text-gray-custom hover:text-navy border border-sage rounded-lg px-3 py-1.5 hover:bg-cream transition">
+        <SlidersHorizontal size={14} /> Colonnes
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1 z-30 bg-white border border-sage rounded-lg shadow-lg py-1 min-w-[210px]">
+          {cols.filter((c) => !c.fixed).map((c) => {
+            const visible = !hidden.includes(c.key);
+            return (
+              <button key={c.key} onClick={() => onToggle(c.key)}
+                className="w-full flex items-center justify-between gap-3 px-3 py-1.5 text-sm text-left hover:bg-cream">
+                <span className={cls(visible ? 'text-navy' : 'text-gray-custom')}>{c.label}</span>
+                {visible && <Check size={14} className="text-accent-green" />}
+              </button>
+            );
+          })}
+          <div className="border-t border-sage/50 mt-1 pt-1">
+            <button onClick={onReset} className="w-full text-left px-3 py-1.5 text-xs text-gray-custom hover:bg-cream">Réinitialiser les colonnes</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
