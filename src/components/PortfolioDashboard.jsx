@@ -139,7 +139,7 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
 
   const toggleSort = (key) => setSort((s) => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' ? 'asc' : 'desc' });
   const SEGMENTS = [
-    { key: 'all', label: 'Tous', n: companies.length, color: 'bg-navy' },
+    { key: 'all', label: 'Tous', n: companies.length, color: 'bg-slate-400' },
     { key: 'green', label: 'Sains', n: counts.green, color: 'bg-accent-green' },
     { key: 'orange', label: 'À surveiller', n: counts.orange, color: 'bg-amber-500' },
     { key: 'red', label: 'Alerte', n: counts.red, color: 'bg-accent-red' },
@@ -167,13 +167,18 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
             className="border border-sage rounded-lg pl-9 pr-3 py-1.5 text-sm w-64 max-w-full focus:outline-none focus:ring-2 focus:ring-navy" />
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          {SEGMENTS.map((s) => (
-            <button key={s.key} onClick={() => setSegment(s.key)}
-              className={cls('inline-flex items-center gap-1.5 text-sm rounded-full border px-3 py-1.5 transition',
-                segment === s.key ? 'border-navy bg-cream text-navy font-medium' : 'border-sage text-gray-custom hover:bg-cream')}>
-              <span className={cls('w-2.5 h-2.5 rounded-full', s.color)} />{s.label}<span className="text-gray-custom">({s.n})</span>
-            </button>
-          ))}
+          {SEGMENTS.map((s) => {
+            const on = segment === s.key;
+            return (
+              <button key={s.key} onClick={() => setSegment(s.key)}
+                className={cls('inline-flex items-center gap-1.5 text-sm rounded-full border px-3 py-1.5 transition',
+                  on ? 'bg-navy text-white border-navy shadow-sm font-medium' : 'bg-white border-sage text-gray-custom hover:bg-cream hover:border-gray-300')}>
+                <span className={cls('w-2.5 h-2.5 rounded-full ring-1', s.color, on ? 'ring-white/40' : 'ring-black/5')} />
+                {s.label}
+                <span className={on ? 'text-white/70' : 'text-gray-custom'}>({s.n})</span>
+              </button>
+            );
+          })}
         </div>
         {filtered.length !== companies.length && <span className="text-xs text-gray-custom">{filtered.length} affiché{filtered.length > 1 ? 's' : ''}</span>}
         <div className="ml-auto"><ColumnsMenu cols={COLS} hidden={colCfg.hidden} onToggle={toggleHidden} onReset={resetCols} /></div>

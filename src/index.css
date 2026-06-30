@@ -90,6 +90,10 @@ h1, h2, h3, h4, h5, h6 {
 .text-accent-green { color: var(--accent-green); }
 .text-accent-red { color: var(--accent-red); }
 .text-accent-gold { color: var(--accent-gold); }
+.bg-accent-green { background-color: var(--accent-green); }
+.bg-accent-red { background-color: var(--accent-red); }
+.bg-accent-blue { background-color: var(--accent-blue); }
+.bg-accent-gold { background-color: var(--accent-gold); }
 
 .border-sage { border-color: var(--sage); }
 
