@@ -118,7 +118,7 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
               {COLS.map((c) => (
                 <th key={c.key}
                   onClick={() => toggleSort(c.key)}
-                  className={cls('px-3 py-2.5 font-semibold text-xs uppercase tracking-wide whitespace-nowrap cursor-pointer select-none hover:bg-navy-light',
+                  className={cls('px-2.5 py-2.5 font-semibold text-xs uppercase tracking-wide whitespace-nowrap cursor-pointer select-none hover:bg-navy-light',
                     c.align === 'left' ? 'text-left' : 'text-right', c.key === 'name' && 'sticky left-0 bg-navy z-10')}>
                   <span className="inline-flex items-center gap-1">{c.label}{sort.key === c.key && <ArrowUpDown size={11} />}</span>
                 </th>
@@ -132,16 +132,16 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
               return (
                 <tr key={company.id} onClick={() => onOpenCompany(String(company.id))}
                   className="border-b border-slate-100 hover:bg-sky-50/50 cursor-pointer">
-                  <td className="px-3 py-2 text-left whitespace-nowrap sticky left-0 bg-white z-10 font-medium text-navy">
+                  <td className="px-2.5 py-2 text-left whitespace-nowrap sticky left-0 bg-white z-10 font-medium text-navy">
                     <span className={cls('inline-block w-2 h-2 rounded-full mr-2 align-middle', h.color)} />{company.name}
                   </td>
                   {pending ? (
-                    <td colSpan={COLS.length - 1} className="px-3 py-2 text-gray-300">{progress.running ? 'chargement…' : '—'}</td>
+                    <td colSpan={COLS.length - 1} className="px-2.5 py-2 text-gray-300">{progress.running ? 'chargement…' : '—'}</td>
                   ) : r.error || r.empty ? (
-                    <td colSpan={COLS.length - 1} className="px-3 py-2 text-gray-custom">{r.error ? <span className="inline-flex items-center gap-1 text-accent-red"><AlertTriangle size={13} /> {r.error}</span> : 'aucun exercice'}</td>
+                    <td colSpan={COLS.length - 1} className="px-2.5 py-2 text-gray-custom">{r.error ? <span className="inline-flex items-center gap-1 text-accent-red"><AlertTriangle size={13} /> {r.error}</span> : 'aucun exercice'}</td>
                   ) : (
                     <>
-                      <td className="px-3 py-2 text-left text-xs text-gray-custom whitespace-nowrap">{r.fy?.label}{r.fy?.inProgress ? ' (en cours)' : ''}</td>
+                      <td className="px-2.5 py-2 text-left text-xs text-gray-custom whitespace-nowrap">{r.fy?.label}{r.fy?.inProgress ? ' (en cours)' : ''}</td>
                       <Money v={r.ca} />
                       <Money v={r.ebitda} signed />
                       <Money v={r.resultat} signed />
@@ -151,7 +151,7 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
                       <Money v={r.tresorerie} signed danger={r.tresorerie < 0} />
                       <Cashburn v={r.cashburn} />
                       <Runway v={r.runway} />
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-2.5 py-2 text-right">
                         <span className={cls('inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full',
                           h.key === 'red' ? 'bg-red-50 text-accent-red' : h.key === 'orange' ? 'bg-amber-50 text-amber-700' : h.key === 'green' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-gray-custom')}>
                           {h.label}
@@ -172,26 +172,26 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
 
 function Money({ v, signed, danger }) {
   const neg = v < 0;
-  return <td className={cls('px-3 py-2 text-right tabular-nums whitespace-nowrap', danger || (signed && neg) ? 'text-accent-red' : 'text-navy')}>{v == null ? '—' : fmt(v)}</td>;
+  return <td className={cls('px-2.5 py-2 text-right tabular-nums whitespace-nowrap', danger || (signed && neg) ? 'text-accent-red' : 'text-navy')}>{v == null ? '—' : fmt(v)}</td>;
 }
 function Ratio({ v, danger, warn }) {
-  return <td className={cls('px-3 py-2 text-right tabular-nums whitespace-nowrap', danger ? 'text-accent-red font-medium' : warn ? 'text-amber-600' : 'text-navy')}>{v == null ? '—' : `${fmtNum(v, 1)}×`}</td>;
+  return <td className={cls('px-2.5 py-2 text-right tabular-nums whitespace-nowrap', danger ? 'text-accent-red font-medium' : warn ? 'text-amber-600' : 'text-navy')}>{v == null ? '—' : `${fmtNum(v, 1)}×`}</td>;
 }
 function Cashburn({ v }) {
   // v > 0 = consommation de trésorerie (burn) ; v < 0 = trésorerie générée
-  if (v == null) return <td className="px-3 py-2 text-right text-gray-300 whitespace-nowrap">—</td>;
+  if (v == null) return <td className="px-2.5 py-2 text-right text-gray-300 whitespace-nowrap">—</td>;
   const burning = v > 0;
   return (
-    <td className={cls('px-3 py-2 text-right tabular-nums whitespace-nowrap', burning ? 'text-accent-red' : 'text-emerald-600')}
+    <td className={cls('px-2.5 py-2 text-right tabular-nums whitespace-nowrap', burning ? 'text-accent-red' : 'text-emerald-600')}
       title={burning ? 'Consommation de trésorerie / mois' : 'Trésorerie générée / mois'}>
       {burning ? '−' : '+'}{fmt(Math.abs(v))}
     </td>
   );
 }
 function Runway({ v }) {
-  if (v == null) return <td className="px-3 py-2 text-right text-emerald-600 whitespace-nowrap">∞</td>;
+  if (v == null) return <td className="px-2.5 py-2 text-right text-emerald-600 whitespace-nowrap">∞</td>;
   const danger = v < 3, warn = v < 6;
-  return <td className={cls('px-3 py-2 text-right tabular-nums whitespace-nowrap', danger ? 'text-accent-red font-semibold' : warn ? 'text-amber-600' : 'text-navy')}>{fmtNum(v, 1)}</td>;
+  return <td className={cls('px-2.5 py-2 text-right tabular-nums whitespace-nowrap', danger ? 'text-accent-red font-semibold' : warn ? 'text-amber-600' : 'text-navy')}>{fmtNum(v, 1)}</td>;
 }
 function Pill({ color, label }) {
   return <span className="inline-flex items-center gap-1.5 text-gray-custom"><span className={cls('w-2.5 h-2.5 rounded-full', color)} />{label}</span>;

@@ -247,7 +247,7 @@ export default function Workspace({ onLogout }) {
 
         {!companyId && (
           companies.length > 0
-            ? <PortfolioDashboard companies={companies} onOpenCompany={setCompanyId} />
+            ? <div className="w-screen relative left-1/2 -translate-x-1/2 px-4"><PortfolioDashboard companies={companies} onOpenCompany={setCompanyId} /></div>
             : <Home companiesCount={companies.length} />
         )}
 
