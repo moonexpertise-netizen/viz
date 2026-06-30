@@ -25,8 +25,10 @@ const COLS = [
   { key: 'ebitda', label: 'EBITDA', sort: (r) => r?.ebitda },
   { key: 'resultat', label: 'Résultat', sort: (r) => r?.resultat },
   { key: 'capitauxPropres', label: 'Capitaux propres', sort: (r) => r?.capitauxPropres },
+  { key: 'capital', label: 'Capital (101)', sort: (r) => r?.capital },
   { key: 'ratioCpCapital', label: 'CP / Capital', sort: (r) => r?.ratioCpCapital },
   { key: 'tresorerie', label: 'Trésorerie', sort: (r) => r?.tresorerie },
+  { key: 'cashburn', label: 'Cashburn /mois', sort: (r) => (r?.cashburn == null ? -Infinity : r.cashburn) },
   { key: 'runway', label: 'Runway (mois)', sort: (r) => (r?.runway == null ? Infinity : r.runway) },
   { key: 'santé', label: 'Santé', sort: (r) => health(r).rank },
 ];
@@ -144,8 +146,10 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
                       <Money v={r.ebitda} signed />
                       <Money v={r.resultat} signed />
                       <Money v={r.capitauxPropres} signed danger={r.capitauxPropres < 0} />
+                      <Money v={r.capital} />
                       <Ratio v={r.ratioCpCapital} danger={r.ratioCpCapital != null && r.ratioCpCapital < 0.5} warn={r.ratioCpCapital != null && r.ratioCpCapital < 1} />
                       <Money v={r.tresorerie} signed danger={r.tresorerie < 0} />
+                      <Cashburn v={r.cashburn} />
                       <Runway v={r.runway} />
                       <td className="px-3 py-2 text-right">
                         <span className={cls('inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full',
@@ -172,6 +176,17 @@ function Money({ v, signed, danger }) {
 }
 function Ratio({ v, danger, warn }) {
   return <td className={cls('px-3 py-2 text-right tabular-nums whitespace-nowrap', danger ? 'text-accent-red font-medium' : warn ? 'text-amber-600' : 'text-navy')}>{v == null ? '—' : `${fmtNum(v, 1)}×`}</td>;
+}
+function Cashburn({ v }) {
+  // v > 0 = consommation de trésorerie (burn) ; v < 0 = trésorerie générée
+  if (v == null) return <td className="px-3 py-2 text-right text-gray-300 whitespace-nowrap">—</td>;
+  const burning = v > 0;
+  return (
+    <td className={cls('px-3 py-2 text-right tabular-nums whitespace-nowrap', burning ? 'text-accent-red' : 'text-emerald-600')}
+      title={burning ? 'Consommation de trésorerie / mois' : 'Trésorerie générée / mois'}>
+      {burning ? '−' : '+'}{fmt(Math.abs(v))}
+    </td>
+  );
 }
 function Runway({ v }) {
   if (v == null) return <td className="px-3 py-2 text-right text-emerald-600 whitespace-nowrap">∞</td>;
