@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { RefreshCw, ArrowUpDown, AlertTriangle } from 'lucide-react';
+import { RefreshCw, ArrowUpDown, AlertTriangle, Search } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { REPORT_VERSION } from '../lib/syncStore';
 import { fmt, fmtNum, cls } from '../lib/format';
@@ -40,6 +40,8 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
   const [rows, setRows] = useState(() => loadCache());
   const [progress, setProgress] = useState({ done: 0, total: 0, running: false });
   const [sort, setSort] = useState({ key: 'santé', dir: 'asc' });
+  const [query, setQuery] = useState('');
+  const [segment, setSegment] = useState('all');
   const cancelRef = useRef(false);
 
   const fetchAll = async (force = false) => {
@@ -91,7 +93,22 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
     return c;
   }, [data]);
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return sorted.filter(({ company, r }) => {
+      if (q && !company.name.toLowerCase().includes(q)) return false;
+      if (segment !== 'all' && health(r).key !== segment) return false;
+      return true;
+    });
+  }, [sorted, query, segment]);
+
   const toggleSort = (key) => setSort((s) => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' ? 'asc' : 'desc' });
+  const SEGMENTS = [
+    { key: 'all', label: 'Tous', n: companies.length, color: 'bg-navy' },
+    { key: 'green', label: 'Sains', n: counts.green, color: 'bg-accent-green' },
+    { key: 'orange', label: 'À surveiller', n: counts.orange, color: 'bg-amber-500' },
+    { key: 'red', label: 'Alerte', n: counts.red, color: 'bg-accent-red' },
+  ];
 
   return (
     <div className="space-y-4">
@@ -100,36 +117,48 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
           <h2 className="text-2xl font-display text-navy">Tableau de bord du portefeuille</h2>
           <p className="text-sm text-gray-custom mt-0.5">Santé de chaque dossier sur l'exercice fiscal en cours · {companies.length} dossiers</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-3 text-sm">
-            <Pill color="bg-accent-green" label={`${counts.green} sains`} />
-            <Pill color="bg-amber-500" label={`${counts.orange} à surveiller`} />
-            <Pill color="bg-accent-red" label={`${counts.red} en alerte`} />
-          </div>
-          <button onClick={() => fetchAll(true)} disabled={progress.running}
-            className="btn-navy inline-flex items-center gap-2 text-sm disabled:opacity-60">
-            <RefreshCw size={15} className={progress.running ? 'animate-spin' : ''} />
-            {progress.running ? `${progress.done}/${progress.total}` : 'Actualiser'}
-          </button>
-        </div>
+        <button onClick={() => fetchAll(true)} disabled={progress.running}
+          className="btn-navy inline-flex items-center gap-2 text-sm disabled:opacity-60">
+          <RefreshCw size={15} className={progress.running ? 'animate-spin' : ''} />
+          {progress.running ? `${progress.done}/${progress.total}` : 'Actualiser'}
+        </button>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm bg-white">
+      {/* Recherche + segments par santé */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-custom" />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher un dossier…"
+            className="border border-sage rounded-lg pl-9 pr-3 py-1.5 text-sm w-64 max-w-full focus:outline-none focus:ring-2 focus:ring-navy" />
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {SEGMENTS.map((s) => (
+            <button key={s.key} onClick={() => setSegment(s.key)}
+              className={cls('inline-flex items-center gap-1.5 text-sm rounded-full border px-3 py-1.5 transition',
+                segment === s.key ? 'border-navy bg-cream text-navy font-medium' : 'border-sage text-gray-custom hover:bg-cream')}>
+              <span className={cls('w-2.5 h-2.5 rounded-full', s.color)} />{s.label}<span className="text-gray-custom">({s.n})</span>
+            </button>
+          ))}
+        </div>
+        {filtered.length !== companies.length && <span className="text-xs text-gray-custom">{filtered.length} affiché{filtered.length > 1 ? 's' : ''}</span>}
+      </div>
+
+      <div className="overflow-auto rounded-xl border border-slate-200 shadow-sm bg-white max-h-[calc(100vh-250px)]">
         <table className="w-full min-w-max text-sm">
           <thead>
             <tr className="bg-navy text-white">
               {COLS.map((c) => (
                 <th key={c.key}
                   onClick={() => toggleSort(c.key)}
-                  className={cls('px-2.5 py-2.5 font-semibold text-xs uppercase tracking-wide whitespace-nowrap cursor-pointer select-none hover:bg-navy-light',
-                    c.align === 'left' ? 'text-left' : 'text-right', c.key === 'name' && 'sticky left-0 bg-navy z-10')}>
+                  className={cls('px-2.5 py-2.5 font-semibold text-xs uppercase tracking-wide whitespace-nowrap cursor-pointer select-none bg-navy sticky top-0 hover:bg-navy-light',
+                    c.align === 'left' ? 'text-left' : 'text-right', c.key === 'name' ? 'left-0 z-30' : 'z-20')}>
                   <span className="inline-flex items-center gap-1">{c.label}{sort.key === c.key && <ArrowUpDown size={11} />}</span>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {sorted.map(({ company, r }) => {
+            {filtered.map(({ company, r }) => {
               const h = health(r);
               const pending = !r;
               return (
