@@ -6,6 +6,7 @@ import Combobox from '../components/Combobox';
 import CommandPalette from '../components/CommandPalette';
 import PortfolioDashboard from '../components/PortfolioDashboard';
 import { loadSync, saveEntry } from '../lib/syncStore';
+import { putLines } from '../lib/linesStore';
 import { mergeMonthly } from '../lib/mergeMonthly';
 import SyntheseView from '../views/SyntheseView';
 import BilanView from '../views/BilanView';
@@ -129,13 +130,18 @@ export default function Workspace({ onLogout }) {
         dataAPI.report(params),
         dataAPI.monthly({ company_id: companyId, period_start: fy.start, period_end: fy.end }),
       ]);
+      // Détail des écritures -> IndexedDB (volumineux) ; agrégats -> localStorage
+      const monthlyData = mon.data || {};
+      const detailLines = monthlyData.lines || [];
+      const monthlyAggregates = { ...monthlyData, lines: undefined };
       const entry = {
         syncedAt: new Date().toISOString(),
         fy: { id: fy.id, label: fy.label, start: fy.start, end: fy.end, year: fy.year },
         report: rep.data,
-        monthly: mon.data,
+        monthly: monthlyAggregates,
       };
       saveEntry(companyId, fy.id, entry);
+      if (detailLines.length) await putLines(companyId, fy.id, detailLines);
       setSynced((s) => ({ ...s, [fy.id]: entry }));
     } catch (err) {
       setError(describe(err));

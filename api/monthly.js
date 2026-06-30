@@ -24,10 +24,10 @@ export default async function handler(req, res) {
       getTrialBalance(cid, period_start, period_end, true), // auxiliaire : noms clients/fournisseurs
     ]);
 
-    // Pré-chargement du détail des écritures (drill-down instantané) seulement pour les
-    // dossiers de taille raisonnable : au-delà, on évite un gros fetch + une grosse réponse
-    // et le drill-down repasse par l'API à la demande.
-    const LINE_LIMIT = 5000;
+    // Pré-chargement du détail des écritures (drill-down instantané), stocké côté client en
+    // IndexedDB. Plafond élevé pour couvrir les gros dossiers ; au-delà (réponse > ~4 Mo),
+    // on omet et le drill-down repasse par l'API.
+    const LINE_LIMIT = 15000;
     const entries = lines.length <= LINE_LIMIT ? await getLedgerEntries(cid, period_start, period_end) : [];
 
     // Map id journal -> code (pour exclure les a-nouveaux)

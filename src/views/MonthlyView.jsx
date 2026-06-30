@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { dataAPI } from '../services/api';
+import { getLinesForExercises } from '../lib/linesStore';
 import EntryDetailModal from '../components/EntryDetailModal';
 
 // Range slider thumb styles (can't do with Tailwind)
@@ -1854,6 +1855,16 @@ export default function MonthlyView({ companyId, data, loading = false }) {
   const navigate = () => {};
   const error = null;
 
+  // Détail des écritures (drill-down instantané) chargé depuis IndexedDB
+  const [cachedLines, setCachedLines] = useState([]);
+  const exerciseIds = useMemo(() => (data?.exercises || []).map((e) => e.id), [data]);
+  useEffect(() => {
+    let cancel = false;
+    if (!companyId || !exerciseIds.length) { setCachedLines([]); return; }
+    getLinesForExercises(companyId, exerciseIds).then((l) => { if (!cancel) setCachedLines(l.length ? l : (data?.lines || [])); });
+    return () => { cancel = true; };
+  }, [companyId, exerciseIds]);
+
   // Persister les preferences utilisateur dans localStorage
   const storageKey = `moon_prefs_${clientId || 'default'}`;
   const savedPrefs = useMemo(() => {
@@ -2219,7 +2230,7 @@ export default function MonthlyView({ companyId, data, loading = false }) {
       <main className="max-w-full mx-auto px-6 py-6">
         <div className="card-moon p-5">
           {activeTab === 'pl' && hasMonthly && (
-            <PLTab monthly={monthly} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} customTree={customPLData} exercises={data?.exercises || []} cachedLines={data?.lines || null} />
+            <PLTab monthly={monthly} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} customTree={customPLData} exercises={data?.exercises || []} cachedLines={cachedLines} />
           )}
           {activeTab === 'cashflow' && hasCashflow && (
             <CashFlowTab cashflow={monthlyCashflow} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} exercises={data?.exercises || []} />
