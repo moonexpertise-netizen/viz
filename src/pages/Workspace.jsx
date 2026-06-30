@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronDown, Home as HomeIcon, List, Search, ExternalLink, LayoutGrid, LayoutDashboard, Layers, FileText, Scale, Gauge } from 'lucide-react';
+import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronDown, Home as HomeIcon, List, Search, ExternalLink, LayoutGrid, LayoutDashboard, Layers, FileText, Scale, Gauge, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
 import Combobox from '../components/Combobox';
 import CommandPalette from '../components/CommandPalette';
 import PortfolioDashboard from '../components/PortfolioDashboard';
+import ThemeMenu from '../components/ThemeMenu';
 import { pennylaneCompanyUrl } from '../lib/pennylaneLink';
+import { applyTheme, getTheme } from '../lib/theme';
 import { loadSync, saveEntry } from '../lib/syncStore';
 import { putLines } from '../lib/linesStore';
 import { initSyncWorker, swSupported, enqueueSync, getJob, getAllJobs, clearJob } from '../lib/syncJobs';
@@ -54,6 +56,10 @@ export default function Workspace({ onLogout }) {
   const [loading, setLoading] = useState({ companies: false, fy: false });
   const [error, setError] = useState('');
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => { try { return localStorage.getItem('mv:sidebar') === '1'; } catch { return false; } });
+  const [theme, setTheme] = useState(getTheme);
+  useEffect(() => { try { localStorage.setItem('mv:sidebar', collapsed ? '1' : '0'); } catch { /* noop */ } }, [collapsed]);
+  useEffect(() => { applyTheme(theme); }, [theme]);
   const restoreConsumed = useRef(false);
   const companyIdRef = useRef(companyId);
   useEffect(() => { companyIdRef.current = companyId; }, [companyId]);
@@ -264,50 +270,72 @@ export default function Workspace({ onLogout }) {
 
   return (
     <div className="min-h-screen bg-cream flex">
-      {/* Bandeau latéral — navy #01071B, façon MOON CRM */}
-      <aside className="w-60 shrink-0 bg-navy text-white flex flex-col sticky top-0 self-start h-screen z-30">
-        {/* Marque */}
-        <div className="h-14 flex items-center px-4 border-b border-white/[0.08] shrink-0">
+      {/* Bandeau latéral — façon MOON CRM, repliable */}
+      <aside className={cls('shrink-0 bg-navy text-white flex flex-col sticky top-0 self-start h-screen z-30 transition-[width] duration-200',
+        collapsed ? 'w-16' : 'w-60')}>
+        {/* Marque + bouton replier */}
+        <div className={cls('h-14 flex items-center border-b border-white/[0.08] shrink-0', collapsed ? 'justify-center px-2' : 'px-4')}>
           <button onClick={goHome} className="flex items-center gap-2 group min-w-0" title="Retour au tableau de bord">
             <img src="/moon-icon.svg" alt="MoonViz" className="h-7 w-7 opacity-95 group-hover:opacity-100 transition-opacity shrink-0" />
-            <span className="font-display text-lg font-semibold tracking-tight text-white/95 group-hover:text-white transition-colors truncate">MoonViz</span>
+            {!collapsed && <span className="font-display text-lg font-semibold tracking-tight text-white/95 group-hover:text-white transition-colors truncate">MoonViz</span>}
           </button>
+          {!collapsed && (
+            <button onClick={() => setCollapsed(true)} title="Réduire le menu"
+              className="ml-auto inline-flex items-center justify-center w-7 h-7 rounded-md text-sage hover:text-white hover:bg-white/[0.06] transition">
+              <PanelLeftClose size={16} />
+            </button>
+          )}
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-          <SideItem icon={<LayoutGrid size={17} />} label="Tableau de bord" active={!companyId} onClick={goHome} />
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 space-y-0.5">
+          <SideItem icon={<LayoutGrid size={17} />} label="Tableau de bord" active={!companyId} onClick={goHome} collapsed={collapsed} />
 
           {company && (
             <div className="pt-4">
-              <div className="px-3 pb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-sage/70">
-                <Building2 size={12} className="shrink-0" />
-                <span className="truncate">{company.name}</span>
-              </div>
+              {!collapsed ? (
+                <div className="px-3 pb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-sage/70">
+                  <Building2 size={12} className="shrink-0" />
+                  <span className="truncate">{company.name}</span>
+                </div>
+              ) : (
+                <div className="mx-2 my-1 border-t border-white/[0.08]" title={company.name} />
+              )}
               {anySynced ? (
                 TABS.map((t) => (
                   <SideItem key={t.key} icon={<t.Icon size={17} />} label={t.label}
-                    active={tab === t.key} onClick={() => setTab(t.key)} />
+                    active={tab === t.key} onClick={() => setTab(t.key)} collapsed={collapsed} />
                 ))
               ) : (
-                <div className="px-3 py-2 text-xs text-sage/60 leading-snug">Synchronisez un exercice pour démarrer l'analyse.</div>
+                !collapsed && <div className="px-3 py-2 text-xs text-sage/60 leading-snug">Synchronisez un exercice pour démarrer l'analyse.</div>
               )}
             </div>
           )}
         </nav>
 
-        {/* Bas : recherche + déconnexion */}
+        {/* Bas : déplier / recherche / thème / déconnexion */}
         <div className="border-t border-white/[0.08] p-2 space-y-1 shrink-0">
+          {collapsed && (
+            <button onClick={() => setCollapsed(false)} title="Déployer le menu"
+              className="w-full inline-flex items-center justify-center py-2 rounded-lg text-sage hover:text-white hover:bg-white/[0.06] transition">
+              <PanelLeftOpen size={18} />
+            </button>
+          )}
           <button onClick={() => setPaletteOpen(true)}
-            className="w-full inline-flex items-center gap-2 pl-3 pr-1.5 py-2 rounded-lg border border-white/[0.10] bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/20 text-sage hover:text-white text-xs transition-colors"
+            className={cls('w-full inline-flex items-center gap-2 rounded-lg border border-white/[0.10] bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/20 text-sage hover:text-white text-xs transition-colors',
+              collapsed ? 'justify-center py-2' : 'pl-3 pr-1.5 py-2')}
             title="Recherche & commandes (Ctrl/⌘ + K)">
-            <Search size={14} />
-            <span className="flex-1 text-left">Rechercher…</span>
-            <kbd className="inline-flex items-center px-1.5 py-0.5 rounded-md border border-white/[0.10] bg-white/[0.06] text-[10px] font-medium text-sage">⌘K</kbd>
+            <Search size={14} className="shrink-0" />
+            {!collapsed && <>
+              <span className="flex-1 text-left">Rechercher…</span>
+              <kbd className="inline-flex items-center px-1.5 py-0.5 rounded-md border border-white/[0.10] bg-white/[0.06] text-[10px] font-medium text-sage">⌘K</kbd>
+            </>}
           </button>
-          <button onClick={onLogout}
-            className="w-full inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-sage hover:text-white hover:bg-white/[0.06] transition">
-            <LogOut size={16} /> Déconnexion
+          <ThemeMenu value={theme} onChange={setTheme} collapsed={collapsed} />
+          <button onClick={onLogout} title="Déconnexion"
+            className={cls('w-full inline-flex items-center gap-2 rounded-lg text-sm text-sage hover:text-white hover:bg-white/[0.06] transition',
+              collapsed ? 'justify-center py-2' : 'px-3 py-2')}>
+            <LogOut size={16} className="shrink-0" /> {!collapsed && 'Déconnexion'}
           </button>
         </div>
       </aside>
@@ -391,13 +419,14 @@ export default function Workspace({ onLogout }) {
   );
 }
 
-function SideItem({ icon, label, active, onClick }) {
+function SideItem({ icon, label, active, onClick, collapsed }) {
   return (
-    <button onClick={onClick}
-      className={cls('w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left',
+    <button onClick={onClick} title={collapsed ? label : undefined}
+      className={cls('w-full flex items-center gap-2.5 rounded-lg text-sm transition-colors text-left',
+        collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2',
         active ? 'bg-white/[0.10] text-white font-medium' : 'text-sage hover:text-white hover:bg-white/[0.06]')}>
       <span className="shrink-0 opacity-90">{icon}</span>
-      <span className="truncate">{label}</span>
+      {!collapsed && <span className="truncate">{label}</span>}
     </button>
   );
 }

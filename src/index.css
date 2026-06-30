@@ -25,6 +25,26 @@
   --gold-dark: #6e5a3f;
 }
 
+/* ── Thèmes de couleurs (façon MOON CRM) ──────────────────────────────
+   On ne change que l'encre primaire (--navy : ruban / titres / en-têtes
+   de tableaux), le fond de page (--cream) et les bordures (--sage). Le doré
+   MOON reste l'accent commun. Re-skin cohérent, contenu en cartes blanches. */
+:root[data-theme="navy"] {
+  --navy: #01071B; --navy-light: #121a33; --cream: #f6f6f8; --sage: #e9eaec;
+}
+:root[data-theme="ardoise"] {
+  --navy: #1e293b; --navy-light: #334155; --cream: #f6f7f9; --sage: #e2e6ec;
+}
+:root[data-theme="emeraude"] {
+  --navy: #052e22; --navy-light: #0b4536; --cream: #f3f7f5; --sage: #dde8e2;
+}
+:root[data-theme="bordeaux"] {
+  --navy: #2e0a16; --navy-light: #4a1525; --cream: #faf5f6; --sage: #ecdde1;
+}
+:root[data-theme="indigo"] {
+  --navy: #1a1438; --navy-light: #2b2356; --cream: #f6f5fb; --sage: #e4e0ef;
+}
+
 /* Accessibilité : focus visible cohérent au clavier */
 :where(button, a, input, select, [tabindex]):focus-visible {
   outline: 2px solid var(--accent-blue);
