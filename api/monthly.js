@@ -17,13 +17,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    const [lines, journals, tb, tbAux, entries] = await Promise.all([
+    const [lines, journals, tb, tbAux] = await Promise.all([
       getLedgerEntryLines(cid, period_start, period_end),
       getJournals(cid),
       getTrialBalance(cid, period_start, period_end),
       getTrialBalance(cid, period_start, period_end, true), // auxiliaire : noms clients/fournisseurs
-      getLedgerEntries(cid, period_start, period_end),
     ]);
+
+    // Pré-chargement du détail des écritures (drill-down instantané) seulement pour les
+    // dossiers de taille raisonnable : au-delà, on évite un gros fetch + une grosse réponse
+    // et le drill-down repasse par l'API à la demande.
+    const LINE_LIMIT = 5000;
+    const entries = lines.length <= LINE_LIMIT ? await getLedgerEntries(cid, period_start, period_end) : [];
 
     // Map id journal -> code (pour exclure les a-nouveaux)
     const journalCode = new Map();
@@ -48,7 +53,10 @@ export default async function handler(req, res) {
       plSummary: pl.summary,
       accountMonthly: pl.accountMonthly,
       cashflow,
-      lines: allLines(lines, entries, journals),
+      // Détail pré-chargé seulement pour les dossiers <= LINE_LIMIT lignes
+      lines: lines.length <= LINE_LIMIT ? allLines(lines, entries, journals) : undefined,
+      detailPreloaded: lines.length <= LINE_LIMIT,
+      linesCount: lines.length,
     });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message, code: err.code });
