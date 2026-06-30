@@ -29,28 +29,18 @@ export function SeriesTooltip({ active, payload, label, fmtVal = fmt }) {
   );
 }
 
-/** Carte indicateur premium : libellé, valeur, pastille de variation, icône. */
-export function StatCard({ label, value, accent, deltaPct, sub, icon }) {
+/** Carte indicateur : libellé, valeur, variation vs N-1, sous-titre. Sobre. */
+export function StatCard({ label, value, accent, deltaPct, sub }) {
   const hasDelta = deltaPct != null && Number.isFinite(deltaPct) && Math.abs(deltaPct) >= 0.05;
   const up = deltaPct > 0;
   return (
-    <div className="card-moon p-4 sm:p-5 transition-shadow hover:shadow-md">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-custom">{label}</p>
-        {icon && (
-          <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-gold/10 text-gold shrink-0">{icon}</span>
-        )}
-      </div>
-      <p className={cls('text-[26px] leading-none font-bold mt-2.5 tabular-nums',
+    <div className="card-moon p-4">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-gray-custom">{label}</p>
+      <p className={cls('text-2xl font-bold mt-1.5 tabular-nums',
         accent === 'neg' ? 'text-accent-red' : accent === 'pos' ? 'text-accent-green' : 'text-navy')}>{value}</p>
-      <div className="flex items-center gap-2 mt-2.5 min-h-[20px]">
-        {hasDelta && (
-          <span className={cls('inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-full',
-            up ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700')}>
-            {up ? '▲' : '▼'} {fmtPct(Math.abs(deltaPct))}
-          </span>
-        )}
-        {sub && <span className="text-[11px] text-gray-custom truncate">{sub}</span>}
+      <div className="flex items-center gap-2 mt-1.5 min-h-[18px]">
+        {hasDelta && <span className={cls('text-xs font-semibold', up ? 'badge-up' : 'badge-down')}>{up ? '▲' : '▼'} {fmtPct(Math.abs(deltaPct))}</span>}
+        {sub && <span className="text-xs text-gray-custom truncate">{sub}</span>}
       </div>
     </div>
   );
