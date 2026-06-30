@@ -17,8 +17,8 @@ export const authAPI = {
   session: () => api.get('/session'),
   login: (email, password) => api.post('/login', { email, password }),
   logout: () => api.post('/logout'),
-  forgot: (email) => api.post('/auth/forgot', { email }),
-  reset: (token, password) => api.post('/auth/reset', { token, password }),
+  forgot: (email) => api.post('/login', { action: 'forgot', email }),
+  reset: (token, password) => api.post('/login', { action: 'reset', token, password }),
 };
 
 export const dataAPI = {
