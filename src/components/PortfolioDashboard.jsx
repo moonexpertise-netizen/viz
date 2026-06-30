@@ -1,7 +1,8 @@
 import { cloneElement, useEffect, useMemo, useRef, useState } from 'react';
-import { RefreshCw, ArrowUpDown, AlertTriangle, Search, SlidersHorizontal, Check, GripVertical } from 'lucide-react';
+import { RefreshCw, ArrowUpDown, AlertTriangle, Search, SlidersHorizontal, Check, GripVertical, ExternalLink } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { REPORT_VERSION } from '../lib/syncStore';
+import { pennylaneCompanyUrl } from '../lib/pennylaneLink';
 import { fmt, fmtNum, cls } from '../lib/format';
 
 const CACHE_KEY = 'mv:dashboard';
@@ -214,6 +215,10 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
                   className="border-b border-slate-100 hover:bg-sky-50/50 cursor-pointer">
                   <td className="px-2.5 py-2 text-left whitespace-nowrap sticky left-0 bg-white z-10 font-medium text-navy">
                     <span className={cls('inline-block w-2 h-2 rounded-full mr-2 align-middle', h.color)} />{company.name}
+                    <a href={pennylaneCompanyUrl(company.id)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+                      title="Ouvrir dans Pennylane" className="ml-2 inline-flex align-middle text-gold hover:brightness-90">
+                      <ExternalLink size={13} />
+                    </a>
                   </td>
                   {pending ? (
                     <td colSpan={dataCols.length} className="px-2.5 py-2 text-gray-300">{progress.running ? 'chargement…' : '—'}</td>

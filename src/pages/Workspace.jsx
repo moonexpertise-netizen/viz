@@ -5,6 +5,7 @@ import { cls } from '../lib/format';
 import Combobox from '../components/Combobox';
 import CommandPalette from '../components/CommandPalette';
 import PortfolioDashboard from '../components/PortfolioDashboard';
+import { pennylaneCompanyUrl } from '../lib/pennylaneLink';
 import { loadSync, saveEntry } from '../lib/syncStore';
 import { putLines } from '../lib/linesStore';
 import { initSyncWorker, swSupported, enqueueSync, getJob, getAllJobs, clearJob } from '../lib/syncJobs';
@@ -27,9 +28,19 @@ const TABS = [
 
 const UI_KEY = 'mv:ui';
 const readUI = () => { try { return JSON.parse(localStorage.getItem(UI_KEY) || '{}'); } catch { return {}; } };
+const today = () => new Date().toISOString().slice(0, 10);
 
-// URL de l'app Pennylane pour ouvrir un dossier (à ajuster si le format diffère)
-const pennylaneUrl = (companyId) => `https://app.pennylane.com/companies/${companyId}`;
+// Drapeaux d'un exercice (en cours / clôturé / sans à-nouveaux)
+function fyFlags(fiscalYears, idx) {
+  const fy = fiscalYears[idx];
+  const t = today();
+  const enCours = !!(fy.start && fy.end && fy.start <= t && t <= fy.end);
+  const cloture = fy.status === 'closed';
+  // à-nouveaux générés seulement quand l'exercice précédent (plus ancien) est clôturé
+  const prev = fiscalYears[idx + 1];
+  const sansANouveaux = !(prev && prev.status === 'closed');
+  return { enCours, cloture, sansANouveaux };
+}
 
 export default function Workspace({ onLogout }) {
   const initialUI = useMemo(() => readUI(), []);
@@ -292,10 +303,10 @@ export default function Workspace({ onLogout }) {
             <Combobox items={companies} value={companyId} onChange={setCompanyId} loading={loading.companies} placeholder="Choisir une société…" />
           </div>
           {companyId && (
-            <a href={pennylaneUrl(companyId)} target="_blank" rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-gray-custom hover:text-navy border border-sage rounded-lg px-3 py-1.5 hover:bg-cream transition shrink-0"
+            <a href={pennylaneCompanyUrl(companyId)} target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-gold hover:brightness-95 rounded-md px-2.5 py-1.5 transition shrink-0 shadow-sm"
               title="Ouvrir ce dossier dans Pennylane">
-              <ExternalLink size={14} /> Ouvrir dans Pennylane
+              <ExternalLink size={13} /> Pennylane
             </a>
           )}
         </div>
@@ -399,9 +410,11 @@ function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedF
         <span className="text-xs font-semibold uppercase tracking-wide text-gray-custom shrink-0">Exercice</span>
         <select value={selectedFyId} onChange={(e) => onSelect(e.target.value)}
           className="border border-sage rounded-lg px-3 py-1.5 text-sm bg-white text-navy font-medium focus:outline-none focus:ring-2 focus:ring-navy">
-          {fiscalYears.map((f) => (
-            <option key={f.id} value={f.id}>{f.label}{synced[f.id] ? '' : ' — à synchroniser'}</option>
-          ))}
+          {fiscalYears.map((f, i) => {
+            const fl = fyFlags(fiscalYears, i);
+            const suffix = fl.enCours ? ' · en cours' : !fl.cloture ? ' · non clôturé' : '';
+            return <option key={f.id} value={f.id}>{f.label}{suffix}{synced[f.id] ? '' : ' — à synchroniser'}</option>;
+          })}
         </select>
         <span className="text-xs text-gray-custom">· {syncedList.length}/{fiscalYears.length} synchronisé{syncedList.length > 1 ? 's' : ''}</span>
         <div className="flex-1" />
@@ -415,17 +428,22 @@ function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedF
       {/* Gestion dépliée */}
       {open && (
         <div className="border-t border-sage/50 divide-y divide-sage/40">
-          {fiscalYears.map((fy) => {
+          {fiscalYears.map((fy, idx) => {
             const entry = synced[fy.id];
             const busy = syncing[fy.id];
             const isSel = String(fy.id) === String(selectedFyId);
+            const fl = fyFlags(fiscalYears, idx);
             return (
               <div key={fy.id} className={cls('flex flex-wrap items-center gap-3 px-4 py-2.5 transition-colors',
+                fl.enCours && 'ring-1 ring-inset ring-navy/30',
                 isSel ? 'bg-emerald-50' : entry ? 'bg-emerald-50/40' : 'hover:bg-cream/60')}>
-                <div className="flex items-center gap-2.5 flex-1 min-w-[200px]">
+                <div className="flex items-center gap-2.5 flex-1 min-w-[200px] flex-wrap">
                   <span className={cls('w-2 h-2 rounded-full shrink-0', entry ? 'bg-accent-green' : 'bg-gray-300')} />
-                  <span className="font-medium text-navy">{fy.label}</span>
+                  <span className="font-semibold text-navy">{fy.label}</span>
                   {fy.start && <span className="text-xs text-gray-custom">{fr(fy.start)} → {fr(fy.end)}</span>}
+                  {fl.enCours && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-navy text-white">Exercice en cours</span>}
+                  {!fl.cloture && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Non clôturé</span>}
+                  {fl.sansANouveaux && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Sans à-nouveaux</span>}
                   {entry && (
                     <span className={cls('text-[11px] font-medium px-2 py-0.5 rounded-full',
                       isSel ? 'bg-accent-green text-white' : 'bg-emerald-100 text-emerald-700')}>{isSel ? 'Affiché' : 'Chargé'}</span>

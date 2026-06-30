@@ -185,6 +185,7 @@ function normalizeFiscalYear(fy) {
     end,
     label: fy.label || (year ? `Exercice ${year}` : 'Exercice'),
     year,
+    status: fy.status || null, // 'closed' | 'frozen' | 'open'
     raw: fy,
   };
 }
