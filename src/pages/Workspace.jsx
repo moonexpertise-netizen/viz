@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronDown, Home as HomeIcon, List, Command } from 'lucide-react';
+import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronDown, Home as HomeIcon, List, Command, ExternalLink } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
 import Combobox from '../components/Combobox';
@@ -26,6 +26,9 @@ const TABS = [
 
 const UI_KEY = 'mv:ui';
 const readUI = () => { try { return JSON.parse(localStorage.getItem(UI_KEY) || '{}'); } catch { return {}; } };
+
+// URL de l'app Pennylane pour ouvrir un dossier (à ajuster si le format diffère)
+const pennylaneUrl = (companyId) => `https://app.pennylane.com/companies/${companyId}`;
 
 export default function Workspace({ onLogout }) {
   const initialUI = useMemo(() => readUI(), []);
@@ -248,6 +251,13 @@ export default function Workspace({ onLogout }) {
           <div className="w-full sm:w-[420px] max-w-full">
             <Combobox items={companies} value={companyId} onChange={setCompanyId} loading={loading.companies} placeholder="Choisir une société…" />
           </div>
+          {companyId && (
+            <a href={pennylaneUrl(companyId)} target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-gray-custom hover:text-navy border border-sage rounded-lg px-3 py-1.5 hover:bg-cream transition shrink-0"
+              title="Ouvrir ce dossier dans Pennylane">
+              <ExternalLink size={14} /> Ouvrir dans Pennylane
+            </a>
+          )}
         </div>
       </div>
 
