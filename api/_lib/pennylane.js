@@ -13,7 +13,13 @@
  * Pagination v2 : ?cursor=...&limit=...  ; reponse { items|..., has_more, next_cursor }
  */
 
+import {
+  MOON_ID, moonEnabled, moonCompany,
+  getFiscalYearsMoon, getTrialBalanceMoon, getLedgerEntryLinesMoon, getLedgerEntriesMoon, getJournalsMoon,
+} from './pennylaneMoon.js';
+
 const BASE = 'https://app.pennylane.com/api/external/firm/v1';
+const isMoon = (id) => String(id) === MOON_ID;
 
 function getToken() {
   const token = process.env.PENNYLANE_FIRM_TOKEN;
@@ -120,21 +126,27 @@ async function plFetchAll(path, { params = {}, max = 100000 } = {}) {
 
 export async function listCompanies() {
   const raw = await plFetchAll('/companies');
-  return raw.map(normalizeCompany);
+  const companies = raw.map(normalizeCompany);
+  // Dossier MOON EXPERTISE (token dédié, API individuelle v2) ajouté en tête.
+  if (moonEnabled() && !companies.some((c) => isMoon(c.id))) companies.unshift(moonCompany());
+  return companies;
 }
 
 export async function getFiscalYears(companyId) {
+  if (isMoon(companyId)) return getFiscalYearsMoon();
   const raw = await plFetchAll(`/companies/${companyId}/fiscal_years`);
   return raw.map(normalizeFiscalYear).sort((a, b) => (b.end || '').localeCompare(a.end || ''));
 }
 
 export async function getTrialBalance(companyId, periodStart, periodEnd, isAuxiliary = false) {
+  if (isMoon(companyId)) return getTrialBalanceMoon(periodStart, periodEnd, isAuxiliary);
   return plFetchAll(`/companies/${companyId}/trial_balance`, {
     params: { period_start: periodStart, period_end: periodEnd, is_auxiliary: isAuxiliary },
   });
 }
 
 export async function getLedgerEntries(companyId, periodStart, periodEnd) {
+  if (isMoon(companyId)) return getLedgerEntriesMoon(periodStart, periodEnd);
   // ledger_entries plafonne la pagination a 100 ; filtrage par date via `filter`
   const filter = JSON.stringify([
     { field: 'date', operator: 'gteq', value: periodStart },
@@ -149,6 +161,7 @@ export async function getLedgerEntries(companyId, periodStart, periodEnd) {
  *  Le filtrage par date passe par le parametre `filter` (syntaxe Pennylane v2),
  *  les params period_start/period_end etant ignores sur cet endpoint. */
 export async function getLedgerEntryLines(companyId, periodStart, periodEnd) {
+  if (isMoon(companyId)) return getLedgerEntryLinesMoon(periodStart, periodEnd);
   const filter = JSON.stringify([
     { field: 'date', operator: 'gteq', value: periodStart },
     { field: 'date', operator: 'lteq', value: periodEnd },
@@ -160,6 +173,7 @@ export async function getLedgerEntryLines(companyId, periodStart, periodEnd) {
 
 /** Journaux (pour recuperer le code, ex 'AN' = a-nouveaux). */
 export async function getJournals(companyId) {
+  if (isMoon(companyId)) return getJournalsMoon();
   const raw = await plFetchAll(`/companies/${companyId}/journals`, { params: { limit: 100 } });
   return raw;
 }
