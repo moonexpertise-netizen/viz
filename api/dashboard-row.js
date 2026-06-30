@@ -20,12 +20,12 @@ export default async function handler(req, res) {
     const today = new Date().toISOString().slice(0, 10);
     // Exercice en cours = celui qui contient aujourd'hui, sinon le plus récent
     const current = usable.find((f) => f.start <= today && today <= f.end) || usable[0];
-    const idx = usable.findIndex((f) => f.id === current.id);
-    const prev = usable[idx + 1] || null;
 
-    const [tb, tbPrev] = await Promise.all([
+    // tb = mouvements de l'exercice ; tbOpen = à-nouveaux (balance au 1er jour) -> tréso d'ouverture
+    // (l'à-nouveau fonctionne même pour un premier exercice, sans N-1)
+    const [tb, tbOpen] = await Promise.all([
       getTrialBalance(cid, current.start, current.end),
-      prev ? getTrialBalance(cid, prev.start, prev.end) : Promise.resolve(null),
+      getTrialBalance(cid, current.start, current.start),
     ]);
 
     const accounts = buildAccounts(tb, []);
@@ -43,23 +43,16 @@ export default async function handler(req, res) {
       .reduce((s, a) => s + (a.soldeN || 0), 0));
     const ratioCpCapital = capital !== 0 ? round2(capitauxPropres / capital) : null;
 
-    // Trésorerie d'ouverture = clôture de l'exercice précédent
-    let openingTreasury = null;
-    if (tbPrev) {
-      openingTreasury = computeDisponibilites(buildAccounts(tbPrev, []));
-    }
+    // Trésorerie d'ouverture = à-nouveaux (disponibilités au 1er jour de l'exercice)
+    const openingTreasury = computeDisponibilites(buildAccounts(tbOpen, []));
 
     // Nombre de mois écoulés sur l'exercice en cours (jusqu'à aujourd'hui, borné à la clôture)
     const end = today < current.end ? today : current.end;
     const monthsElapsed = Math.max(1, monthsBetween(current.start, end));
 
     // Cashburn mensuel moyen (positif = consommation de trésorerie) et runway
-    let cashburn = null;
-    let runway = null;
-    if (openingTreasury !== null) {
-      cashburn = round2((openingTreasury - tresorerie) / monthsElapsed);
-      if (cashburn > 0) runway = round1(tresorerie / cashburn);
-    }
+    const cashburn = round2((openingTreasury - tresorerie) / monthsElapsed);
+    const runway = cashburn > 0 ? round1(tresorerie / cashburn) : null;
 
     res.status(200).json({
       companyId: cid,

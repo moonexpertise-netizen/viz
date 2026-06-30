@@ -5,8 +5,11 @@ import { REPORT_VERSION } from '../lib/syncStore';
 import { fmt, fmtNum, cls } from '../lib/format';
 
 const CACHE_KEY = 'mv:dashboard';
-const loadCache = () => { try { const c = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); return c.version === REPORT_VERSION ? (c.rows || {}) : {}; } catch { return {}; } };
-const saveCache = (rows) => { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ version: REPORT_VERSION, rows, at: new Date().toISOString() })); } catch { /* noop */ } };
+// Version du cache tableau de bord : suit le moteur comptable (REPORT_VERSION)
+// + un suffixe propre au calcul du dashboard, à bumper indépendamment.
+const CACHE_VERSION = `${REPORT_VERSION}-2`;
+const loadCache = () => { try { const c = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); return c.version === CACHE_VERSION ? (c.rows || {}) : {}; } catch { return {}; } };
+const saveCache = (rows) => { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ version: CACHE_VERSION, rows, at: new Date().toISOString() })); } catch { /* noop */ } };
 
 // Statut de santé d'un dossier
 function health(r) {
