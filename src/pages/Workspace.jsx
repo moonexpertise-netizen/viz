@@ -341,8 +341,11 @@ export default function Workspace({ onLogout }) {
         </div>
       </aside>
 
-      {/* Contenu — décalé de la largeur du bandeau fixe */}
-      <div className={cls('min-h-screen flex flex-col transition-[margin] duration-200', collapsed ? 'ml-16' : 'ml-60')}>
+      {/* Contenu — décalé de la largeur du bandeau fixe. [overflow-x:clip]
+          empêche tout débordement horizontal de la page (le tableau large garde
+          son propre scroll interne) sans créer de conteneur de défilement
+          (le topbar reste collant). */}
+      <div className={cls('min-h-screen flex flex-col transition-[margin] duration-200 [overflow-x:clip]', collapsed ? 'ml-16' : 'ml-60')}>
         {/* Topbar — sélecteur société, clair façon CRM */}
         <header className="bg-cream/85 backdrop-blur-md border-b border-sage/70 sticky top-0 z-20">
           <div className="px-5 md:px-6 py-3 flex flex-wrap items-center gap-3 md:gap-4">
