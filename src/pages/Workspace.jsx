@@ -264,27 +264,27 @@ export default function Workspace({ onLogout }) {
 
   return (
     <div className="min-h-screen bg-cream flex flex-col">
-      {/* Header — style MOON CRM : barre claire translucide, fine bordure basse */}
-      <header className="bg-cream/85 backdrop-blur-md border-b border-sage/70">
+      {/* Header — navy #01071B, structure épurée façon MOON CRM */}
+      <header className="bg-navy border-b border-white/[0.06]">
         <div className="mx-auto max-w-[1700px] w-full px-6 h-14 flex items-center gap-3">
           <button onClick={goHome} className="flex items-center gap-2.5 group" title="Retour à l'accueil">
             <img src="/moon-logo.png" alt="MoonViz" className="w-8 h-8 rounded-lg transition-transform group-hover:scale-105" />
-            <span className="text-[17px] font-display text-navy tracking-tight">MoonViz</span>
+            <span className="text-[17px] font-display text-white tracking-tight">MoonViz</span>
           </button>
           <div className="flex-1" />
           {company && (
-            <button onClick={goHome} className="hidden sm:flex items-center gap-1.5 text-sm text-gray-custom hover:text-navy transition rounded-lg hover:bg-white px-2.5 py-1.5">
+            <button onClick={goHome} className="hidden sm:flex items-center gap-1.5 text-sm text-sage hover:text-white transition rounded-lg hover:bg-white/[0.06] px-2.5 py-1.5">
               <HomeIcon size={15} /> Accueil
             </button>
           )}
           <button onClick={() => setPaletteOpen(true)}
-            className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-lg border border-sage bg-white hover:bg-cream hover:border-gray-300 text-gray-custom hover:text-navy text-xs transition-colors min-w-[150px] sm:min-w-[200px]"
+            className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-lg border border-white/[0.10] bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/20 text-sage hover:text-white text-xs transition-colors min-w-[150px] sm:min-w-[200px]"
             title="Recherche & commandes (Ctrl/⌘ + K)">
             <Search size={13} />
             <span className="flex-1 text-left">Rechercher…</span>
-            <kbd className="inline-flex items-center px-1.5 py-0.5 rounded-md border border-sage bg-cream text-[10px] font-medium text-gray-custom">⌘K</kbd>
+            <kbd className="inline-flex items-center px-1.5 py-0.5 rounded-md border border-white/[0.10] bg-white/[0.06] text-[10px] font-medium text-sage">⌘K</kbd>
           </button>
-          <button onClick={onLogout} className="inline-flex items-center gap-1.5 text-sm text-gray-custom hover:text-navy transition rounded-lg hover:bg-white px-2.5 py-1.5">
+          <button onClick={onLogout} className="inline-flex items-center gap-1.5 text-sm text-sage hover:text-white transition rounded-lg hover:bg-white/[0.06] px-2.5 py-1.5">
             <LogOut size={15} /> <span className="hidden sm:inline">Déconnexion</span>
           </button>
         </div>
