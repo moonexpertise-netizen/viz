@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronDown, Home as HomeIcon, List, Command, ExternalLink } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
@@ -7,6 +7,7 @@ import CommandPalette from '../components/CommandPalette';
 import PortfolioDashboard from '../components/PortfolioDashboard';
 import { loadSync, saveEntry } from '../lib/syncStore';
 import { putLines } from '../lib/linesStore';
+import { initSyncWorker, swSupported, enqueueSync, getJob, getAllJobs, clearJob } from '../lib/syncJobs';
 import { mergeMonthly } from '../lib/mergeMonthly';
 import SyntheseView from '../views/SyntheseView';
 import BilanView from '../views/BilanView';
@@ -43,6 +44,33 @@ export default function Workspace({ onLogout }) {
   const [error, setError] = useState('');
   const [paletteOpen, setPaletteOpen] = useState(false);
   const restoreConsumed = useRef(false);
+  const companyIdRef = useRef(companyId);
+  useEffect(() => { companyIdRef.current = companyId; }, [companyId]);
+
+  // Applique un job de synchro terminé : cache localStorage + état si dossier courant
+  const applyJob = useCallback(async (job) => {
+    if (!job || job.status !== 'done') return;
+    const entry = { syncedAt: job.syncedAt, fy: job.fy, report: job.report, monthly: job.monthly };
+    saveEntry(job.companyId, job.fyId, entry);
+    await clearJob(job.id);
+    if (String(job.companyId) === String(companyIdRef.current)) setSynced((s) => ({ ...s, [job.fyId]: entry }));
+    setSyncing((s) => { const n = { ...s }; delete n[job.fyId]; return n; });
+  }, []);
+
+  // Service Worker : synchro persistante (continue même si on recharge / ferme la page)
+  useEffect(() => {
+    let mounted = true;
+    initSyncWorker(async (msg) => {
+      if (!mounted || !msg) return;
+      if (msg.type === 'mv-sync-done') { applyJob(await getJob(msg.jobId)); }
+      else if (msg.type === 'mv-sync-error') {
+        if (String(msg.companyId) === String(companyIdRef.current)) setError(msg.error || 'Échec de synchronisation');
+        setSyncing((s) => { const n = { ...s }; delete n[msg.fyId]; return n; });
+      }
+    });
+    getAllJobs().then((jobs) => (jobs || []).forEach((j) => { if (j.status === 'done') applyJob(j); }));
+    return () => { mounted = false; };
+  }, [applyJob]);
 
   // Raccourci global Ctrl/⌘+K
   useEffect(() => {
@@ -86,6 +114,14 @@ export default function Workspace({ onLogout }) {
     }
     const sync = loadSync(companyId);
     setSynced(sync);
+    // Reprendre l'affichage des synchros en cours (worker) pour ce dossier
+    getAllJobs().then((jobs) => {
+      const active = {};
+      (jobs || []).forEach((j) => {
+        if ((j.status === 'pending' || j.status === 'running') && String(j.companyId) === String(companyId)) active[j.fyId] = true;
+      });
+      if (Object.keys(active).length) setSyncing((s) => ({ ...s, ...active }));
+    });
     (async () => {
       setLoading((l) => ({ ...l, fy: true }));
       setError('');
@@ -128,31 +164,35 @@ export default function Workspace({ onLogout }) {
     if (!fy?.start || !fy?.end) return;
     setSyncing((s) => ({ ...s, [fy.id]: true }));
     setError('');
+    const prev = prevFyOf(fy);
+    const reportParams = { company_id: companyId, period_start: fy.start, period_end: fy.end };
+    if (prev?.start && prev?.end) { reportParams.prev_start = prev.start; reportParams.prev_end = prev.end; }
+    const monthlyParams = { company_id: companyId, period_start: fy.start, period_end: fy.end };
+    const fyMeta = { id: fy.id, label: fy.label, start: fy.start, end: fy.end, year: fy.year };
+
+    // Synchro persistante via Service Worker (continue même page fermée/rechargée)
+    if (swSupported()) {
+      const id = `${companyId}:${fy.id}:${Date.now()}`;
+      const reportUrl = `/api/report?${new URLSearchParams(reportParams)}`;
+      const monthlyUrl = `/api/monthly?${new URLSearchParams(monthlyParams)}`;
+      await enqueueSync({ id, companyId, fyId: fy.id, fy: fyMeta, reportUrl, monthlyUrl });
+      return; // la complétion arrivera par message du worker
+    }
+
+    // Repli (pas de Service Worker) : synchro en page
     try {
-      const prev = prevFyOf(fy);
-      const params = { company_id: companyId, period_start: fy.start, period_end: fy.end };
-      if (prev?.start && prev?.end) { params.prev_start = prev.start; params.prev_end = prev.end; }
-      const [rep, mon] = await Promise.all([
-        dataAPI.report(params),
-        dataAPI.monthly({ company_id: companyId, period_start: fy.start, period_end: fy.end }),
-      ]);
-      // Détail des écritures -> IndexedDB (volumineux) ; agrégats -> localStorage
+      const [rep, mon] = await Promise.all([dataAPI.report(reportParams), dataAPI.monthly(monthlyParams)]);
       const monthlyData = mon.data || {};
       const detailLines = monthlyData.lines || [];
-      const monthlyAggregates = { ...monthlyData, lines: undefined };
-      const entry = {
-        syncedAt: new Date().toISOString(),
-        fy: { id: fy.id, label: fy.label, start: fy.start, end: fy.end, year: fy.year },
-        report: rep.data,
-        monthly: monthlyAggregates,
-      };
+      const monthly = { ...monthlyData, lines: undefined };
+      const entry = { syncedAt: new Date().toISOString(), fy: fyMeta, report: rep.data, monthly };
       saveEntry(companyId, fy.id, entry);
       if (detailLines.length) await putLines(companyId, fy.id, detailLines);
       setSynced((s) => ({ ...s, [fy.id]: entry }));
     } catch (err) {
       setError(describe(err));
     } finally {
-      setSyncing((s) => ({ ...s, [fy.id]: false }));
+      setSyncing((s) => { const n = { ...s }; delete n[fy.id]; return n; });
     }
   };
 
