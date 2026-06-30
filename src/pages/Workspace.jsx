@@ -93,9 +93,12 @@ export default function Workspace({ onLogout }) {
         if (isRestore && fys.some((f) => String(f.id) === String(initialUI.fyId))) {
           setFyId(String(initialUI.fyId));
         } else {
-          // Par defaut : dernier exercice deja synchronise, sinon le plus recent
+          // Par defaut : EXERCICE FISCAL EN COURS (celui qui contient aujourd'hui),
+          // sinon un exercice deja synchronise, sinon le plus recent.
+          const today = new Date().toISOString().slice(0, 10);
+          const currentFy = fys.find((f) => f.start && f.end && f.start <= today && today <= f.end);
           const firstSynced = fys.find((f) => sync[f.id]);
-          setFyId(String((firstSynced || fys[0])?.id || ''));
+          setFyId(String((currentFy || firstSynced || fys[0])?.id || ''));
         }
       } catch (err) {
         setFiscalYears([]);
@@ -344,14 +347,12 @@ function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedF
       {/* Barre compacte (repliée) */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
         <span className="text-xs font-semibold uppercase tracking-wide text-gray-custom shrink-0">Exercice</span>
-        {syncedList.length > 0 ? (
-          <select value={selectedFyId} onChange={(e) => onSelect(e.target.value)}
-            className="border border-sage rounded-lg px-3 py-1.5 text-sm bg-white text-navy font-medium focus:outline-none focus:ring-2 focus:ring-navy">
-            {syncedList.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
-          </select>
-        ) : (
-          <span className="text-sm text-gray-custom">Aucun exercice synchronisé</span>
-        )}
+        <select value={selectedFyId} onChange={(e) => onSelect(e.target.value)}
+          className="border border-sage rounded-lg px-3 py-1.5 text-sm bg-white text-navy font-medium focus:outline-none focus:ring-2 focus:ring-navy">
+          {fiscalYears.map((f) => (
+            <option key={f.id} value={f.id}>{f.label}{synced[f.id] ? '' : ' — à synchroniser'}</option>
+          ))}
+        </select>
         <span className="text-xs text-gray-custom">· {syncedList.length}/{fiscalYears.length} synchronisé{syncedList.length > 1 ? 's' : ''}</span>
         <div className="flex-1" />
         <button onClick={() => setOpen((o) => !o)}
