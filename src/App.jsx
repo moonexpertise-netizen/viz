@@ -1,17 +1,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import { authAPI } from './services/api';
 import Login from './pages/Login';
+import ResetPassword from './pages/ResetPassword';
 import Workspace from './pages/Workspace';
 
 export default function App() {
   const [authed, setAuthed] = useState(null); // null = inconnu, false, true
-  const [sso, setSso] = useState({ enabled: false, domain: null });
+  const [sso, setSso] = useState({ enabled: false, domain: null, resetEnabled: false });
+  const isReset = typeof window !== 'undefined' && window.location.pathname === '/reset';
 
   const refresh = useCallback(async () => {
     try {
       const { data } = await authAPI.session();
       setAuthed(Boolean(data.authenticated));
-      setSso({ enabled: Boolean(data.sso), domain: data.domain });
+      setSso({ enabled: Boolean(data.sso), domain: data.domain, resetEnabled: Boolean(data.resetEnabled) });
     } catch {
       setAuthed(false);
     }
@@ -28,6 +30,8 @@ export default function App() {
     try { await authAPI.logout(); } catch { /* noop */ }
     setAuthed(false);
   };
+
+  if (isReset) return <ResetPassword />;
 
   if (authed === null) {
     return (

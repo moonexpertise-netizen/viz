@@ -8,11 +8,12 @@ export default function Login({ onSuccess, sso = {} }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState('');
   const domain = sso.domain || DOMAIN;
 
   const submit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError(''); setNotice('');
     const mail = email.trim().toLowerCase();
     if (!mail.endsWith(`@${domain}`)) {
       setError(`Seules les adresses @${domain} peuvent se connecter.`);
@@ -26,6 +27,21 @@ export default function Login({ onSuccess, sso = {} }) {
       setError(err.response?.data?.error || 'Connexion impossible');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const forgot = async () => {
+    setError(''); setNotice('');
+    const mail = email.trim().toLowerCase();
+    if (!mail.endsWith(`@${domain}`)) {
+      setError(`Saisis d'abord ton adresse @${domain} ci-dessus.`);
+      return;
+    }
+    try {
+      await authAPI.forgot(mail);
+      setNotice('Si un compte existe, un lien de réinitialisation vient d\'être envoyé par e-mail.');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Réinitialisation indisponible pour le moment.');
     }
   };
 
@@ -81,11 +97,20 @@ export default function Login({ onSuccess, sso = {} }) {
             {error && (
               <div className="text-sm text-red-200 bg-red-500/15 border border-red-500/25 rounded-xl px-3.5 py-2.5">{error}</div>
             )}
+            {notice && (
+              <div className="text-sm text-emerald-200 bg-emerald-500/15 border border-emerald-500/25 rounded-xl px-3.5 py-2.5">{notice}</div>
+            )}
 
             <button type="submit" disabled={loading}
               className="w-full rounded-xl bg-gold text-white font-semibold px-4 py-3 hover:brightness-95 transition disabled:opacity-60">
               {loading ? 'Connexion…' : 'Se connecter'}
             </button>
+
+            <div className="text-center">
+              <button type="button" onClick={forgot} className="text-xs text-sage hover:text-white underline underline-offset-2 transition">
+                Mot de passe oublié ?
+              </button>
+            </div>
           </form>
 
           <p className="text-xs text-sage/70 text-center">
