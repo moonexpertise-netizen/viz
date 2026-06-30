@@ -1,7 +1,7 @@
 import { requireAuth } from './_lib/auth.js';
 import { getFiscalYears, getTrialBalance } from './_lib/pennylane.js';
 import { buildAccounts } from './_lib/normalize.js';
-import { generateFullReport } from './_lib/accountingEngine.js';
+import { generateFullReport, computeDisponibilites } from './_lib/accountingEngine.js';
 
 /**
  * GET /api/dashboard-row?company_id=..
@@ -35,7 +35,8 @@ export default async function handler(req, res) {
     const ebitda = round2(rep.sig.n.ebe);
     const resultat = round2(rep.pl.summary.resultatN);
     const capitauxPropres = round2(rep.bilan.passif.capitauxPropres.soldeN);
-    const tresorerie = round2(rep.bilan.actif.tresorerie.soldeN);
+    // Trésorerie = disponibilités (banques + caisse), hors valeurs à l'encaissement
+    const tresorerie = computeDisponibilites(accounts);
 
     // Capital social = comptes 101 (solde créditeur -> positif)
     const capital = round2(-accounts.filter((a) => a.accountNumber.startsWith('101'))
@@ -45,8 +46,7 @@ export default async function handler(req, res) {
     // Trésorerie d'ouverture = clôture de l'exercice précédent
     let openingTreasury = null;
     if (tbPrev) {
-      const repPrev = generateFullReport(buildAccounts(tbPrev, []));
-      openingTreasury = round2(repPrev.bilan.actif.tresorerie.soldeN);
+      openingTreasury = computeDisponibilites(buildAccounts(tbPrev, []));
     }
 
     // Nombre de mois écoulés sur l'exercice en cours (jusqu'à aujourd'hui, borné à la clôture)

@@ -9,8 +9,8 @@ const ACTIF = [
   ['tresorerie', 'Trésorerie (classe 5)'],
 ];
 const PASSIF = [
-  ['capitauxPropres', 'Capitaux propres (classe 1 + résultat)'],
-  ['dettes', 'Dettes (classe 4)'],
+  ['capitauxPropres', 'Capitaux propres (10-14 + résultat)'],
+  ['dettes', 'Dettes (emprunts 16-18 + classe 4)'],
 ];
 
 const COLUMNS = [

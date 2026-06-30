@@ -12,7 +12,7 @@ const KEY = (companyId) => `mv:sync:${companyId}`;
 // Version du calcul comptable. À incrémenter dès que le moteur change
 // (bilan, SIG, cashflow…) : les caches d'une version antérieure sont alors
 // considérés périmés et l'exercice repasse en « à resynchroniser ».
-export const REPORT_VERSION = 2;
+export const REPORT_VERSION = 3;
 
 export function loadSync(companyId) {
   if (!companyId) return {};

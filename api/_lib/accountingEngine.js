@@ -54,6 +54,19 @@ export const normalizeBalance = (accounts) => {
   return normalized;
 };
 
+/**
+ * Disponibilités (trésorerie réellement disponible) = classe 5
+ * hors 511 (valeurs à l'encaissement / effets / chèques en transit),
+ * 58 (virements internes) et 59 (dépréciations).
+ * Reflète la position bancaire + caisse, pas les valeurs en transit.
+ */
+export const computeDisponibilites = (accounts) => {
+  const excluded = (n) => n.startsWith('511') || n.startsWith('58') || n.startsWith('59');
+  return round2((accounts || [])
+    .filter((a) => a.accountClass === '5' && !excluded(a.accountNumber))
+    .reduce((s, a) => s + (a.soldeN || 0), 0));
+};
+
 /* ───────────────── Bilan ───────────────── */
 
 export const calculateBilan = (normalized) => {
@@ -76,11 +89,17 @@ export const calculateBilan = (normalized) => {
     variationPct: pct(resultatN - resultatN1, resultatN1),
     totalDebit: 0, totalCredit: 0,
   };
-  const capitauxPropresAccounts = [...liabilities.filter((a) => a.number.charAt(0) === '1'), resultatEntry];
+  // ATTENTION : la classe 1 du PCG mélange capitaux propres (10-14) et DETTES financières.
+  //   Capitaux propres : 10 (capital/réserves), 11 (RAN), 12 (résultat), 13 (subv. invest.), 14 (prov. régl.)
+  //   Dettes financières : 15 (provisions), 16 (emprunts), 17 (dettes rattachées), 18 (liaison)
+  const isEquity = (n) => ['10', '11', '12', '13', '14'].includes(n.substring(0, 2));
+  const cp1 = liabilities.filter((a) => a.number.charAt(0) === '1' && isEquity(a.number));
+  const dettesFinancieres = liabilities.filter((a) => a.number.charAt(0) === '1' && !isEquity(a.number));
+  const capitauxPropresAccounts = [...cp1, resultatEntry];
 
   const passifCategories = {
     capitauxPropres: capitauxPropresAccounts,
-    dettes: liabilities.filter((a) => a.number.charAt(0) === '4'),
+    dettes: [...dettesFinancieres, ...liabilities.filter((a) => a.number.charAt(0) === '4')],
   };
 
   const buildCategorySum = (items) => ({
