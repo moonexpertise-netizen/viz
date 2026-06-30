@@ -26,6 +26,7 @@ export const dataAPI = {
   monthly: (params) => api.get('/monthly', { params }),
   entries: (params) => api.get('/entries', { params }),
   cashflowEntries: (params) => api.get('/cashflow-entries', { params }),
+  dashboardRow: (companyId) => api.get('/dashboard-row', { params: { company_id: companyId } }),
 };
 
 export default api;

@@ -4,6 +4,7 @@ import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
 import Combobox from '../components/Combobox';
 import CommandPalette from '../components/CommandPalette';
+import PortfolioDashboard from '../components/PortfolioDashboard';
 import { loadSync, saveEntry } from '../lib/syncStore';
 import { mergeMonthly } from '../lib/mergeMonthly';
 import SyntheseView from '../views/SyntheseView';
@@ -244,7 +245,11 @@ export default function Workspace({ onLogout }) {
       <main className="flex-1 mx-auto max-w-[1700px] w-full px-6 py-6">
         {error && <div className="bg-red-50 border border-red-200 text-accent-red rounded-xl px-4 py-3 mb-4 text-sm">{error}</div>}
 
-        {!companyId && <Home companiesCount={companies.length} />}
+        {!companyId && (
+          companies.length > 0
+            ? <PortfolioDashboard companies={companies} onOpenCompany={setCompanyId} />
+            : <Home companiesCount={companies.length} />
+        )}
 
         {companyId && (
           <>
