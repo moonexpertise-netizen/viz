@@ -267,9 +267,9 @@ export default function Workspace({ onLogout }) {
       {/* Header — navy #01071B, structure épurée façon MOON CRM */}
       <header className="bg-navy border-b border-white/[0.06]">
         <div className="mx-auto max-w-[1700px] w-full px-6 h-14 flex items-center gap-3">
-          <button onClick={goHome} className="flex items-center gap-2.5 group" title="Retour à l'accueil">
-            <img src="/moon-logo.png" alt="MoonViz" className="w-8 h-8 rounded-lg transition-transform group-hover:scale-105" />
-            <span className="text-[17px] font-display text-white tracking-tight">MoonViz</span>
+          <button onClick={goHome} className="flex items-center gap-2 group min-w-0" title="Retour à l'accueil">
+            <img src="/moon-icon.svg" alt="MoonViz" className="h-7 w-7 opacity-95 group-hover:opacity-100 transition-opacity shrink-0" />
+            <span className="font-display text-lg font-semibold tracking-tight text-white/95 group-hover:text-white transition-colors">MoonViz</span>
           </button>
           <div className="flex-1" />
           {company && (
