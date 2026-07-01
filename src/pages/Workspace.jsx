@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
-import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronLeft, ChevronDown, Home as HomeIcon, List, Search, ExternalLink, LayoutGrid, LayoutDashboard, Layers, FileText, Scale, Gauge, Menu, X } from 'lucide-react';
+import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronLeft, ChevronDown, Home as HomeIcon, List, Search, ExternalLink, LayoutGrid, LayoutDashboard, Layers, FileText, Scale, Gauge, Menu, X, Trash2 } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
 import Combobox from '../components/Combobox';
@@ -8,8 +8,8 @@ import PortfolioDashboard from '../components/PortfolioDashboard';
 import ThemeMenu from '../components/ThemeMenu';
 import { pennylaneCompanyUrl } from '../lib/pennylaneLink';
 import { applyTheme, getTheme } from '../lib/theme';
-import { loadSync, saveEntry, pullServer } from '../lib/syncStore';
-import { putLines } from '../lib/linesStore';
+import { loadSync, saveEntry, removeEntry, pullServer } from '../lib/syncStore';
+import { putLines, removeLines } from '../lib/linesStore';
 import { initSyncWorker, swSupported, enqueueSync, getJob, getAllJobs, clearJob } from '../lib/syncJobs';
 import { mergeMonthly } from '../lib/mergeMonthly';
 // Vues chargées à la demande (sortent recharts + le mensuel du bundle initial).
@@ -240,6 +240,16 @@ export default function Workspace({ onLogout }) {
     }
   };
 
+  // Supprime les données synchronisées d'un exercice : cache local + serveur + détail des écritures.
+  const doRemove = async (fy) => {
+    if (!fy) return;
+    if (!window.confirm(`Supprimer les données synchronisées de « ${fy.label} » ?\n(cache local + serveur + détail des écritures)`)) return;
+    removeEntry(companyId, fy.id);
+    await removeLines(companyId, fy.id);
+    setSynced((s) => { const n = { ...s }; delete n[fy.id]; return n; });
+    setSyncErrors((e) => { const n = { ...e }; delete n[fy.id]; return n; });
+  };
+
   const mergedMonthly = useMemo(() => {
     const entries = Object.values(synced);
     if (!entries.length) return null;
@@ -436,6 +446,7 @@ export default function Workspace({ onLogout }) {
                 selectedFyId={fyId}
                 onSelect={setFyId}
                 onSync={doSync}
+                onRemove={doRemove}
                 syncErrors={syncErrors}
               />
 
@@ -490,7 +501,7 @@ function PerExerciseTab({ tab, report, meta }) {
   );
 }
 
-function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedFyId, onSelect, onSync, syncErrors = {} }) {
+function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedFyId, onSelect, onSync, onRemove, syncErrors = {} }) {
   const [open, setOpen] = useState(!anySynced);
   if (loading) return <div className="card-moon p-3 text-sm text-gray-custom">Chargement des exercices…</div>;
   if (!fiscalYears.length) return null;
@@ -557,6 +568,13 @@ function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedF
                     <RefreshCw size={14} className={busy ? 'animate-spin' : ''} />
                     {busy ? 'Synchronisation…' : hasErr ? 'Réessayer' : entry ? 'Mettre à jour' : 'Synchroniser'}
                   </button>
+                  {entry && !busy && onRemove && (
+                    <button onClick={() => onRemove(fy)} title="Supprimer les données de cet exercice"
+                      aria-label="Supprimer les données de cet exercice"
+                      className="inline-flex items-center justify-center rounded-lg text-gray-custom hover:text-accent-red hover:bg-red-50 py-2 px-2.5 transition">
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </div>
                 {hasErr && !busy && (
                   <div className="w-full text-xs text-accent-red flex items-start gap-1.5">

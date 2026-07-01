@@ -3,12 +3,16 @@
  * (store 'lines'). Clé : "<companyId>:<fyId>".
  */
 import { REPORT_VERSION } from './syncStore';
-import { idbGet, idbPut } from './idb';
+import { idbGet, idbPut, idbDelete } from './idb';
 
 const keyOf = (companyId, fyId) => `${companyId}:${fyId}`;
 
 export async function putLines(companyId, fyId, lines) {
   try { await idbPut('lines', { lines, version: REPORT_VERSION }, keyOf(companyId, fyId)); } catch { /* noop */ }
+}
+
+export async function removeLines(companyId, fyId) {
+  try { await idbDelete('lines', keyOf(companyId, fyId)); } catch { /* noop */ }
 }
 
 export async function getLines(companyId, fyId) {
