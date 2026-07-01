@@ -18,6 +18,10 @@ export default function SIGView({ report }) {
     type: l.total ? 'total' : 'line',
     sign: l.negative ? -1 : 1,
     values: { soldeN: l.soldeN, soldeN1: l.soldeN1, variation: l.variation, variationPct: l.variationPct, pctCA: l.pctCA },
+    accounts: (l.accounts || []).map((a) => ({
+      number: a.number, label: a.label,
+      values: { soldeN: a.soldeN, soldeN1: a.soldeN1, variation: a.variation, variationPct: a.variationPct },
+    })),
   }));
 
   return (

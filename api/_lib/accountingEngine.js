@@ -278,11 +278,51 @@ const computeSIGOne = (accounts, field) => {
   };
 };
 
+// Comptes contribuant à chaque solde de gestion (préfixes PCG).
+// flip=true : le solde est calculé en crédit (produits) ou en net (résultats)
+// -> la contribution d'un compte = -solde (débiteur), pour que la somme des
+//    comptes égale la valeur de la ligne et que l'affichage suive le signe de la ligne.
+const SIG_DETAIL = {
+  ventesMarch: { prefixes: ['707'], flip: true },
+  achatsMarch: { prefixes: ['607', '6037'], flip: false },
+  productionExo: { prefixes: ['701', '702', '703', '704', '705', '706', '708', '71', '72'], flip: true },
+  consoTiers: { prefixes: ['601', '602', '6031', '6032', '604', '605', '606', '608', '609', '61', '62'], flip: false },
+  subventions: { prefixes: ['74'], flip: true },
+  impotsTaxes: { prefixes: ['63'], flip: false },
+  chargesPerso: { prefixes: ['64'], flip: false },
+  autresProduits: { prefixes: ['75'], flip: true },
+  dotations: { prefixes: ['681'], flip: false },
+  autresCharges: { prefixes: ['65'], flip: false },
+  resFinancier: { prefixes: ['76', '66'], flip: true },
+  resExceptionnel: { prefixes: ['77', '67'], flip: true },
+  impotsBenefices: { prefixes: ['695', '698', '699'], flip: false },
+};
+
 export const calculateSIG = (accounts) => {
   const n = computeSIGOne(accounts, 'soldeN');
   const n1 = computeSIGOne(accounts, 'soldeN1');
   const baseN = n.ca || n.productionExo || 1;
   const baseN1 = n1.ca || n1.productionExo || 1;
+
+  const detailFor = (key) => {
+    const cfg = SIG_DETAIL[key];
+    if (!cfg) return [];
+    const s = cfg.flip ? -1 : 1;
+    return (accounts || [])
+      .filter((a) => cfg.prefixes.some((p) => String(a.accountNumber).startsWith(p)))
+      .map((a) => {
+        const soldeN = round2(s * (a.soldeN || 0));
+        const soldeN1 = round2(s * (a.soldeN1 || 0));
+        return {
+          number: a.accountNumber, label: a.accountLabel,
+          soldeN, soldeN1,
+          variation: round2(soldeN - soldeN1),
+          variationPct: pct(soldeN - soldeN1, soldeN1),
+        };
+      })
+      .filter((a) => a.soldeN !== 0 || a.soldeN1 !== 0)
+      .sort((a, b) => String(a.number).localeCompare(String(b.number)));
+  };
 
   // Lignes ordonnees facon Finthesis : libelle, valeur N, valeur N-1, % CA N
   const L = (label, key, opts = {}) => ({
@@ -294,6 +334,7 @@ export const calculateSIG = (accounts) => {
     variationPct: pct(n[key] - n1[key], n1[key]),
     pctCA: baseN ? round2((n[key] / baseN) * 100) : null,
     pctCAN1: baseN1 ? round2((n1[key] / baseN1) * 100) : null,
+    accounts: detailFor(key),
     ...opts,
   });
 
