@@ -30,6 +30,9 @@ const catRow = (cat, label) => ({
 });
 
 export default function BilanView({ report }) {
+  if (!report?.bilan?.summary || !report?.bilan?.actif || !report?.bilan?.passif)
+    return <div className="card-moon p-10 text-center text-gray-custom">Données indisponibles pour cet exercice. Resynchronisez-le.</div>;
+
   const b = report.bilan;
   const s = b.summary;
   const equilibre = Math.round((s.totalActifN - s.totalPassifN) * 100) / 100;

@@ -52,7 +52,7 @@ export function SegToggle({ value, onChange, options }) {
     <div className="inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-cream border border-sage/70 text-xs shrink-0">
       {options.map((o) => (
         <button key={o.value} type="button" onClick={() => onChange(o.value)}
-          className={cls('px-2.5 py-1 rounded-md transition',
+          className={cls('px-2.5 py-1 rounded-md transition focus:outline-none focus:ring-2 focus:ring-navy',
             value === o.value ? 'bg-navy text-white font-medium shadow-sm' : 'text-gray-custom hover:text-navy')}>
           {o.label}
         </button>

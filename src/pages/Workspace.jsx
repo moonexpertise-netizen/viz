@@ -57,6 +57,7 @@ export default function Workspace({ onLogout }) {
   const [tab, setTab] = useState(initialUI.tab || 'synthese');
   const [loading, setLoading] = useState({ companies: false, fy: false });
   const [error, setError] = useState('');
+  const [syncErrors, setSyncErrors] = useState({}); // fyId -> message d'échec de synchro
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => { try { return localStorage.getItem('mv:sidebar') === '1'; } catch { return false; } });
   const [theme, setTheme] = useState(getTheme);
@@ -81,9 +82,13 @@ export default function Workspace({ onLogout }) {
   const applyJob = useCallback(async (job) => {
     if (!job || job.status !== 'done') return;
     const entry = { syncedAt: job.syncedAt, fy: job.fy, report: job.report, monthly: job.monthly };
-    saveEntry(job.companyId, job.fyId, entry);
-    await clearJob(job.id);
-    if (String(job.companyId) === String(companyIdRef.current)) setSynced((s) => ({ ...s, [job.fyId]: entry }));
+    const ok = saveEntry(job.companyId, job.fyId, entry);
+    await clearJob(job.id); // toujours nettoyer le job, même si la persistance a échoué
+    if (String(job.companyId) === String(companyIdRef.current)) {
+      setSynced((s) => ({ ...s, [job.fyId]: entry }));
+      setSyncErrors((e) => { const n = { ...e }; delete n[job.fyId]; return n; });
+      if (!ok) setError('Cache local plein : les données restent affichées mais ne seront pas conservées au rechargement.');
+    }
     setSyncing((s) => { const n = { ...s }; delete n[job.fyId]; return n; });
   }, []);
 
@@ -94,7 +99,7 @@ export default function Workspace({ onLogout }) {
       if (!mounted || !msg) return;
       if (msg.type === 'mv-sync-done') { applyJob(await getJob(msg.jobId)); }
       else if (msg.type === 'mv-sync-error') {
-        if (String(msg.companyId) === String(companyIdRef.current)) setError(msg.error || 'Échec de synchronisation');
+        setSyncErrors((e) => ({ ...e, [msg.fyId]: msg.error || 'Échec de synchronisation' }));
         setSyncing((s) => { const n = { ...s }; delete n[msg.fyId]; return n; });
       }
     });
@@ -194,6 +199,7 @@ export default function Workspace({ onLogout }) {
     if (!fy?.start || !fy?.end) return;
     if (syncing[fy.id]) return; // évite les synchros concurrentes (double-clic / palette)
     setSyncing((s) => ({ ...s, [fy.id]: true }));
+    setSyncErrors((e) => { const n = { ...e }; delete n[fy.id]; return n; });
     setError('');
     const prev = prevFyOf(fy);
     const reportParams = { company_id: companyId, period_start: fy.start, period_end: fy.end };
@@ -217,11 +223,12 @@ export default function Workspace({ onLogout }) {
       const detailLines = monthlyData.lines || [];
       const monthly = { ...monthlyData, lines: undefined };
       const entry = { syncedAt: new Date().toISOString(), fy: fyMeta, report: rep.data, monthly };
-      saveEntry(companyId, fy.id, entry);
+      const ok = saveEntry(companyId, fy.id, entry);
       if (detailLines.length) await putLines(companyId, fy.id, detailLines);
       setSynced((s) => ({ ...s, [fy.id]: entry }));
+      if (!ok) setError('Cache local plein : les données restent affichées mais ne seront pas conservées au rechargement.');
     } catch (err) {
-      setError(describe(err));
+      setSyncErrors((e) => ({ ...e, [fy.id]: describe(err) }));
     } finally {
       setSyncing((s) => { const n = { ...s }; delete n[fy.id]; return n; });
     }
@@ -423,6 +430,7 @@ export default function Workspace({ onLogout }) {
                 selectedFyId={fyId}
                 onSelect={setFyId}
                 onSync={doSync}
+                syncErrors={syncErrors}
               />
 
               {anySynced ? (
@@ -476,7 +484,7 @@ function PerExerciseTab({ tab, report, meta }) {
   );
 }
 
-function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedFyId, onSelect, onSync }) {
+function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedFyId, onSelect, onSync, syncErrors = {} }) {
   const [open, setOpen] = useState(!anySynced);
   if (loading) return <div className="card-moon p-3 text-sm text-gray-custom">Chargement des exercices…</div>;
   if (!fiscalYears.length) return null;
@@ -510,6 +518,7 @@ function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedF
           {fiscalYears.map((fy, idx) => {
             const entry = synced[fy.id];
             const busy = syncing[fy.id];
+            const hasErr = !!syncErrors[fy.id];
             const isSel = String(fy.id) === String(selectedFyId);
             const fl = fyFlags(fiscalYears, idx);
             return (
@@ -537,12 +546,17 @@ function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedF
                     </button>
                   )}
                   <button onClick={() => onSync(fy)} disabled={busy || !fy.start}
-                    className={cls('inline-flex items-center gap-2 rounded-lg text-sm py-1.5 px-3 transition disabled:opacity-50',
-                      entry ? 'border border-sage text-navy hover:bg-cream' : 'btn-navy')}>
+                    className={cls('inline-flex items-center gap-2 rounded-lg text-sm py-2 px-3 transition disabled:opacity-50',
+                      hasErr ? 'bg-accent-red text-white hover:brightness-95' : entry ? 'border border-sage text-navy hover:bg-cream' : 'btn-navy')}>
                     <RefreshCw size={14} className={busy ? 'animate-spin' : ''} />
-                    {entry ? 'Mettre à jour' : 'Synchroniser'}
+                    {busy ? 'Synchronisation…' : hasErr ? 'Réessayer' : entry ? 'Mettre à jour' : 'Synchroniser'}
                   </button>
                 </div>
+                {hasErr && !busy && (
+                  <div className="w-full text-xs text-accent-red flex items-start gap-1.5">
+                    <CloudOff size={13} className="shrink-0 mt-0.5" /> <span>Échec de la synchronisation. {syncErrors[fy.id]}</span>
+                  </div>
+                )}
               </div>
             );
           })}

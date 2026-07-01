@@ -128,14 +128,16 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
     return c;
   }, [data]);
 
+  // Recherche « décalée » : le filtrage suit la frappe sans bloquer la saisie (gros portefeuilles).
+  const deferredQuery = useDeferredValue(query);
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = deferredQuery.trim().toLowerCase();
     return sorted.filter(({ company, r }) => {
       if (q && !company.name.toLowerCase().includes(q)) return false;
       if (segment !== 'all' && health(r).key !== segment) return false;
       return true;
     });
-  }, [sorted, query, segment]);
+  }, [sorted, deferredQuery, segment]);
 
   const toggleSort = (key) => setSort((s) => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' ? 'asc' : 'desc' });
   const SEGMENTS = [

@@ -9,8 +9,9 @@ const COLUMNS = [
 ];
 
 export default function SIGView({ report }) {
-  const sig = report.sig;
-  if (!sig) return null;
+  const sig = report?.sig;
+  if (!sig || !sig.lines)
+    return <div className="card-moon p-10 text-center text-gray-custom">Données indisponibles pour cet exercice. Resynchronisez-le.</div>;
 
   const rows = sig.lines.map((l) => ({
     label: l.label,

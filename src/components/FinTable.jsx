@@ -71,7 +71,7 @@ export default function FinTable({ id = 'fin', columns, rows, firstColLabel = 'P
         <tr className={cls(rowCls, hasAccounts && 'cursor-pointer')} onClick={() => hasAccounts && setOpen((o) => !o)}>
           <td className={cls('px-4 py-2 text-left whitespace-nowrap sticky left-0 z-10 text-navy', stickyBg)}>
             {hasAccounts
-              ? <ChevronRight size={13} className={cls('inline mr-1.5 text-slate-400 transition-transform', open && 'rotate-90')} />
+              ? <ChevronRight size={13} className={cls('inline mr-1.5 text-gray-custom transition-transform', open && 'rotate-90')} />
               : <span className="inline-block w-[19px]" />}
             {row.label}
           </td>
@@ -80,7 +80,7 @@ export default function FinTable({ id = 'fin', columns, rows, firstColLabel = 'P
         {open && hasAccounts && row.accounts.map((acc, j) => (
           <tr key={j} className="bg-cream/40 hover:bg-cream border-b border-sage/50 text-[13px]">
             <td className="px-4 py-1.5 pl-10 text-left whitespace-nowrap sticky left-0 bg-white z-10 text-gray-custom">
-              <span className="text-xs text-slate-400 mr-2 tabular-nums">{acc.number}</span>{acc.label}
+              <span className="text-xs text-gray-custom mr-2 tabular-nums">{acc.number}</span>{acc.label}
             </td>
             {renderCells(acc.values, sign, columns, false)}
           </tr>

@@ -9,6 +9,9 @@ import { SeriesTooltip, StatCard, ChartCard } from '../components/ChartBits';
 const growth = (a, b) => (b ? ((a - b) / Math.abs(b)) * 100 : null);
 
 export default function SyntheseView({ report }) {
+  if (!report?.sig || !report?.pl?.summary || !report?.bilan)
+    return <div className="card-moon p-10 text-center text-gray-custom">Données indisponibles pour cet exercice. Resynchronisez-le.</div>;
+
   const C = chartColors();
   const n = report.sig?.n || {};
   const n1 = report.sig?.n1 || {};

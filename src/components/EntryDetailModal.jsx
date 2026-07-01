@@ -168,7 +168,9 @@ export default function EntryDetailModal({ balanceId, clientId, accountNumber, a
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-[950px] max-h-[85vh] flex flex-col mx-4"
+        role="dialog"
+        aria-modal="true"
+        className="bg-white rounded-xl shadow-2xl border border-sage w-full max-w-[950px] max-h-[85vh] flex flex-col mx-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -182,7 +184,7 @@ export default function EntryDetailModal({ balanceId, clientId, accountNumber, a
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-lg leading-none transition"
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-lg leading-none transition focus:outline-none focus:ring-2 focus:ring-navy"
             >
               &times;
             </button>
@@ -190,14 +192,14 @@ export default function EntryDetailModal({ balanceId, clientId, accountNumber, a
         </div>
 
         {/* Search bar */}
-        <div className="px-6 py-3 border-b border-slate-200 bg-slate-50">
+        <div className="px-6 py-3 border-b border-sage bg-cream">
           <div className="relative">
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Rechercher par libelle, reference, journal..."
-              className="w-full pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy bg-white"
+              className="w-full pl-9 pr-4 py-2 text-sm border border-sage rounded-lg focus:outline-none focus:ring-2 focus:ring-navy focus:border-navy bg-white"
             />
             <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -227,7 +229,7 @@ export default function EntryDetailModal({ balanceId, clientId, accountNumber, a
 
           {!loading && !error && entries.length > 0 && (
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-white border-b-2 border-slate-200 text-gray-500 text-xs uppercase tracking-wider z-10">
+              <thead className="sticky top-0 bg-white border-b-2 border-sage text-gray-500 text-xs uppercase tracking-wider z-10">
                 <tr>
                   <SortHeader label="Date" field="date" />
                   <SortHeader label="Libelle" field="label" />
@@ -239,12 +241,12 @@ export default function EntryDetailModal({ balanceId, clientId, accountNumber, a
               </thead>
               <tbody>
                 {entriesWithSolde.map((e, i) => (
-                  <tr key={i} className={`border-b border-slate-100 hover:bg-blue-50/50 transition ${i % 2 === 1 ? 'bg-slate-50/50' : ''}`}>
+                  <tr key={i} className={`border-b border-sage/50 hover:bg-cream transition ${i % 2 === 1 ? 'bg-cream/50' : ''}`}>
                     <td className="py-1.5 px-2 text-gray-600 whitespace-nowrap w-[100px]">{e.date || '-'}</td>
                     <td className="py-1.5 px-2 text-gray-800">
                       {e.pieceUrl ? (
                         <a href={e.pieceUrl} target="_blank" rel="noreferrer"
-                           className="text-navy underline decoration-dotted hover:decoration-solid hover:text-blue-700 inline-flex items-center gap-1"
+                           className="text-navy underline decoration-dotted hover:decoration-solid hover:text-gold inline-flex items-center gap-1"
                            title="Ouvrir la pièce comptable dans Pennylane">
                           {e.label || e.invoiceNumber || 'Pièce'}
                           <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
@@ -257,11 +259,11 @@ export default function EntryDetailModal({ balanceId, clientId, accountNumber, a
                     <td className={`py-1.5 px-2 text-right font-mono tabular-nums ${e.credit > 0 ? '' : 'text-gray-300'}`}>
                       {fmtAmt(e.credit)}
                     </td>
-                    <td className={`py-1.5 px-2 text-right font-mono tabular-nums font-medium ${e.solde < 0 ? 'text-red-600' : 'text-gray-800'}`}>
+                    <td className={`py-1.5 px-2 text-right font-mono tabular-nums font-medium ${e.solde < 0 ? 'text-accent-red' : 'text-gray-800'}`}>
                       {fmtAmt(e.solde)}
                     </td>
                     <td className="py-1.5 px-2 text-center">
-                      <span className="inline-block bg-slate-100 text-gray-600 text-xs font-mono px-2 py-0.5 rounded">
+                      <span className="inline-block bg-cream text-gray-600 text-xs font-mono px-2 py-0.5 rounded">
                         {e.journalCode || '-'}
                       </span>
                     </td>
@@ -273,7 +275,7 @@ export default function EntryDetailModal({ balanceId, clientId, accountNumber, a
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 rounded-b-xl flex items-center justify-between">
+        <div className="px-6 py-3 border-t border-sage bg-cream rounded-b-xl flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-400">{filteredAndSorted.length} ecriture{filteredAndSorted.length !== 1 ? 's' : ''}</span>
             {filteredAndSorted.length > 0 && (
@@ -282,14 +284,14 @@ export default function EntryDetailModal({ balanceId, clientId, accountNumber, a
                   const headers = ['Date', 'Libelle', 'Debit', 'Credit', 'Solde', 'Journal'];
                   const rows = entriesWithSolde.map(e => [e.date || '', e.label || '', e.debit || 0, e.credit || 0, e.solde || 0, e.journalCode || '']);
                   copyToClipboard(headers, rows).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
-                }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition shadow-sm">
+                }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 bg-white border border-sage rounded-lg hover:bg-cream transition shadow-sm focus:outline-none focus:ring-2 focus:ring-navy">
                   {copied ? <><svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Copie</> : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg> Copier</>}
                 </button>
                 <button onClick={() => {
                   const headers = ['Date', 'Libelle', 'Debit', 'Credit', 'Solde', 'Journal'];
                   const rows = entriesWithSolde.map(e => [e.date || '', e.label || '', e.debit || 0, e.credit || 0, e.solde || 0, e.journalCode || '']);
                   downloadCSV(headers, rows, `ecritures_${accountNumber}.csv`);
-                }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition shadow-sm">
+                }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 bg-white border border-sage rounded-lg hover:bg-cream transition shadow-sm focus:outline-none focus:ring-2 focus:ring-navy">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> CSV
                 </button>
               </div>
@@ -299,7 +301,7 @@ export default function EntryDetailModal({ balanceId, clientId, accountNumber, a
             <div className="flex gap-6 text-xs text-gray-500">
               <span>Debit : <span className="font-mono tabular-nums font-medium text-gray-700">{fmtAmt(totalDebit)}</span></span>
               <span>Credit : <span className="font-mono tabular-nums font-medium text-gray-700">{fmtAmt(totalCredit)}</span></span>
-              <span>Solde : <span className={`font-mono tabular-nums font-medium ${totalDebit - totalCredit < 0 ? 'text-red-600' : 'text-gray-700'}`}>{fmtAmt(totalDebit - totalCredit)}</span></span>
+              <span>Solde : <span className={`font-mono tabular-nums font-medium ${totalDebit - totalCredit < 0 ? 'text-accent-red' : 'text-gray-700'}`}>{fmtAmt(totalDebit - totalCredit)}</span></span>
             </div>
           )}
         </div>

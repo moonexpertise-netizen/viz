@@ -26,21 +26,23 @@ export function loadSync(companyId) {
   return out;
 }
 
+/** @returns {boolean} true si le cache a bien été persisté (false = quota plein). */
 export function saveEntry(companyId, fyId, entry) {
   const all = loadSync(companyId);
   all[fyId] = { ...entry, version: REPORT_VERSION };
-  persist(companyId, all);
+  return persist(companyId, all);
 }
 
 export function removeEntry(companyId, fyId) {
   const all = loadSync(companyId);
   delete all[fyId];
-  persist(companyId, all);
+  return persist(companyId, all);
 }
 
 function persist(companyId, all) {
   try {
     localStorage.setItem(KEY(companyId), JSON.stringify(all));
+    return true;
   } catch (e) {
     // Quota dépassé : purger les caches des autres sociétés puis réessayer
     try {
@@ -49,6 +51,7 @@ function persist(companyId, all) {
         if (k && k.startsWith('mv:sync:') && k !== KEY(companyId)) localStorage.removeItem(k);
       }
       localStorage.setItem(KEY(companyId), JSON.stringify(all));
-    } catch { /* on abandonne silencieusement */ }
+      return true;
+    } catch { return false; }
   }
 }

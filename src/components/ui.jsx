@@ -64,3 +64,8 @@ export function CompareTable({ rows, showPctCol, caption }) {
 export function SectionTitle({ children }) {
   return <h3 className="text-lg font-display text-navy mb-3 mt-6 first:mt-0">{children}</h3>;
 }
+
+/** Placeholder de chargement (pulse). À placer par les vues qui l'utilisent. */
+export function Skeleton({ className = '' }) {
+  return <div className={cls('animate-pulse rounded-md bg-cream', className)} />;
+}

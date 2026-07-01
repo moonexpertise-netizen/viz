@@ -52,6 +52,9 @@ function RatioCard({ rkey, r }) {
 }
 
 export default function RatiosView({ report }) {
+  if (!report?.ratios || !report?.bilan?.actif || !report?.bilan?.passif)
+    return <div className="card-moon p-10 text-center text-gray-custom">Données indisponibles pour cet exercice. Resynchronisez-le.</div>;
+
   const ratios = report.ratios || {};
   const n = report.sig?.n || {};
   const bilan = report.bilan;

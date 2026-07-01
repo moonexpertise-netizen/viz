@@ -20,6 +20,7 @@ export function openDb() {
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
+    req.onblocked = () => reject(new Error('idb-blocked')); // un autre onglet garde une ancienne version ouverte
   });
   return dbPromise;
 }

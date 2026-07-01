@@ -52,7 +52,7 @@ export default function Combobox({ items = [], value, onChange, placeholder = 'S
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Rechercher…"
-              className="w-full pl-9 pr-3 py-2 text-sm focus:outline-none"
+              className="w-full pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy rounded-lg"
             />
           </div>
           <ul className="max-h-72 overflow-y-auto py-1">

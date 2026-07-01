@@ -18,6 +18,7 @@ export default function ResetPassword() {
     try {
       await authAPI.reset(token, password);
       setDone(true);
+      try { window.history.replaceState({}, '', '/reset'); } catch { /* noop */ } // retire le token de l'URL/historique
     } catch (err) {
       setError(err.response?.data?.error || 'Échec de la réinitialisation.');
     } finally {

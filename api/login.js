@@ -47,7 +47,9 @@ async function forgot(req, res, body, domain) {
   const email = (body.email || '').trim().toLowerCase();
   if (email.endsWith(`@${domain}`)) {
     try {
-      const link = `https://${req.headers.host}/reset?token=${encodeURIComponent(makeResetToken(email))}`;
+      // Base fixée par APP_URL (évite l'empoisonnement d'en-tête Host) ; repli sur l'hôte.
+      const base = process.env.APP_URL || `https://${req.headers.host}`;
+      const link = `${base}/reset?token=${encodeURIComponent(makeResetToken(email))}`;
       await sendResetEmail(email, link);
     } catch (e) { console.error('forgot:', e?.message || e); }
   }

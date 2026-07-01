@@ -38,6 +38,9 @@ const catRow = (cat, label, sign = 1) => ({
 });
 
 export default function ResultatView({ report }) {
+  if (!report?.pl?.summary || !report?.pl?.produits || !report?.pl?.charges)
+    return <div className="card-moon p-10 text-center text-gray-custom">Données indisponibles pour cet exercice. Resynchronisez-le.</div>;
+
   const pl = report.pl;
   const s = pl.summary;
 
