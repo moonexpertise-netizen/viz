@@ -14,8 +14,10 @@ export default function App() {
       const { data } = await authAPI.session();
       setAuthed(Boolean(data.authenticated));
       setSso({ enabled: Boolean(data.sso), domain: data.domain, resetEnabled: Boolean(data.resetEnabled) });
-    } catch {
-      setAuthed(false);
+    } catch (e) {
+      // 401 => non authentifié ; erreur réseau transitoire => ne pas déconnecter un utilisateur déjà connecté.
+      if (e?.response?.status === 401) setAuthed(false);
+      else setAuthed((a) => (a === null ? false : a));
     }
   }, []);
 
@@ -35,7 +37,7 @@ export default function App() {
 
   if (authed === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-cream text-gray-custom">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-cream text-gray-custom">
         Chargement…
       </div>
     );

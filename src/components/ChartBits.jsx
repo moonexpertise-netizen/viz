@@ -36,7 +36,7 @@ export function StatCard({ label, value, accent, deltaPct, sub }) {
   return (
     <div className="card-moon p-4">
       <p className="text-[11px] font-medium uppercase tracking-wide text-gray-custom">{label}</p>
-      <p className={cls('text-2xl font-bold mt-1.5 tabular-nums',
+      <p className={cls('text-xl sm:text-2xl font-bold mt-1.5 tabular-nums break-words',
         accent === 'neg' ? 'text-accent-red' : accent === 'pos' ? 'text-accent-green' : 'text-navy')}>{value}</p>
       <div className="flex items-center gap-2 mt-1.5 min-h-[18px]">
         {hasDelta && <span className={cls('text-xs font-semibold', up ? 'badge-up' : 'badge-down')}>{up ? '▲' : '▼'} {fmtPct(Math.abs(deltaPct))}</span>}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronLeft, ChevronDown, Home as HomeIcon, List, Search, ExternalLink, LayoutGrid, LayoutDashboard, Layers, FileText, Scale, Gauge, Menu, X } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
@@ -12,12 +12,13 @@ import { loadSync, saveEntry } from '../lib/syncStore';
 import { putLines } from '../lib/linesStore';
 import { initSyncWorker, swSupported, enqueueSync, getJob, getAllJobs, clearJob } from '../lib/syncJobs';
 import { mergeMonthly } from '../lib/mergeMonthly';
-import SyntheseView from '../views/SyntheseView';
-import BilanView from '../views/BilanView';
-import ResultatView from '../views/ResultatView';
-import SIGView from '../views/SIGView';
-import RatiosView from '../views/RatiosView';
-import MonthlyView from '../views/MonthlyView';
+// Vues chargées à la demande (sortent recharts + le mensuel du bundle initial).
+const SyntheseView = lazy(() => import('../views/SyntheseView'));
+const BilanView = lazy(() => import('../views/BilanView'));
+const ResultatView = lazy(() => import('../views/ResultatView'));
+const SIGView = lazy(() => import('../views/SIGView'));
+const RatiosView = lazy(() => import('../views/RatiosView'));
+const MonthlyView = lazy(() => import('../views/MonthlyView'));
 
 const TABS = [
   { key: 'synthese', label: 'Synthèse', Icon: LayoutDashboard },
@@ -37,10 +38,11 @@ function fyFlags(fiscalYears, idx) {
   const fy = fiscalYears[idx];
   const t = today();
   const enCours = !!(fy.start && fy.end && fy.start <= t && t <= fy.end);
-  const cloture = fy.status === 'closed';
-  // à-nouveaux générés seulement quand l'exercice précédent (plus ancien) est clôturé
+  const closedLike = (s) => s === 'closed' || s === 'frozen';
+  const cloture = closedLike(fy.status);
+  // à-nouveaux générés seulement quand l'exercice précédent (plus ancien) est clôturé/gelé
   const prev = fiscalYears[idx + 1];
-  const sansANouveaux = !(prev && prev.status === 'closed');
+  const sansANouveaux = !(prev && closedLike(prev.status));
   return { enCours, cloture, sansANouveaux };
 }
 
@@ -190,6 +192,7 @@ export default function Workspace({ onLogout }) {
 
   const doSync = async (fy) => {
     if (!fy?.start || !fy?.end) return;
+    if (syncing[fy.id]) return; // évite les synchros concurrentes (double-clic / palette)
     setSyncing((s) => ({ ...s, [fy.id]: true }));
     setError('');
     const prev = prevFyOf(fy);
@@ -280,13 +283,13 @@ export default function Workspace({ onLogout }) {
   }, [companyId, companies, fiscalYears, synced, anySynced, selectedFy, fyId]);
 
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="min-h-[100dvh] bg-cream">
       {/* Fond assombri (tiroir mobile) */}
       <div onClick={() => setMobileOpen(false)} aria-hidden
         className={cls('md:hidden fixed inset-0 z-40 bg-black/40 transition-opacity duration-200', mobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')} />
 
       {/* Bandeau latéral — desktop : fixe/repliable ; mobile : tiroir coulissant */}
-      <aside className={cls('fixed left-0 top-0 z-50 h-screen bg-navy text-white flex flex-col transition-[transform,width] duration-200 w-64',
+      <aside className={cls('fixed left-0 top-0 z-50 h-[100dvh] bg-navy text-white flex flex-col transition-[transform,width] duration-200 w-64',
         effCollapsed ? 'md:w-16' : 'md:w-60',
         mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0')}>
         {/* Onglet de repli sur le bord droit (desktop uniquement) */}
@@ -363,7 +366,7 @@ export default function Workspace({ onLogout }) {
           empêche tout débordement horizontal de la page (le tableau large garde
           son propre scroll interne) sans créer de conteneur de défilement
           (le topbar reste collant). */}
-      <div className={cls('min-h-screen flex flex-col transition-[margin] duration-200 [overflow-x:clip] ml-0', effCollapsed ? 'md:ml-16' : 'md:ml-60')}>
+      <div className={cls('min-h-[100dvh] flex flex-col transition-[margin] duration-200 [overflow-x:clip] ml-0', effCollapsed ? 'md:ml-16' : 'md:ml-60')}>
         {/* Topbar — sélecteur société, clair façon CRM. z-40 : au-dessus des
             en-têtes de tableau collants (z-30) pour que la liste déroulante
             société passe par-dessus. */}
@@ -390,7 +393,7 @@ export default function Workspace({ onLogout }) {
           </div>
         </header>
 
-        <main className="flex-1 min-w-0 px-5 md:px-6 py-6">
+        <main className="flex-1 min-w-0 px-3 sm:px-5 md:px-6 py-4 sm:py-6">
           {error && <div className="bg-red-50 border border-red-200 text-accent-red rounded-xl px-4 py-3 mb-4 text-sm">{error}</div>}
 
           {!companyId && (
@@ -403,7 +406,7 @@ export default function Workspace({ onLogout }) {
             <>
               {/* En-tête société */}
               <div className="mb-5">
-                <h2 className="text-2xl font-display text-navy leading-tight">{company?.name}</h2>
+                <h2 className="text-xl sm:text-2xl font-display text-navy leading-tight break-words">{company?.name}</h2>
                 <p className="text-sm text-gray-custom mt-0.5">
                   {company?.registrationNumber ? `SIREN ${company.registrationNumber} · ` : ''}
                   {fiscalYears.length} exercice{fiscalYears.length > 1 ? 's' : ''}
@@ -424,11 +427,13 @@ export default function Workspace({ onLogout }) {
 
               {anySynced ? (
                 <div className="mt-6">
-                  {tab === 'periodic'
-                    ? <div className="-mx-5 md:-mx-6"><MonthlyView companyId={companyId} data={mergedMonthly} /></div>
-                    : active
-                      ? <PerExerciseTab tab={tab} report={active.report.report} meta={reportMeta} />
-                      : <NotSynced fy={selectedFy} syncing={syncing[selectedFy?.id]} onSync={() => doSync(selectedFy)} />}
+                  <Suspense fallback={<div className="card-moon p-10 text-center text-gray-custom">Chargement…</div>}>
+                    {tab === 'periodic'
+                      ? <div className="-mx-3 sm:-mx-5 md:-mx-6"><MonthlyView companyId={companyId} data={mergedMonthly} /></div>
+                      : active?.report?.report
+                        ? <PerExerciseTab tab={tab} report={active.report.report} meta={reportMeta} />
+                        : <NotSynced fy={selectedFy} syncing={syncing[selectedFy?.id]} onSync={() => doSync(selectedFy)} />}
+                  </Suspense>
                 </div>
               ) : (
                 !loading.fy && fiscalYears.length > 0 && (

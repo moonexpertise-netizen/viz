@@ -5,7 +5,7 @@ export function Kpi({ label, value, sub, accent }) {
   return (
     <div className="kpi-card">
       <p className="text-xs uppercase tracking-wide text-gray-custom">{label}</p>
-      <p className={cls('text-2xl font-bold mt-1', accent === 'neg' && 'text-accent-red', accent === 'pos' && 'text-accent-green')}>
+      <p className={cls('text-xl sm:text-2xl font-bold mt-1 tabular-nums break-words', accent === 'neg' && 'text-accent-red', accent === 'pos' && 'text-accent-green')}>
         {value}
       </p>
       {sub != null && <p className="text-xs text-gray-custom mt-1">{sub}</p>}

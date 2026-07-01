@@ -46,7 +46,7 @@ export default function Login({ onSuccess, sso = {} }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-navy px-4 py-10">
+    <div className="min-h-[100dvh] flex items-center justify-center bg-navy px-4 py-10">
       <div className="w-full max-w-md">
         {/* Marque */}
         <div className="flex flex-col items-center mb-8 text-center">

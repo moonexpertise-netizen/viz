@@ -34,7 +34,7 @@ const COLS = [
   { key: 'tresorerie', label: 'Trésorerie', sort: (r) => r?.tresorerie, render: (r) => <Money v={r.tresorerie} signed danger={r.tresorerie < 0} /> },
   { key: 'cashburn', label: 'Cashburn /mois', sort: (r) => (r?.cashburn == null ? -Infinity : r.cashburn), render: (r) => <Cashburn v={r.cashburn} /> },
   { key: 'runway', label: 'Runway (mois)', sort: (r) => (r?.runway == null ? Infinity : r.runway), render: (r) => <Runway v={r.runway} /> },
-  { key: 'santé', label: 'Santé', sort: (r) => health(r).rank, render: (r) => { const h = health(r); return <td className="px-2.5 py-2 text-right"><span className={cls('inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full', h.key === 'red' ? 'bg-red-50 text-accent-red' : h.key === 'orange' ? 'bg-amber-50 text-amber-700' : h.key === 'green' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-gray-custom')}>{h.label}</span></td>; } },
+  { key: 'santé', label: 'Santé', sort: (r) => health(r).rank, render: (r) => { const h = health(r); return <td className="px-2.5 py-2 text-right"><span className={cls('inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full', h.key === 'red' ? 'bg-red-50 text-accent-red' : h.key === 'orange' ? 'bg-amber-50 text-amber-700' : h.key === 'green' ? 'bg-emerald-50 text-emerald-700' : 'bg-cream text-gray-custom')}>{h.label}</span></td>; } },
 ];
 
 const COLCFG_KEY = 'mv:dashcols';
@@ -184,7 +184,7 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
         <div className="ml-auto"><ColumnsMenu cols={COLS} hidden={colCfg.hidden} onToggle={toggleHidden} onReset={resetCols} /></div>
       </div>
 
-      <div className="overflow-auto rounded-xl border border-slate-200 shadow-sm bg-white max-h-[calc(100vh-250px)]">
+      <div className="overflow-auto rounded-xl border border-sage shadow-sm bg-white max-h-[70vh]">
         <table className="text-sm" style={{ minWidth: 'max-content' }}>
           <colgroup>
             {visibleCols.map((c) => <col key={c.key} style={colCfg.widths[c.key] ? { width: `${colCfg.widths[c.key]}px` } : undefined} />)}
@@ -217,7 +217,7 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
               const dataCols = visibleCols.filter((c) => c.key !== 'name');
               return (
                 <tr key={company.id} onClick={() => onOpenCompany(String(company.id))}
-                  className="border-b border-slate-100 hover:bg-sky-50/50 cursor-pointer">
+                  className="border-b border-sage/50 hover:bg-cream cursor-pointer">
                   <td className="px-2.5 py-2 text-left whitespace-nowrap sticky left-0 bg-white z-10 font-medium text-navy">
                     <span className={cls('inline-block w-2 h-2 rounded-full mr-2 align-middle', h.color)} />{company.name}
                     <a href={pennylaneCompanyUrl(company.id)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
@@ -226,7 +226,7 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
                     </a>
                   </td>
                   {pending ? (
-                    <td colSpan={dataCols.length} className="px-2.5 py-2 text-gray-300">{progress.running ? 'chargement…' : '—'}</td>
+                    <td colSpan={dataCols.length} className="px-2.5 py-2 text-gray-custom/60">{progress.running ? 'chargement…' : '—'}</td>
                   ) : r.error || r.empty ? (
                     <td colSpan={dataCols.length} className="px-2.5 py-2 text-gray-custom">{r.error ? <span className="inline-flex items-center gap-1 text-accent-red"><AlertTriangle size={13} /> {r.error}</span> : 'aucun exercice'}</td>
                   ) : (
@@ -287,7 +287,7 @@ function Ratio({ v, danger, warn }) {
 }
 function Cashburn({ v }) {
   // v > 0 = consommation de trésorerie (burn) ; v < 0 = trésorerie générée
-  if (v == null) return <td className="px-2.5 py-2 text-right text-gray-300 whitespace-nowrap">—</td>;
+  if (v == null) return <td className="px-2.5 py-2 text-right text-gray-custom/60 whitespace-nowrap">—</td>;
   const burning = v > 0;
   return (
     <td className={cls('px-2.5 py-2 text-right tabular-nums whitespace-nowrap', burning ? 'text-accent-red' : 'text-emerald-600')}

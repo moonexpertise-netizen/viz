@@ -10,7 +10,7 @@ const sliderThumbCSS = `
     width: 18px; height: 18px;
     border-radius: 50%;
     background: white;
-    border: 3px solid #f97316;
+    border: 3px solid var(--gold);
     cursor: pointer;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
   }
@@ -18,7 +18,7 @@ const sliderThumbCSS = `
     width: 18px; height: 18px;
     border-radius: 50%;
     background: white;
-    border: 3px solid #f97316;
+    border: 3px solid var(--gold);
     cursor: pointer;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
   }
@@ -645,7 +645,7 @@ const DownloadIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
 );
 
-const exportBtnClass = "flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition shadow-sm";
+const exportBtnClass = "flex items-center gap-1.5 px-2.5 py-2 text-xs text-gray-custom bg-white border border-sage rounded-lg hover:bg-cream transition shadow-sm";
 
 // Amount cell component
 function AmountCell({ value, decimals = 0, className = '' }) {
@@ -653,7 +653,7 @@ function AmountCell({ value, decimals = 0, className = '' }) {
   const isZero = value === 0;
   const display = fmt(value, decimals);
   return (
-    <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] ${isNegative ? 'text-slate-800' : ''} ${isZero ? 'text-gray-300' : ''} ${className}`}>
+    <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] ${isNegative ? 'text-accent-red' : ''} ${isZero ? 'text-gray-300' : ''} ${className}`}>
       {display}
     </td>
   );
@@ -662,21 +662,21 @@ function AmountCell({ value, decimals = 0, className = '' }) {
 // Category row (expandable)
 function CategoryRow({ cat, months, expanded, onToggle, onClickMonth, onClickTotal, decimals = 0, catIndex = 0 }) {
   return (
-    <tr className="bg-slate-50 border-l-4 border-l-sky-500 cursor-pointer hover:bg-slate-100/60 transition" onClick={onToggle}>
-      <td className="py-1.5 px-3 font-semibold text-slate-800 sticky left-0 z-10 bg-slate-50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
+    <tr className="bg-cream border-l-4 border-l-gold cursor-pointer hover:bg-cream transition" onClick={onToggle}>
+      <td className="py-1.5 px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
         <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}>
           {cat.accounts.length > 0 ? '\u25B6' : ''}
         </span>
         {cat.label}
       </td>
       {months.map((m) => (
-        <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${(cat.months[m] || 0) < 0 ? 'text-slate-800' : (cat.months[m] || 0) === 0 ? 'text-gray-300' : ''}`}
+        <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-cream cursor-pointer hover:bg-cream transition ${(cat.months[m] || 0) < 0 ? 'text-accent-red' : (cat.months[m] || 0) === 0 ? 'text-gray-300' : ''}`}
           onClick={(e) => { e.stopPropagation(); onClickMonth && onClickMonth(m); }}
         >
           {fmt(cat.months[m], decimals)}
         </td>
       ))}
-      <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${(cat.total || 0) < 0 ? 'text-slate-800' : (cat.total || 0) === 0 ? 'text-gray-300' : ''}`}
+      <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-cream cursor-pointer hover:bg-cream transition ${(cat.total || 0) < 0 ? 'text-accent-red' : (cat.total || 0) === 0 ? 'text-gray-300' : ''}`}
         onClick={(e) => { e.stopPropagation(); onClickTotal && onClickTotal(); }}
       >
         {fmt(cat.total, decimals)}
@@ -688,7 +688,7 @@ function CategoryRow({ cat, months, expanded, onToggle, onClickMonth, onClickTot
 // Account row
 function AccountRow({ account, months, onClickAccount, onClickCell, decimals = 0 }) {
   return (
-    <tr className="bg-white hover:bg-sky-50/30 transition border-b border-slate-100">
+    <tr className="bg-white hover:bg-cream transition border-b border-sage">
       <td className="py-1.5 px-3 pl-12 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap cursor-pointer" onClick={onClickAccount}>
         <span className="text-xs text-gray-400 mr-2">{account.number}</span>
         <span className="text-sm">{account.label}</span>
@@ -696,14 +696,14 @@ function AccountRow({ account, months, onClickAccount, onClickCell, decimals = 0
       {months.map((m) => (
         <td
           key={m}
-          className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 transition ${(account.months[m] || 0) < 0 ? 'text-slate-800' : ''} ${(account.months[m] || 0) === 0 ? 'text-gray-300' : ''}`}
+          className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream transition ${(account.months[m] || 0) < 0 ? 'text-accent-red' : ''} ${(account.months[m] || 0) === 0 ? 'text-gray-300' : ''}`}
           onClick={() => onClickCell(m)}
         >
           {fmt(account.months[m] || 0, decimals)}
         </td>
       ))}
       <td
-        className="py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 transition"
+        className="py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream transition"
         onClick={onClickAccount}
       >
         {fmt(account.total, decimals)}
@@ -715,18 +715,18 @@ function AccountRow({ account, months, onClickAccount, onClickCell, decimals = 0
 // Subtotal row
 function SubtotalRow({ label, totals, months, decimals = 0, onClickMonth, onClickTotal }) {
   return (
-    <tr className="bg-slate-200/70 font-semibold text-slate-800 border-y border-slate-300">
-      <td className="py-1.5 px-3 font-semibold text-slate-800 sticky left-0 z-10 bg-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
+    <tr className="bg-cream font-semibold text-navy border-y border-sage">
+      <td className="py-1.5 px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
         {label}
       </td>
       {months.map((m) => (
-        <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-200/70 ${(totals.months[m] || 0) < 0 ? 'text-slate-800' : (totals.months[m] || 0) === 0 ? 'text-gray-300' : ''} ${onClickMonth ? 'cursor-pointer hover:bg-slate-300/50 transition' : ''}`}
+        <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-cream ${(totals.months[m] || 0) < 0 ? 'text-accent-red' : (totals.months[m] || 0) === 0 ? 'text-gray-300' : ''} ${onClickMonth ? 'cursor-pointer hover:bg-cream transition' : ''}`}
           onClick={() => onClickMonth && onClickMonth(m)}
         >
           {fmt(totals.months[m], decimals)}
         </td>
       ))}
-      <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-200/70 ${(totals.total || 0) < 0 ? 'text-slate-800' : (totals.total || 0) === 0 ? 'text-gray-300' : ''} ${onClickTotal ? 'cursor-pointer hover:bg-slate-300/50 transition' : ''}`}
+      <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-cream ${(totals.total || 0) < 0 ? 'text-accent-red' : (totals.total || 0) === 0 ? 'text-gray-300' : ''} ${onClickTotal ? 'cursor-pointer hover:bg-cream transition' : ''}`}
         onClick={() => onClickTotal && onClickTotal()}
       >
         {fmt(totals.total, decimals)}
@@ -760,21 +760,21 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
     const catAccountNumbers = allAccounts.map(([, a]) => a.originalNumber || a.number || '').filter(Boolean).join(',');
 
     elements.push(
-      <tr key={key} className="bg-slate-50 border-l-4 border-l-sky-500 cursor-pointer hover:bg-slate-100/60 transition" onClick={() => toggle(key)}>
-        <td className="py-1.5 px-3 font-semibold text-slate-800 sticky left-0 z-10 bg-slate-50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: `${12 + depth * 16}px` }}>
+      <tr key={key} className="bg-cream border-l-4 border-l-gold cursor-pointer hover:bg-cream transition" onClick={() => toggle(key)}>
+        <td className="py-1.5 px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: `${12 + depth * 16}px` }}>
           <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
             {(node.children || []).length > 0 ? '\u25B6' : ''}
           </span>
           {node.label}
         </td>
         {months.map((m) => (
-          <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${monthTotals[m] < 0 ? 'text-slate-800' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
+          <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-cream cursor-pointer hover:bg-cream transition ${monthTotals[m] < 0 ? 'text-accent-red' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
             onClick={(e) => { e.stopPropagation(); if (catAccountNumbers) setModal({ number: catAccountNumbers, label: node.label, from: m, to: m }); }}
           >
             {fmt(monthTotals[m], decimals)}
           </td>
         ))}
-        <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-50 cursor-pointer hover:bg-sky-100/50 transition ${total < 0 ? 'text-slate-800' : total === 0 ? 'text-gray-300' : ''}`}
+        <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-cream cursor-pointer hover:bg-cream transition ${total < 0 ? 'text-accent-red' : total === 0 ? 'text-gray-300' : ''}`}
           onClick={(e) => { e.stopPropagation(); if (catAccountNumbers) setModal({ number: catAccountNumbers, label: node.label }); }}
         >
           {fmt(total, decimals)}
@@ -803,21 +803,21 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
     const groupAccountNumbers = groupAccounts.map(a => a.originalNumber || a.number).filter(Boolean).join(',');
 
     elements.push(
-      <tr key={key} className="bg-slate-50/80 border-l-4 border-slate-300 cursor-pointer hover:bg-slate-100/60 transition" onClick={() => toggle(key)}>
-        <td className="py-1.5 px-3 font-medium text-slate-700 sticky left-0 z-10 bg-slate-50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: `${12 + depth * 16}px` }}>
+      <tr key={key} className="bg-cream border-l-4 border-sage cursor-pointer hover:bg-cream transition" onClick={() => toggle(key)}>
+        <td className="py-1.5 px-3 font-medium text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: `${12 + depth * 16}px` }}>
           <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
             {groupAccounts.length > 0 ? '\u25B6' : ''}
           </span>
           {node.label}
         </td>
         {months.map((m) => (
-          <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${monthTotals[m] < 0 ? 'text-slate-800' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
+          <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream transition ${monthTotals[m] < 0 ? 'text-accent-red' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
             onClick={(e) => { e.stopPropagation(); if (groupAccountNumbers) setModal({ number: groupAccountNumbers, label: node.label, from: m, to: m }); }}
           >
             {fmt(monthTotals[m], decimals)}
           </td>
         ))}
-        <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${total < 0 ? 'text-slate-800' : total === 0 ? 'text-gray-300' : ''}`}
+        <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream transition ${total < 0 ? 'text-accent-red' : total === 0 ? 'text-gray-300' : ''}`}
           onClick={(e) => { e.stopPropagation(); if (groupAccountNumbers) setModal({ number: groupAccountNumbers, label: node.label }); }}
         >
           {fmt(total, decimals)}
@@ -829,7 +829,7 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
       groupAccounts.forEach((acc) => {
         const accTotal = months.reduce((s, m) => s + (acc.months?.[m] || 0), 0);
         elements.push(
-          <tr key={`${key}_${acc.number}`} className="bg-white hover:bg-sky-50/30 transition border-b border-slate-100">
+          <tr key={`${key}_${acc.number}`} className="bg-white hover:bg-cream transition border-b border-sage">
             <td className="py-1.5 px-3 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap cursor-pointer" style={{ paddingLeft: `${28 + depth * 16}px` }}
               onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label })}
             >
@@ -839,14 +839,14 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
             {months.map((m) => {
               const val = acc.months?.[m] || 0;
               return (
-                <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 transition ${val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''}`}
+                <td key={m} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream transition ${val < 0 ? 'text-accent-red' : val === 0 ? 'text-gray-300' : ''}`}
                   onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label, from: m, to: m })}
                 >
                   {fmt(val, decimals)}
                 </td>
               );
             })}
-            <td className="py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 transition"
+            <td className="py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream transition"
               onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label })}
             >
               {fmt(accTotal, decimals)}
@@ -885,18 +885,18 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
     const subtotalAccountNumbers = referencedAccounts.map(([k, a]) => a.originalNumber || k).filter(Boolean).join(',');
 
     elements.push(
-      <tr key={`custom_${node.id}`} className="bg-slate-200/70 font-semibold text-slate-800 border-y border-slate-300">
-        <td className="py-1.5 px-3 font-semibold text-slate-800 sticky left-0 z-10 bg-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
+      <tr key={`custom_${node.id}`} className="bg-cream font-semibold text-navy border-y border-sage">
+        <td className="py-1.5 px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
           {node.label}
         </td>
         {months.map((m) => (
-          <td key={m} className={`py-1.5 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-200/70 cursor-pointer hover:bg-slate-300/50 transition ${monthTotals[m] < 0 ? 'text-slate-800' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
+          <td key={m} className={`py-1.5 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-cream cursor-pointer hover:bg-cream transition ${monthTotals[m] < 0 ? 'text-accent-red' : monthTotals[m] === 0 ? 'text-gray-300' : ''}`}
             onClick={() => { if (subtotalAccountNumbers) setModal({ number: subtotalAccountNumbers, label: node.label, from: m, to: m }); }}
           >
             {fmt(monthTotals[m], decimals)}
           </td>
         ))}
-        <td className={`py-1.5 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-200/70 cursor-pointer hover:bg-slate-300/50 transition ${total < 0 ? 'text-slate-800' : total === 0 ? 'text-gray-300' : ''}`}
+        <td className={`py-1.5 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-cream cursor-pointer hover:bg-cream transition ${total < 0 ? 'text-accent-red' : total === 0 ? 'text-gray-300' : ''}`}
           onClick={() => { if (subtotalAccountNumbers) setModal({ number: subtotalAccountNumbers, label: node.label }); }}
         >
           {fmt(total, decimals)}
@@ -916,9 +916,6 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
   const [showEmpty, setShowEmpty] = useState(false);
 
   const accountMonthly = normalizeAccounts(monthly.accountMonthly || {});
-
-  // DEBUG: log months received
-  console.log('[PLTab] months received:', months.length, months[0], '->', months[months.length-1]);
 
   // Build SIG data: for each line, find matching accounts; for each subtotal, compute from formula
   const sigData = useMemo(() => {
@@ -989,48 +986,6 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
       return item;
     });
   }, [accountMonthly, months]);
-
-  // DEBUG
-  const rnetItem = sigData.find(s => s.key === 'rnet');
-  if (rnetItem) console.log('[PLTab] RNET total:', rnetItem.total, 'months keys:', Object.keys(rnetItem.months).length);
-  const caItem = sigData.find(s => s.key === 'ca');
-  const prodItem = sigData.find(s => s.key === 'prod_vendue');
-  const consoItem = sigData.find(s => s.key === 'autres_conso');
-  const margeItem = sigData.find(s => s.key === 'marge');
-  const ebitdaItem = sigData.find(s => s.key === 'ebitda');
-  const isItem = sigData.find(s => s.key === 'impots_benefices');
-  console.log('[PLTab] CA:', caItem?.total, 'ProdVendue:', prodItem?.total, 'Conso:', consoItem?.total, 'Marge:', margeItem?.total, 'EBITDA:', ebitdaItem?.total, 'IS:', isItem?.total);
-
-  // Check: sum all P&L accounts on filtered months
-  let dbgP = 0, dbgC = 0;
-  const missingC = [];
-  for (const [num, acc] of Object.entries(accountMonthly)) {
-    if (num.charAt(0) !== '6' && num.charAt(0) !== '7') continue;
-    let t = 0;
-    months.forEach(m => { t += (acc.months[m] || 0); });
-    if (num.charAt(0) === '7') dbgP += t; else dbgC += t;
-  }
-  console.log('[PLTab] Brut P:', Math.round(dbgP*100)/100, 'C:', Math.round(dbgC*100)/100, 'R:', Math.round((dbgP-dbgC)*100)/100);
-  console.log('[PLTab] Nb comptes accountMonthly:', Object.keys(accountMonthly).length);
-  // Lister les comptes 6 avec leur total sur les mois filtres
-  const chargesList = [];
-  for (const [num, acc] of Object.entries(accountMonthly)) {
-    if (num.charAt(0) !== '6') continue;
-    let t = 0;
-    months.forEach(m => { t += (acc.months[m] || 0); });
-    chargesList.push(num + '=' + Math.round(t*100)/100);
-  }
-  console.log('[PLTab] Charges:', chargesList.join(', '));
-
-  // Check BEFORE normalize
-  let rawP = 0, rawC = 0;
-  for (const [num, acc] of Object.entries(monthly.accountMonthly || {})) {
-    if (num.charAt(0) !== '6' && num.charAt(0) !== '7') continue;
-    let t = 0;
-    months.forEach(m => { t += (acc.months?.[m] || 0); });
-    if (num.charAt(0) === '7') rawP += t; else rawC += t;
-  }
-  console.log('[PLTab] AVANT normalize: P:', Math.round(rawP*100)/100, 'C:', Math.round(rawC*100)/100, 'R:', Math.round((rawP-rawC)*100)/100);
 
   const buildPLExportData = () => {
     const headers = ['Poste', ...months.map(fmtMonth), 'Total'];
@@ -1151,8 +1106,8 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 justify-between mb-3">
+        <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => { const d = buildPLExportData(); copyToClipboard(d.headers, d.rows).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }} className={exportBtnClass}>
             {copied ? <><CheckIcon /> Copie</> : <><CopyIcon /> Copier</>}
           </button>
@@ -1163,15 +1118,15 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
             <DownloadIcon /> HTML
           </button>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setShowEmpty(!showEmpty)} className="text-xs text-gray-500 hover:text-navy flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => setShowEmpty(!showEmpty)} className="px-2.5 py-2 text-xs text-gray-custom hover:text-gold flex items-center gap-1">
             {showEmpty ? 'Masquer lignes vides' : 'Afficher lignes vides'}
           </button>
-          <button onClick={expandAll} className="text-xs text-gray-500 hover:text-navy flex items-center gap-1">
+          <button onClick={expandAll} className="px-2.5 py-2 text-xs text-gray-custom hover:text-gold flex items-center gap-1">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             Tout deplier
           </button>
-          <button onClick={collapseAll} className="text-xs text-gray-500 hover:text-navy flex items-center gap-1">
+          <button onClick={collapseAll} className="px-2.5 py-2 text-xs text-gray-custom hover:text-gold flex items-center gap-1">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
             Tout replier
           </button>
@@ -1180,8 +1135,8 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
       <div className="overflow-x-auto">
         <table className="border-collapse text-sm">
           <thead>
-            <tr className="bg-[#01071B] text-white text-xs">
-              <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-[#01071B] z-20 min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
+            <tr className="bg-navy text-white text-xs">
+              <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-navy z-20 min-w-[160px] sm:min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
                 Poste
               </th>
               {(columns || []).map((col) => (
@@ -1189,7 +1144,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                   {col.label}
                 </th>
               ))}
-              <th className="py-2 px-3 text-right font-semibold whitespace-nowrap min-w-[110px] bg-[#00040f]">
+              <th className="py-2 px-3 text-right font-semibold whitespace-nowrap min-w-[110px] bg-navy">
                 Total
               </th>
             </tr>
@@ -1221,24 +1176,24 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                 }) : [];
 
                 return [
-                  <tr key={key} className={`border-b border-slate-100 ${hasAccounts ? 'cursor-pointer hover:bg-slate-50 transition' : ''}`}
+                  <tr key={key} className={`border-b border-sage ${hasAccounts ? 'cursor-pointer hover:bg-cream transition' : ''}`}
                     onClick={() => hasAccounts && toggle(key)}>
                     <td className="py-1.5 px-3 sticky left-0 z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
                       {hasAccounts && <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 text-xs ${isExpanded ? 'rotate-90' : ''}`}>{'\u25B6'}</span>}
                       {!hasAccounts && <span className="inline-block w-5 mr-1" />}
-                      <span className="text-sm text-slate-700">{item.label}</span>
+                      <span className="text-sm text-navy">{item.label}</span>
                     </td>
                     {cols.map(col => {
                       const val = aggItem?.[col.key] || 0;
                       const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                       return (
-                        <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-50/50 transition ${val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''}`}
+                        <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream transition ${val < 0 ? 'text-accent-red' : val === 0 ? 'text-gray-300' : ''}`}
                           onClick={(e) => { e.stopPropagation(); if (accountNumbers) setModal({ number: accountNumbers, label: item.label, ...fromTo }); }}>
                           {fmt(val, decimals)}
                         </td>
                       );
                     })}
-                    <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-50/50 transition ${itemTotal < 0 ? 'text-slate-800' : itemTotal === 0 ? 'text-gray-300' : ''}`}
+                    <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream transition ${itemTotal < 0 ? 'text-accent-red' : itemTotal === 0 ? 'text-gray-300' : ''}`}
                       onClick={(e) => { e.stopPropagation(); if (accountNumbers) setModal({ number: accountNumbers, label: item.label }); }}>
                       {fmt(itemTotal, decimals)}
                     </td>
@@ -1247,17 +1202,17 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                     const aggAcc = aggregateValues ? aggregateValues(acc.months || {}) : (acc.months || {});
                     const accTotal = cols.reduce((s, c) => s + (aggAcc?.[c.key] || 0), 0);
                     return (
-                      <tr key={`${key}_${acc.number}`} className="bg-slate-50/50 hover:bg-sky-50/30 transition border-b border-slate-100">
+                      <tr key={`${key}_${acc.number}`} className="bg-white hover:bg-cream transition border-b border-sage">
                         <td className="py-1 px-3 pl-12 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap cursor-pointer"
                           onClick={() => setModal({ number: acc.number, label: acc.label })}>
                           <span className="text-xs text-gray-400 mr-2">{acc.number}</span>
-                          <span className="text-xs text-gray-600">{acc.label}</span>
+                          <span className="text-xs text-gray-custom">{acc.label}</span>
                         </td>
                         {cols.map(col => {
                           const val = aggAcc?.[col.key] || 0;
                           const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                           return (
-                            <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''}`}
+                            <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream transition ${val < 0 ? 'text-accent-red' : val === 0 ? 'text-gray-300' : ''}`}
                               onClick={() => setModal({ number: acc.number, label: acc.label, ...fromTo })}>
                               {fmt(val, decimals)}
                             </td>
@@ -1283,10 +1238,10 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                 }) : [];
 
                 return [
-                  <tr key={key} className="bg-slate-100 border-y border-slate-200 cursor-pointer hover:bg-slate-200/50 transition" onClick={() => hasAccounts && toggle(key)}>
-                    <td className="py-2 px-3 font-semibold text-slate-800 sticky left-0 z-10 bg-slate-100 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
+                  <tr key={key} className="bg-cream border-y border-sage cursor-pointer hover:bg-cream transition" onClick={() => hasAccounts && toggle(key)}>
+                    <td className="py-2 px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
                       {hasAccounts && (
-                        <span className={`inline-block w-5 text-center mr-1 text-slate-400 transition-transform duration-200 text-xs ${isExpanded ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+                        <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 text-xs ${isExpanded ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
                       )}
                       {item.label}
                     </td>
@@ -1294,14 +1249,14 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       const val = aggItem?.[col.key] || 0;
                       const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                       return (
-                        <td key={col.key} className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-100 cursor-pointer hover:bg-slate-200/60 transition ${val === 0 ? 'text-gray-300' : 'text-slate-800'}`}
+                        <td key={col.key} className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-cream cursor-pointer hover:bg-cream transition ${val === 0 ? 'text-gray-300' : val < 0 ? 'text-accent-red' : 'text-navy'}`}
                           onClick={(e) => { e.stopPropagation(); if (lineAccounts) setModal({ number: lineAccounts, label: item.label, ...fromTo }); }}
                         >
                           {fmt(val, decimals)}
                         </td>
                       );
                     })}
-                    <td className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-sky-100/70 cursor-pointer hover:bg-sky-200/60 transition ${itemTotal === 0 ? 'text-gray-300' : 'text-slate-800'}`}
+                    <td className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-gold-soft cursor-pointer hover:bg-cream transition ${itemTotal === 0 ? 'text-gray-300' : itemTotal < 0 ? 'text-accent-red' : 'text-navy'}`}
                       onClick={(e) => { e.stopPropagation(); if (lineAccounts) setModal({ number: lineAccounts, label: item.label }); }}
                     >
                       {fmt(itemTotal, decimals)}
@@ -1311,18 +1266,18 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                     const aggAcc = aggregateValues ? aggregateValues(acc.months) : acc.months;
                     const accTotal = cols.reduce((s, c) => s + (aggAcc?.[c.key] || 0), 0);
                     return (
-                      <tr key={`${key}_${acc.number}`} className="bg-sky-50/30 hover:bg-sky-50/60 transition border-b border-sky-100">
+                      <tr key={`${key}_${acc.number}`} className="bg-white hover:bg-cream transition border-b border-sage">
                         <td className="py-1 px-3 pl-12 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap cursor-pointer"
                           onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label })}
                         >
                           <span className="text-xs text-gray-400 mr-2">{acc.number}</span>
-                          <span className="text-xs text-gray-600">{acc.label}</span>
+                          <span className="text-xs text-gray-custom">{acc.label}</span>
                         </td>
                         {cols.map((col) => {
                           const val = aggAcc?.[col.key] || 0;
                           const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                           return (
-                            <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''}`}
+                            <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream transition ${val < 0 ? 'text-accent-red' : val === 0 ? 'text-gray-300' : ''}`}
                               onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label, ...fromTo })}
                             >
                               {fmt(val, decimals)}
@@ -1351,22 +1306,22 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                 const pctTotal = baseTotalVisible !== 0 ? Math.round(refTotalVisible / baseTotalVisible * 1000) / 10 : 0;
 
                 return (
-                  <tr key={item.key} className="border-b border-amber-100 bg-amber-50">
-                    <td className="py-1 px-3 sticky left-0 z-10 bg-amber-50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
+                  <tr key={item.key} className="border-b border-gold-soft bg-gold-soft">
+                    <td className="py-1 px-3 sticky left-0 z-10 bg-gold-soft shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
                       <span className="inline-block w-5 mr-1" />
-                      <span className="text-xs italic text-slate-500">{item.label}</span>
+                      <span className="text-xs italic text-gray-custom">{item.label}</span>
                     </td>
                     {cols.map((col) => {
                       const baseVal = aggBase?.[col.key] || 0;
                       const refVal = aggRef?.[col.key] || 0;
                       const pct = baseVal !== 0 ? Math.round(refVal / baseVal * 1000) / 10 : 0;
                       return (
-                        <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-amber-50 ${pct < 0 ? 'text-slate-600' : pct === 0 ? 'text-gray-300' : 'text-slate-500'}`}>
+                        <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-gold-soft ${pct < 0 ? 'text-accent-red' : pct === 0 ? 'text-gray-300' : 'text-gray-custom'}`}>
                           {pct === 0 ? '-' : `${pct.toFixed(1)}%`}
                         </td>
                       );
                     })}
-                    <td className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-amber-50 ${pctTotal < 0 ? 'text-slate-600' : pctTotal === 0 ? 'text-gray-300' : 'text-slate-500'}`}>
+                    <td className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-gold-soft ${pctTotal < 0 ? 'text-accent-red' : pctTotal === 0 ? 'text-gray-300' : 'text-gray-custom'}`}>
                       {pctTotal === 0 ? '-' : `${pctTotal.toFixed(1)}%`}
                     </td>
                   </tr>
@@ -1376,22 +1331,22 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
               if (item.type === 'subtotal') {
                 const accs = getSubtotalAccounts(item);
                 return (
-                  <tr key={item.key} className="bg-slate-100 border-y border-slate-200">
-                    <td className="py-2 px-3 font-semibold text-slate-800 sticky left-0 z-10 bg-slate-100 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
+                  <tr key={item.key} className="bg-cream border-y border-sage">
+                    <td className="py-2 px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
                       {item.label}
                     </td>
                     {cols.map((col) => {
                       const val = aggItem?.[col.key] || 0;
                       const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                       return (
-                        <td key={col.key} className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-100 cursor-pointer hover:bg-slate-200/60 transition ${val === 0 ? 'text-gray-300' : 'text-slate-800'}`}
+                        <td key={col.key} className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-cream cursor-pointer hover:bg-cream transition ${val === 0 ? 'text-gray-300' : val < 0 ? 'text-accent-red' : 'text-navy'}`}
                           onClick={() => { if (accs) setModal({ number: accs, label: item.label, ...fromTo }); }}
                         >
                           {fmt(val, decimals)}
                         </td>
                       );
                     })}
-                    <td className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-sky-100/70 cursor-pointer hover:bg-sky-200/60 transition ${itemTotal === 0 ? 'text-gray-300' : 'text-slate-800'}`}
+                    <td className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-gold-soft cursor-pointer hover:bg-cream transition ${itemTotal === 0 ? 'text-gray-300' : itemTotal < 0 ? 'text-accent-red' : 'text-navy'}`}
                       onClick={() => { if (accs) setModal({ number: accs, label: item.label }); }}
                     >
                       {fmt(itemTotal, decimals)}
@@ -1406,7 +1361,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
               const lineAccounts = getLineAccounts(item);
               const hasAccounts = item.accounts && item.accounts.length > 0;
               return [
-                <tr key={key} className={`border-b border-slate-100 ${hasAccounts ? 'cursor-pointer hover:bg-slate-50 transition' : ''}`}
+                <tr key={key} className={`border-b border-sage ${hasAccounts ? 'cursor-pointer hover:bg-cream transition' : ''}`}
                   onClick={() => hasAccounts && toggle(key)}
                 >
                   <td className="py-1.5 px-3 sticky left-0 z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
@@ -1414,20 +1369,20 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 text-xs ${isExpanded ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
                     )}
                     {!hasAccounts && <span className="inline-block w-5 mr-1" />}
-                    <span className={`text-sm ${item.sign === 1 ? 'text-slate-700' : 'text-slate-600'}`}>{item.label}</span>
+                    <span className="text-sm text-navy">{item.label}</span>
                   </td>
                   {cols.map((col) => {
                     const val = aggItem?.[col.key] || 0;
                     const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                     return (
-                      <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-50/50 transition ${val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''}`}
+                      <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream transition ${val < 0 ? 'text-accent-red' : val === 0 ? 'text-gray-300' : ''}`}
                         onClick={(e) => { e.stopPropagation(); if (lineAccounts) setModal({ number: lineAccounts, label: item.label, ...fromTo }); }}
                       >
                         {fmt(val, decimals)}
                       </td>
                     );
                   })}
-                  <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] bg-sky-50/70 cursor-pointer hover:bg-sky-100/70 transition ${itemTotal < 0 ? 'text-slate-800' : itemTotal === 0 ? 'text-gray-300' : ''}`}
+                  <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] bg-gold-soft cursor-pointer hover:bg-cream transition ${itemTotal < 0 ? 'text-accent-red' : itemTotal === 0 ? 'text-gray-300' : ''}`}
                     onClick={(e) => { e.stopPropagation(); if (lineAccounts) setModal({ number: lineAccounts, label: item.label }); }}
                   >
                     {fmt(itemTotal, decimals)}
@@ -1441,18 +1396,18 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                   const aggAcc = aggregateValues ? aggregateValues(acc.months) : acc.months;
                   const accTotal = cols.reduce((s, c) => s + (aggAcc?.[c.key] || 0), 0);
                   return (
-                    <tr key={`${key}_${acc.number}`} className="bg-slate-50/50 hover:bg-sky-50/30 transition border-b border-slate-100">
+                    <tr key={`${key}_${acc.number}`} className="bg-white hover:bg-cream transition border-b border-sage">
                       <td className="py-1 px-3 pl-12 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap cursor-pointer"
                         onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label })}
                       >
                         <span className="text-xs text-gray-400 mr-2">{acc.number}</span>
-                        <span className="text-xs text-gray-600">{acc.label}</span>
+                        <span className="text-xs text-gray-custom">{acc.label}</span>
                       </td>
                       {cols.map((col) => {
                         const val = aggAcc?.[col.key] || 0;
                         const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                         return (
-                          <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-sky-100/50 transition ${val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''}`}
+                          <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream transition ${val < 0 ? 'text-accent-red' : val === 0 ? 'text-gray-300' : ''}`}
                             onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label, ...fromTo })}
                           >
                             {fmt(val, decimals)}
@@ -1488,7 +1443,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       </td>
                       {(columns || []).map(col => {
                         const val = aggAcc?.[col.key] || 0;
-                        return <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] ${val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''}`}>{fmt(val, decimals)}</td>;
+                        return <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] ${val < 0 ? 'text-accent-red' : val === 0 ? 'text-gray-300' : ''}`}>{fmt(val, decimals)}</td>;
                       })}
                       <td className="py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px]">{fmt(accTotal, decimals)}</td>
                     </tr>
@@ -1566,16 +1521,16 @@ function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, acc
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-[950px] max-h-[85vh] flex flex-col mx-4" onClick={(e) => e.stopPropagation()}>
-        <div className="bg-navy rounded-t-xl px-6 py-4 flex items-center justify-between">
+      <div className="bg-white rounded-xl shadow-2xl border border-sage w-full max-w-[950px] max-h-[85vh] flex flex-col mx-4" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-navy rounded-t-xl px-4 sm:px-6 py-4 flex items-center justify-between">
           <div>
             <h2 className="font-display text-lg font-semibold text-white">{categoryLabel}</h2>
             <p className="text-sm text-sage">{periodLabel}</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-lg leading-none transition">&times;</button>
         </div>
-        <div className="px-6 py-3 border-b border-slate-200 bg-slate-50">
-          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..." className="w-full pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-navy/30 bg-white" />
+        <div className="px-4 sm:px-6 py-3 border-b border-sage bg-cream">
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..." className="w-full pl-9 pr-4 py-2 text-sm border border-sage rounded-lg focus:outline-none focus:ring-2 focus:ring-navy/30 bg-white" />
         </div>
         <div className="flex-1 overflow-auto">
           {loading ? (
@@ -1583,8 +1538,9 @@ function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, acc
           ) : filtered.length === 0 ? (
             <p className="text-center text-gray-400 py-8">Aucune ecriture</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-white border-b-2 border-slate-200 text-gray-500 text-xs uppercase tracking-wider z-10">
+              <thead className="sticky top-0 bg-white border-b-2 border-sage text-gray-custom text-xs uppercase tracking-wider z-10">
                 <tr>
                   <th className="text-left py-2 px-2 w-[90px]">Date</th>
                   <th className="text-left py-2 px-2">Libelle</th>
@@ -1595,21 +1551,22 @@ function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, acc
               </thead>
               <tbody>
                 {filtered.map((e, i) => (
-                  <tr key={i} className={`border-b border-slate-100 hover:bg-blue-50/50 transition ${i % 2 === 1 ? 'bg-slate-50/50' : ''}`}>
-                    <td className="py-1.5 px-2 text-gray-600 whitespace-nowrap">{e.date}</td>
+                  <tr key={i} className={`border-b border-sage hover:bg-cream transition ${i % 2 === 1 ? 'bg-cream' : ''}`}>
+                    <td className="py-1.5 px-2 text-gray-custom whitespace-nowrap">{e.date}</td>
                     <td className="py-1.5 px-2">{e.label}</td>
-                    <td className="py-1.5 px-2 text-xs text-gray-500">{e.counterpart}</td>
-                    <td className={`py-1.5 px-2 text-right tabular-nums font-medium ${e.amount < 0 ? 'text-slate-800' : 'text-green-700'}`}>{fmtAmt(e.amount)}</td>
-                    <td className="py-1.5 px-2 text-center"><span className="bg-slate-100 text-gray-600 text-xs px-2 py-0.5 rounded">{e.journalCode}</span></td>
+                    <td className="py-1.5 px-2 text-xs text-gray-custom">{e.counterpart}</td>
+                    <td className={`py-1.5 px-2 text-right tabular-nums font-medium ${e.amount < 0 ? 'text-accent-red' : 'text-accent-green'}`}>{fmtAmt(e.amount)}</td>
+                    <td className="py-1.5 px-2 text-center"><span className="bg-cream text-gray-custom text-xs px-2 py-0.5 rounded">{e.journalCode}</span></td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
-        <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 rounded-b-xl flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3 border-t border-sage bg-cream rounded-b-xl flex items-center justify-between">
           <span className="text-xs text-gray-400">{filtered.length} mouvement{filtered.length !== 1 ? 's' : ''}</span>
-          <span className={`tabular-nums text-sm font-semibold ${totalAmount < 0 ? 'text-slate-800' : 'text-green-700'}`}>{fmtAmt(totalAmount)}</span>
+          <span className={`tabular-nums text-sm font-semibold ${totalAmount < 0 ? 'text-accent-red' : 'text-accent-green'}`}>{fmtAmt(totalAmount)}</span>
         </div>
       </div>
     </div>
@@ -1667,19 +1624,19 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
   const FINANCIAL_KEYS = ['emprunts', 'autresFinanciers'];
 
   const getRowColor = (row) => {
-    if (row.isTotal) return { row: 'bg-[#01071B] text-white font-semibold', sticky: 'bg-[#01071B]', text: 'text-white' };
+    if (row.isTotal) return { row: 'bg-navy text-white font-semibold', sticky: 'bg-navy', text: 'text-white' };
     if (row.isSubtotal && row.key === 'fluxOperationnel') return { row: 'bg-emerald-100/80 font-semibold border-y border-emerald-200', sticky: 'bg-emerald-100', text: '' };
     if (row.isSubtotal && row.key === 'fluxFinancier') return { row: 'bg-sky-100/80 font-semibold border-y border-sky-200', sticky: 'bg-sky-100', text: '' };
-    if (row.isTreso) return { row: 'bg-amber-50/80 italic border-y border-amber-200', sticky: 'bg-amber-50', text: '' };
+    if (row.isTreso) return { row: 'bg-gold-soft italic border-y border-sage', sticky: 'bg-gold-soft', text: '' };
     if (OPERATIONAL_KEYS.includes(row.key)) return { row: 'bg-emerald-50/50 border-l-4 border-emerald-400 hover:bg-emerald-50', sticky: 'bg-white', text: '' };
     if (FINANCIAL_KEYS.includes(row.key)) return { row: 'bg-sky-50/50 border-l-4 border-sky-400 hover:bg-sky-50', sticky: 'bg-white', text: '' };
-    return { row: 'bg-slate-50/50 border-l-4 border-slate-300 hover:bg-slate-50', sticky: 'bg-white', text: '' };
+    return { row: 'bg-cream border-l-4 border-sage hover:bg-cream', sticky: 'bg-white', text: '' };
   };
 
   const getAccountRowColor = (parentKey) => {
     if (OPERATIONAL_KEYS.includes(parentKey)) return { row: 'bg-emerald-50/20 border-l-4 border-emerald-400 hover:bg-emerald-50/40', sticky: 'bg-white' };
     if (FINANCIAL_KEYS.includes(parentKey)) return { row: 'bg-sky-50/20 border-l-4 border-sky-400 hover:bg-sky-50/40', sticky: 'bg-white' };
-    return { row: 'bg-slate-50/20 border-l-4 border-slate-300 hover:bg-slate-50/40', sticky: 'bg-white' };
+    return { row: 'bg-cream border-l-4 border-sage hover:bg-cream', sticky: 'bg-white' };
   };
 
   const hasAccounts = (row) => row.accounts && row.accounts.length > 0;
@@ -1701,8 +1658,8 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
 
   return (
     <>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 justify-between mb-3">
+        <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => { const d = buildCFExportData(); copyToClipboard(d.headers, d.rows).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }} className={exportBtnClass}>
             {copied ? <><CheckIcon /> Copie</> : <><CopyIcon /> Copier</>}
           </button>
@@ -1713,15 +1670,15 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
             <DownloadIcon /> HTML
           </button>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setShowEmpty(!showEmpty)} className="text-xs text-gray-500 hover:text-navy flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => setShowEmpty(!showEmpty)} className="px-2.5 py-2 text-xs text-gray-custom hover:text-gold flex items-center gap-1">
             {showEmpty ? 'Masquer lignes vides' : 'Afficher lignes vides'}
           </button>
-          <button onClick={expandAll} className="text-xs text-gray-500 hover:text-navy flex items-center gap-1">
+          <button onClick={expandAll} className="px-2.5 py-2 text-xs text-gray-custom hover:text-gold flex items-center gap-1">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             Tout deplier
           </button>
-          <button onClick={collapseAll} className="text-xs text-gray-500 hover:text-navy flex items-center gap-1">
+          <button onClick={collapseAll} className="px-2.5 py-2 text-xs text-gray-custom hover:text-gold flex items-center gap-1">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
             Tout replier
           </button>
@@ -1730,8 +1687,8 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
       <div className="overflow-x-auto">
         <table className="border-collapse text-sm">
           <thead>
-            <tr className="bg-[#01071B] text-white text-xs">
-              <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-[#01071B] z-20 min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
+            <tr className="bg-navy text-white text-xs">
+              <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-navy z-20 min-w-[160px] sm:min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
                 Poste
               </th>
               {(columns || []).map((col) => (
@@ -1739,7 +1696,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                   {col.label}
                 </th>
               ))}
-              <th className="py-2 px-3 text-right font-semibold whitespace-nowrap min-w-[110px] bg-[#00040f]">
+              <th className="py-2 px-3 text-right font-semibold whitespace-nowrap min-w-[110px] bg-navy">
                 Total
               </th>
             </tr>
@@ -1771,16 +1728,16 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                     const val = cellValue(row, col);
                     return (
                       <td key={col.key} className={`py-1.5 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] ${
-                        row.isTotal ? (val >= 0 ? 'text-green-300' : 'text-red-400')
-                        : val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''
+                        row.isTotal ? (val >= 0 ? 'text-emerald-300' : 'text-red-300')
+                        : val < 0 ? 'text-accent-red' : val === 0 ? 'text-gray-300' : ''
                       }`}>
                         {fmt(val, decimals)}
                       </td>
                     );
                   })}
                   <td className={`py-1.5 px-3 text-right tabular-nums font-semibold whitespace-nowrap min-w-[90px] ${
-                    row.isTotal ? (rowTotal >= 0 ? 'text-green-300' : 'text-red-400')
-                    : rowTotal < 0 ? 'text-slate-800' : rowTotal === 0 ? 'text-gray-300' : ''
+                    row.isTotal ? (rowTotal >= 0 ? 'text-emerald-300' : 'text-red-300')
+                    : rowTotal < 0 ? 'text-accent-red' : rowTotal === 0 ? 'text-gray-300' : ''
                   }`}>
                     {fmt(rowTotal, decimals)}
                   </td>
@@ -1800,7 +1757,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                   const aggAcc = aggregateValues ? aggregateValues(acc.months) : acc.months;
                   const accTotal = cols.reduce((s, c) => s + (aggAcc?.[c.key] || 0), 0);
                   rowElements.push(
-                    <tr key={`${row.key}_${acc.number}`} className={`${accColors.row} transition border-b border-slate-100`}>
+                    <tr key={`${row.key}_${acc.number}`} className={`${accColors.row} transition border-b border-sage`}>
                       <td className={`py-1.5 px-3 pl-12 sticky left-0 ${accColors.sticky} z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap cursor-pointer`}
                         onClick={() => setModal({ category: row.key, label: row.label + ' — ' + acc.label, account: acc.number })}
                       >
@@ -1811,7 +1768,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                         const val = aggAcc?.[col.key] || 0;
                         const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                         return (
-                          <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-blue-100/50 ${val < 0 ? 'text-slate-800' : val === 0 ? 'text-gray-300' : ''}`}
+                          <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream ${val < 0 ? 'text-accent-red' : val === 0 ? 'text-gray-300' : ''}`}
                             onClick={() => setModal({ category: row.key, label: row.label + ' — ' + acc.label, account: acc.number, month: fromTo.from })}
                           >
                             {fmt(val, decimals)}
@@ -1852,7 +1809,6 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
 export default function MonthlyView({ companyId, data, loading = false }) {
   const clientId = companyId;
   const balanceId = undefined;
-  const navigate = () => {};
   const error = null;
 
   // Détail des écritures (drill-down instantané) chargé depuis IndexedDB
@@ -2026,45 +1982,26 @@ export default function MonthlyView({ companyId, data, loading = false }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-cream flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-navy mx-auto mb-4"></div>
-          <p className="font-display text-navy text-lg">Chargement...</p>
-        </div>
+      <div className="card-moon p-10 text-center text-gray-custom">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-navy mx-auto mb-4"></div>
+        <p className="font-display text-navy text-lg">Chargement...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-cream flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-500 text-lg mb-4">{error}</p>
-          <button onClick={() => navigate(isClientMode ? '/dashboard' : `/analyse/${balanceId}`)} className="px-4 py-2 bg-navy text-white rounded-lg">
-            Retour
-          </button>
-        </div>
+      <div className="card-moon p-10 text-center text-gray-custom">
+        <p className="text-accent-red text-lg">{error}</p>
       </div>
     );
   }
 
   if (!hasMonthly && !hasCashflow) {
     return (
-      <div className="min-h-screen bg-cream">
-        <header className="bg-navy text-white">
-          <div className="max-w-full mx-auto px-6 py-6">
-            <button onClick={() => navigate(isClientMode ? '/dashboard' : `/analyse/${balanceId}`)} className="text-sage hover:text-white text-sm mb-3 block transition">
-              &larr; Retour
-            </button>
-            <h1 className="font-display text-3xl font-light tracking-wide text-white">Analyse mensuelle</h1>
-          </div>
-        </header>
-        <div className="max-w-full mx-auto px-6 py-12">
-          <div className="card-moon p-12 text-center">
-            <p className="text-gray-500 text-lg">Donnees mensuelles non disponibles</p>
-            <p className="text-gray-400 text-sm mt-2">Cette fonctionnalite necessite un import FEC avec des ecritures datees.</p>
-          </div>
-        </div>
+      <div className="card-moon p-10 text-center text-gray-custom">
+        <p className="text-navy text-lg">Donnees mensuelles non disponibles</p>
+        <p className="text-gray-custom text-sm mt-2">Cette fonctionnalite necessite un import FEC avec des ecritures datees.</p>
       </div>
     );
   }
@@ -2089,19 +2026,19 @@ export default function MonthlyView({ companyId, data, loading = false }) {
       <style dangerouslySetInnerHTML={{ __html: sliderThumbCSS }} />
 
       {/* Tabs + toolbar bar */}
-      <nav className="bg-white border-b border-slate-200 rounded-t-lg">
-        <div className="max-w-full mx-auto px-6">
-          <div className="flex items-center justify-between py-2">
+      <nav className="bg-white border-b border-sage rounded-t-lg">
+        <div className="max-w-full mx-auto px-3 sm:px-6">
+          <div className="flex flex-wrap items-center gap-2 justify-between py-2">
             {/* Tab pills */}
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full transition ${
+                  className={`px-4 py-2 text-sm font-medium rounded-full transition ${
                     activeTab === tab.id
                       ? 'bg-navy text-white'
-                      : 'text-gray-500 hover:bg-slate-100 hover:text-navy'
+                      : 'text-gray-custom hover:bg-cream hover:text-navy'
                   }`}
                 >
                   {tab.label}
@@ -2110,20 +2047,20 @@ export default function MonthlyView({ companyId, data, loading = false }) {
             </div>
 
             {/* Decimal toggle + granularity */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               {/* Granularity toggle */}
-              <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+              <div className="flex items-center gap-1 bg-cream rounded-lg p-0.5">
                 {[{ k: 'M', l: 'Mois' }, { k: 'T', l: 'Trim.' }, { k: 'S', l: 'Sem.' }, { k: 'A', l: 'An' }, { k: 'E', l: 'Exo' }].map(g => (
                   <button key={g.k} onClick={() => setGranularity(g.k)}
-                    className={`px-2 py-1 text-xs rounded transition ${granularity === g.k ? 'bg-navy text-white font-medium' : 'text-gray-500 hover:text-navy'}`}
+                    className={`px-2.5 py-2 text-xs rounded transition ${granularity === g.k ? 'bg-navy text-white font-medium' : 'text-gray-custom hover:text-navy'}`}
                   >{g.l}</button>
                 ))}
               </div>
               {/* Format toggle */}
-              <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+              <div className="flex items-center gap-1 bg-cream rounded-lg p-0.5">
                 {[{ k: '0', l: '€' }, { k: '2', l: '0,00' }, { k: 'k', l: 'k€' }].map(f => (
                   <button key={f.k} onClick={() => setDecimals(f.k)}
-                    className={`px-2 py-1 text-xs rounded transition ${decimals === f.k ? 'bg-navy text-white font-medium' : 'text-gray-500 hover:text-navy'}`}
+                    className={`px-2.5 py-2 text-xs rounded transition ${decimals === f.k ? 'bg-navy text-white font-medium' : 'text-gray-custom hover:text-navy'}`}
                   >{f.l}</button>
                 ))}
               </div>
@@ -2145,13 +2082,13 @@ export default function MonthlyView({ companyId, data, loading = false }) {
         });
 
         return (
-          <div className="bg-white border-b border-slate-100 px-6 py-4">
+          <div className="bg-white border-b border-sage px-3 sm:px-6 py-4">
             <div className="max-w-3xl mx-auto">
               {/* Exercise quick-select buttons */}
               {isClientMode && data?.exercises?.length > 0 && (
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex flex-wrap items-center gap-2 mb-3">
                   <button onClick={() => { setFromMonth(allMonths[0]); setToMonth(allMonths[allMonths.length-1]); }}
-                    className="px-3 py-1 text-xs rounded-full border border-slate-300 text-gray-600 hover:bg-slate-100 hover:border-slate-400 transition">
+                    className="px-2.5 py-2 text-xs rounded-full border border-sage text-gray-custom hover:bg-cream transition">
                     Toutes periodes
                   </button>
                   {data.exercises.map(ex => {
@@ -2160,7 +2097,7 @@ export default function MonthlyView({ companyId, data, loading = false }) {
                     const isActive = fromMonth === start && toMonth === end;
                     return (
                       <button key={ex.id} onClick={() => { if (start && end) { setFromMonth(start); setToMonth(end); } }}
-                        className={`px-3 py-1 text-xs rounded-full border transition ${isActive ? 'bg-navy text-white border-navy' : 'border-slate-300 text-gray-600 hover:bg-slate-100 hover:border-slate-400'}`}>
+                        className={`px-2.5 py-2 text-xs rounded-full border transition ${isActive ? 'bg-navy text-white border-navy' : 'border-sage text-gray-custom hover:bg-cream'}`}>
                         Exercice {ex.fiscal_year}
                       </button>
                     );
@@ -2172,19 +2109,19 @@ export default function MonthlyView({ companyId, data, loading = false }) {
                 <select value={fromMonth} onChange={e => {
                   const v = e.target.value;
                   if (v > toMonth) { setFromMonth(toMonth); setToMonth(v); } else { setFromMonth(v); }
-                }} className="text-xs font-medium text-gray-600 bg-slate-100 px-2 py-1 rounded border border-slate-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-orange-400">
+                }} className="text-xs font-medium text-gray-custom bg-cream px-2.5 py-2 rounded border border-sage cursor-pointer focus:outline-none focus:ring-1 focus:ring-gold">
                   {allMonths.map(m => <option key={m} value={m}>{formatMonthLabel(m)}</option>)}
                 </select>
                 <select value={toMonth} onChange={e => {
                   const v = e.target.value;
                   if (v < fromMonth) { setToMonth(fromMonth); setFromMonth(v); } else { setToMonth(v); }
-                }} className="text-xs font-medium text-gray-600 bg-slate-100 px-2 py-1 rounded border border-slate-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-orange-400">
+                }} className="text-xs font-medium text-gray-custom bg-cream px-2.5 py-2 rounded border border-sage cursor-pointer focus:outline-none focus:ring-1 focus:ring-gold">
                   {allMonths.map(m => <option key={m} value={m}>{formatMonthLabel(m)}</option>)}
                 </select>
               </div>
 
               {/* Visual bar — click on a segment to set range boundary */}
-              <div className="relative h-3 flex items-center rounded-full overflow-hidden bg-slate-200 cursor-pointer"
+              <div className="relative py-2 cursor-pointer"
                 onClick={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const pct = (e.clientX - rect.left) / rect.width;
@@ -2198,13 +2135,15 @@ export default function MonthlyView({ companyId, data, loading = false }) {
                   else { setToMonth(m); if (m < fromMonth) setFromMonth(m); }
                 }}
               >
-                <div
-                  className="absolute h-full bg-orange-400 rounded-full transition-all duration-150"
-                  style={{
-                    left: `${(fromIdx / (allMonths.length - 1)) * 100}%`,
-                    right: `${100 - (toIdx / (allMonths.length - 1)) * 100}%`,
-                  }}
-                />
+                <div className="relative h-4 flex items-center rounded-full overflow-hidden bg-sage">
+                  <div
+                    className="absolute h-full bg-gold rounded-full transition-all duration-150"
+                    style={{
+                      left: `${(fromIdx / (allMonths.length - 1)) * 100}%`,
+                      right: `${100 - (toIdx / (allMonths.length - 1)) * 100}%`,
+                    }}
+                  />
+                </div>
               </div>
 
               {/* Year timeline below */}
@@ -2215,7 +2154,7 @@ export default function MonthlyView({ companyId, data, loading = false }) {
                     className="absolute top-0 flex items-center justify-center"
                     style={{ left: `${startPct}%`, width: `${endPct - startPct}%` }}
                   >
-                    <div className="w-full border-t border-slate-300 relative">
+                    <div className="w-full border-t border-sage relative">
                       <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 bg-white px-2 text-xs text-gray-400">{year}</span>
                     </div>
                   </div>
@@ -2227,8 +2166,8 @@ export default function MonthlyView({ companyId, data, loading = false }) {
       })()}
 
       {/* Content */}
-      <main className="max-w-full mx-auto px-6 py-6">
-        <div className="card-moon p-5">
+      <main className="max-w-full mx-auto px-3 sm:px-6 py-4 sm:py-6">
+        <div className="card-moon p-3 sm:p-5">
           {activeTab === 'pl' && hasMonthly && (
             <PLTab monthly={monthly} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} customTree={customPLData} exercises={data?.exercises || []} cachedLines={cachedLines} />
           )}

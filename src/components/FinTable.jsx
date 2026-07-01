@@ -26,7 +26,7 @@ export default function FinTable({ id = 'fin', columns, rows, firstColLabel = 'P
       <div className="flex justify-end mb-2">
         <ColumnsMenu columns={columns} hidden={hidden} onToggle={toggleCol} />
       </div>
-      <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm bg-white">
+      <div className="overflow-x-auto rounded-xl border border-sage shadow-sm bg-white">
         <table className="w-full min-w-max text-sm">
           <thead>
             <tr className="bg-navy text-white">
@@ -50,8 +50,8 @@ export default function FinTable({ id = 'fin', columns, rows, firstColLabel = 'P
     const [open, setOpen] = useState(false);
     if (row.type === 'section') {
       return (
-        <tr className="bg-slate-50">
-          <td colSpan={columns.length + 1} className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 sticky left-0 bg-slate-50">{row.label}</td>
+        <tr className="bg-cream">
+          <td colSpan={columns.length + 1} className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-custom sticky left-0 bg-cream">{row.label}</td>
         </tr>
       );
     }
@@ -61,11 +61,11 @@ export default function FinTable({ id = 'fin', columns, rows, firstColLabel = 'P
     const sign = row.sign || 1;
     const hasAccounts = row.accounts && row.accounts.length > 0;
     const rowCls = isTot
-      ? 'bg-slate-100 font-semibold border-y border-slate-300'
+      ? 'bg-cream font-semibold border-y border-navy/25'
       : isSub
-        ? 'bg-slate-50 font-medium border-y border-slate-200'
-        : 'border-b border-slate-100 hover:bg-sky-50/40';
-    const stickyBg = isTot ? 'bg-slate-100' : isSub ? 'bg-slate-50' : 'bg-white';
+        ? 'bg-cream font-medium border-y border-sage'
+        : 'border-b border-sage/50 hover:bg-cream';
+    const stickyBg = isTot ? 'bg-cream' : isSub ? 'bg-cream' : 'bg-white';
     return (
       <Fragment>
         <tr className={cls(rowCls, hasAccounts && 'cursor-pointer')} onClick={() => hasAccounts && setOpen((o) => !o)}>
@@ -78,7 +78,7 @@ export default function FinTable({ id = 'fin', columns, rows, firstColLabel = 'P
           {renderCells(row.values, sign, columns, strong)}
         </tr>
         {open && hasAccounts && row.accounts.map((acc, j) => (
-          <tr key={j} className="bg-slate-50/40 hover:bg-sky-50/40 border-b border-slate-100 text-[13px]">
+          <tr key={j} className="bg-cream/40 hover:bg-cream border-b border-sage/50 text-[13px]">
             <td className="px-4 py-1.5 pl-10 text-left whitespace-nowrap sticky left-0 bg-white z-10 text-gray-custom">
               <span className="text-xs text-slate-400 mr-2 tabular-nums">{acc.number}</span>{acc.label}
             </td>
@@ -92,7 +92,7 @@ export default function FinTable({ id = 'fin', columns, rows, firstColLabel = 'P
 
 function renderCells(vals, sign, columns, strong) {
   return columns.map((c) => (
-    <td key={c.key} className={cls('px-3 py-2 text-right whitespace-nowrap', c.tinted && !strong && 'bg-sky-50/60')}>
+    <td key={c.key} className={cls('px-3 py-2 text-right whitespace-nowrap', c.tinted && !strong && 'bg-cream')}>
       {cellContent(c, vals, sign)}
     </td>
   ));
@@ -103,19 +103,19 @@ function cellContent(c, vals, sign) {
   if (c.kind === 'varpct') return signedPct(vals.variationPct, sign);
   if (c.kind === 'pct') {
     const v = vals[c.key];
-    return <span className={cls('tabular-nums text-xs italic', v == null ? 'text-gray-300' : 'text-gray-custom')}>{v == null ? '—' : fmtPct(v)}</span>;
+    return <span className={cls('tabular-nums text-xs', v == null ? 'text-gray-custom/60' : 'text-gray-custom')}>{v == null ? '—' : fmtPct(v)}</span>;
   }
   const val = (vals[c.key] || 0) * sign;
-  return <span className={cls('tabular-nums', val < 0 && 'text-accent-red', val === 0 && 'text-gray-300')}>{val === 0 ? '—' : fmt(val)}</span>;
+  return <span className={cls('tabular-nums', val < 0 && 'text-accent-red', val === 0 && 'text-gray-custom/60')}>{val === 0 ? '—' : fmt(val)}</span>;
 }
 
 function signedMoney(variation, sign) {
-  if (variation == null) return <span className="text-gray-300">—</span>;
+  if (variation == null) return <span className="text-gray-custom/60">—</span>;
   const v = variation * sign;
   return <span className={cls('tabular-nums text-xs', v > 0 && 'text-accent-green', v < 0 && 'text-accent-red', v === 0 && 'text-gray-custom')}>{v > 0 ? '+' : ''}{fmt(v)}</span>;
 }
 function signedPct(pct, sign) {
-  if (pct == null) return <span className="text-gray-300">—</span>;
+  if (pct == null) return <span className="text-gray-custom/60">—</span>;
   const v = pct * sign;
   return <span className={cls('tabular-nums text-xs', v > 0 && 'text-accent-green', v < 0 && 'text-accent-red', v === 0 && 'text-gray-custom')}>{v > 0 ? '+' : ''}{fmtPct(v)}</span>;
 }

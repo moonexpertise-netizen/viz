@@ -38,7 +38,7 @@ function RatioCard({ rkey, r }) {
         <span className={cls('text-[11px] font-semibold px-2 py-0.5 rounded-full border shrink-0', v.pill)}>{v.label}</span>
       </div>
       <p className="text-xs text-gray-custom mt-0.5">{meta.help}</p>
-      <p className="text-[32px] leading-none font-bold text-navy tabular-nums mt-3">{fmtNum(r.ratioN)}<span className="text-lg text-gray-custom">{meta.suffix}</span></p>
+      <p className="text-[26px] sm:text-[32px] leading-none font-bold text-navy tabular-nums mt-3">{fmtNum(r.ratioN)}<span className="text-lg text-gray-custom">{meta.suffix}</span></p>
       <div className="flex items-center justify-between text-xs mt-2.5">
         <span className="text-gray-custom">N-1 : <span className="tabular-nums text-navy">{fmtNum(r.ratioN1)}{meta.suffix}</span></span>
         {Number.isFinite(delta) && delta !== 0 && (
