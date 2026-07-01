@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronLeft, ChevronDown, Home as HomeIcon, List, Search, ExternalLink, LayoutGrid, LayoutDashboard, Layers, FileText, Scale, Gauge } from 'lucide-react';
+import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronLeft, ChevronDown, Home as HomeIcon, List, Search, ExternalLink, LayoutGrid, LayoutDashboard, Layers, FileText, Scale, Gauge, Menu, X } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
 import Combobox from '../components/Combobox';
@@ -58,8 +58,19 @@ export default function Workspace({ onLogout }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => { try { return localStorage.getItem('mv:sidebar') === '1'; } catch { return false; } });
   const [theme, setTheme] = useState(getTheme);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   useEffect(() => { try { localStorage.setItem('mv:sidebar', collapsed ? '1' : '0'); } catch { /* noop */ } }, [collapsed]);
   useEffect(() => { applyTheme(theme); }, [theme]);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const on = () => setIsMobile(mq.matches);
+    on();
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  // Repli en rail : desktop uniquement. Sur mobile, le tiroir s'affiche toujours déployé.
+  const effCollapsed = collapsed && !isMobile;
   const restoreConsumed = useRef(false);
   const companyIdRef = useRef(companyId);
   useEffect(() => { companyIdRef.current = companyId; }, [companyId]);
@@ -270,11 +281,15 @@ export default function Workspace({ onLogout }) {
 
   return (
     <div className="min-h-screen bg-cream">
-      {/* Bandeau latéral — façon MOON CRM, repliable. Fixe : ne bouge jamais
-          même si le contenu défile horizontalement (tableaux larges). */}
-      <aside className={cls('fixed left-0 top-0 z-30 h-screen bg-navy text-white flex flex-col transition-[width] duration-200',
-        collapsed ? 'w-16' : 'w-60')}>
-        {/* Onglet de repli sur le bord droit (façon MOON CRM) */}
+      {/* Fond assombri (tiroir mobile) */}
+      <div onClick={() => setMobileOpen(false)} aria-hidden
+        className={cls('md:hidden fixed inset-0 z-40 bg-black/40 transition-opacity duration-200', mobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')} />
+
+      {/* Bandeau latéral — desktop : fixe/repliable ; mobile : tiroir coulissant */}
+      <aside className={cls('fixed left-0 top-0 z-50 h-screen bg-navy text-white flex flex-col transition-[transform,width] duration-200 w-64',
+        effCollapsed ? 'md:w-16' : 'md:w-60',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0')}>
+        {/* Onglet de repli sur le bord droit (desktop uniquement) */}
         <button type="button" onClick={() => setCollapsed((c) => !c)}
           aria-label={collapsed ? 'Déployer le menu' : 'Réduire le menu'}
           title={collapsed ? 'Déployer le menu' : 'Réduire le menu'}
@@ -285,21 +300,25 @@ export default function Workspace({ onLogout }) {
           </span>
         </button>
 
-        {/* Marque */}
-        <div className={cls('h-14 flex items-center border-b border-white/[0.08] shrink-0', collapsed ? 'justify-center px-2' : 'px-4')}>
-          <button onClick={goHome} className="flex items-center gap-2 group min-w-0" title="Retour au tableau de bord">
+        {/* Marque + fermeture (mobile) */}
+        <div className={cls('h-14 flex items-center border-b border-white/[0.08] shrink-0', effCollapsed ? 'justify-center px-2' : 'px-4')}>
+          <button onClick={() => { goHome(); setMobileOpen(false); }} className="flex items-center gap-2 group min-w-0" title="Retour au tableau de bord">
             <img src="/moon-icon.svg" alt="MoonViz" className="h-7 w-7 opacity-95 group-hover:opacity-100 transition-opacity shrink-0" />
-            {!collapsed && <span className="font-display text-lg font-semibold tracking-tight text-white/95 group-hover:text-white transition-colors truncate">MoonViz</span>}
+            {!effCollapsed && <span className="font-display text-lg font-semibold tracking-tight text-white/95 group-hover:text-white transition-colors truncate">MoonViz</span>}
+          </button>
+          <button onClick={() => setMobileOpen(false)} aria-label="Fermer le menu"
+            className="md:hidden ml-auto inline-flex items-center justify-center w-9 h-9 rounded-lg text-sage hover:text-white hover:bg-white/[0.06] transition">
+            <X size={18} />
           </button>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 space-y-0.5">
-          <SideItem icon={<LayoutGrid size={17} />} label="Tableau de bord" active={!companyId} onClick={goHome} collapsed={collapsed} />
+          <SideItem icon={<LayoutGrid size={17} />} label="Tableau de bord" active={!companyId} onClick={() => { goHome(); setMobileOpen(false); }} collapsed={effCollapsed} />
 
           {company && (
             <div className="pt-4">
-              {!collapsed ? (
+              {!effCollapsed ? (
                 <div className="px-3 pb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-sage/70">
                   <Building2 size={12} className="shrink-0" />
                   <span className="truncate">{company.name}</span>
@@ -310,10 +329,10 @@ export default function Workspace({ onLogout }) {
               {anySynced ? (
                 TABS.map((t) => (
                   <SideItem key={t.key} icon={<t.Icon size={17} />} label={t.label}
-                    active={tab === t.key} onClick={() => setTab(t.key)} collapsed={collapsed} />
+                    active={tab === t.key} onClick={() => { setTab(t.key); setMobileOpen(false); }} collapsed={effCollapsed} />
                 ))
               ) : (
-                !collapsed && <div className="px-3 py-2 text-xs text-sage/60 leading-snug">Synchronisez un exercice pour démarrer l'analyse.</div>
+                !effCollapsed && <div className="px-3 py-2 text-xs text-sage/60 leading-snug">Synchronisez un exercice pour démarrer l'analyse.</div>
               )}
             </div>
           )}
@@ -321,21 +340,21 @@ export default function Workspace({ onLogout }) {
 
         {/* Bas : recherche / thème / déconnexion */}
         <div className="border-t border-white/[0.08] p-2 space-y-1 shrink-0">
-          <button onClick={() => setPaletteOpen(true)}
+          <button onClick={() => { setPaletteOpen(true); setMobileOpen(false); }}
             className={cls('w-full inline-flex items-center gap-2 rounded-lg border border-white/[0.10] bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/20 text-sage hover:text-white text-xs transition-colors',
-              collapsed ? 'justify-center py-2' : 'pl-3 pr-1.5 py-2')}
+              effCollapsed ? 'justify-center py-2' : 'pl-3 pr-1.5 py-2')}
             title="Recherche & commandes (Ctrl/⌘ + K)">
             <Search size={14} className="shrink-0" />
-            {!collapsed && <>
+            {!effCollapsed && <>
               <span className="flex-1 text-left">Rechercher…</span>
               <kbd className="inline-flex items-center px-1.5 py-0.5 rounded-md border border-white/[0.10] bg-white/[0.06] text-[10px] font-medium text-sage">⌘K</kbd>
             </>}
           </button>
-          <ThemeMenu value={theme} onChange={setTheme} collapsed={collapsed} />
+          <ThemeMenu value={theme} onChange={setTheme} collapsed={effCollapsed} />
           <button onClick={onLogout} title="Déconnexion"
             className={cls('w-full inline-flex items-center gap-2 rounded-lg text-sm text-sage hover:text-white hover:bg-white/[0.06] transition',
-              collapsed ? 'justify-center py-2' : 'px-3 py-2')}>
-            <LogOut size={16} className="shrink-0" /> {!collapsed && 'Déconnexion'}
+              effCollapsed ? 'justify-center py-2' : 'px-3 py-2')}>
+            <LogOut size={16} className="shrink-0" /> {!effCollapsed && 'Déconnexion'}
           </button>
         </div>
       </aside>
@@ -344,17 +363,21 @@ export default function Workspace({ onLogout }) {
           empêche tout débordement horizontal de la page (le tableau large garde
           son propre scroll interne) sans créer de conteneur de défilement
           (le topbar reste collant). */}
-      <div className={cls('min-h-screen flex flex-col transition-[margin] duration-200 [overflow-x:clip]', collapsed ? 'ml-16' : 'ml-60')}>
+      <div className={cls('min-h-screen flex flex-col transition-[margin] duration-200 [overflow-x:clip] ml-0', effCollapsed ? 'md:ml-16' : 'md:ml-60')}>
         {/* Topbar — sélecteur société, clair façon CRM. z-40 : au-dessus des
             en-têtes de tableau collants (z-30) pour que la liste déroulante
             société passe par-dessus. */}
         <header className="bg-cream/85 backdrop-blur-md border-b border-sage/70 sticky top-0 z-40">
-          <div className="px-5 md:px-6 py-3 flex flex-wrap items-center gap-3 md:gap-4">
+          <div className="px-4 md:px-6 py-3 flex flex-wrap items-center gap-2.5 md:gap-4">
+            <button onClick={() => setMobileOpen(true)} aria-label="Ouvrir le menu"
+              className="md:hidden inline-flex items-center justify-center w-9 h-9 -ml-1 rounded-lg text-navy hover:bg-white shrink-0">
+              <Menu size={20} />
+            </button>
             <label className="text-xs font-semibold uppercase tracking-wide text-gray-custom flex items-center gap-1.5 shrink-0">
-              <Building2 size={14} /> Société
+              <Building2 size={14} /> <span className="hidden sm:inline">Société</span>
               {!loading.companies && companies.length > 0 && <span className="font-normal normal-case text-gray-custom/80">· {companies.length} dossiers</span>}
             </label>
-            <div className="w-full sm:w-[420px] max-w-full">
+            <div className="flex-1 min-w-[160px] sm:w-[420px] sm:flex-none max-w-full">
               <Combobox items={companies} value={companyId} onChange={setCompanyId} loading={loading.companies} placeholder="Choisir une société…" />
             </div>
             {companyId && (
