@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     const labelMap = {};
     for (const it of [...tb, ...tbAux]) {
       const num = String(it.number ?? it.formatted_number ?? '').trim();
-      if (num && it.label) labelMap[num] = it.label;
+      if (num && it.label) labelMap[num] = String(it.label).toUpperCase();
     }
 
     const { monthlyData, cashFlowEntries, accounts, initialTresorerie } = linesToMonthly(lines, journalCode, labelMap);

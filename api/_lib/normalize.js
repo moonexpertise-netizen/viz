@@ -25,14 +25,14 @@ function indexTrialBalance(items) {
     if (!map[number]) {
       map[number] = {
         accountNumber: number,
-        accountLabel: String(it.label ?? '').trim(),
+        accountLabel: String(it.label ?? '').trim().toUpperCase(),
         totalDebit: 0,
         totalCredit: 0,
       };
     }
     map[number].totalDebit += debit;
     map[number].totalCredit += credit;
-    const lbl = String(it.label ?? '').trim();
+    const lbl = String(it.label ?? '').trim().toUpperCase();
     if (lbl.length > map[number].accountLabel.length) map[number].accountLabel = lbl;
   }
   return map;
