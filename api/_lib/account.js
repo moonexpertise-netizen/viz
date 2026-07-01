@@ -30,6 +30,14 @@ export async function getStoredHash() {
   if (!kvEnabled()) return null;
   try { return await kvCmd(['GET', PW_KEY]); } catch { return null; }
 }
+
+// ── Helpers KV génériques (stockage serveur des exercices synchronisés) ──
+export const kvGet = (key) => kvCmd(['GET', key]);
+export const kvSet = (key, val) => kvCmd(['SET', key, val]);
+export const kvDel = (key) => kvCmd(['DEL', key]);
+export const kvSAdd = (key, member) => kvCmd(['SADD', key, String(member)]);
+export const kvSRem = (key, member) => kvCmd(['SREM', key, String(member)]);
+export const kvSMembers = async (key) => { const r = await kvCmd(['SMEMBERS', key]); return Array.isArray(r) ? r : []; };
 export async function setStoredHash(hash) {
   return kvCmd(['SET', PW_KEY, hash]);
 }

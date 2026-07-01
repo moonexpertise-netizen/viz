@@ -8,7 +8,7 @@ import PortfolioDashboard from '../components/PortfolioDashboard';
 import ThemeMenu from '../components/ThemeMenu';
 import { pennylaneCompanyUrl } from '../lib/pennylaneLink';
 import { applyTheme, getTheme } from '../lib/theme';
-import { loadSync, saveEntry } from '../lib/syncStore';
+import { loadSync, saveEntry, pullServer } from '../lib/syncStore';
 import { putLines } from '../lib/linesStore';
 import { initSyncWorker, swSupported, enqueueSync, getJob, getAllJobs, clearJob } from '../lib/syncJobs';
 import { mergeMonthly } from '../lib/mergeMonthly';
@@ -149,6 +149,12 @@ export default function Workspace({ onLogout }) {
     }
     const sync = loadSync(companyId);
     setSynced(sync);
+    // Compléter avec le stockage serveur (durable / multi-appareils), sans écraser un job récent
+    pullServer(companyId).then((serverMap) => {
+      if (serverMap && String(companyIdRef.current) === String(companyId)) {
+        setSynced((s) => ({ ...serverMap, ...s }));
+      }
+    });
     // Reprendre l'affichage des synchros en cours (worker) pour ce dossier
     getAllJobs().then((jobs) => {
       const active = {};

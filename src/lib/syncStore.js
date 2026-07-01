@@ -7,6 +7,8 @@
  *   entry = { syncedAt, fy:{id,label,start,end,year}, report, monthly }
  */
 
+import { storeAPI } from '../services/api';
+
 const KEY = (companyId) => `mv:sync:${companyId}`;
 
 // Version du calcul comptable. À incrémenter dès que le moteur change
@@ -26,17 +28,44 @@ export function loadSync(companyId) {
   return out;
 }
 
-/** @returns {boolean} true si le cache a bien été persisté (false = quota plein). */
+/** @returns {boolean} true si le cache local a bien été persisté (false = quota plein).
+ *  Écrit aussi côté serveur (durable, multi-appareils) en tâche de fond. */
 export function saveEntry(companyId, fyId, entry) {
+  const stamped = { ...entry, version: REPORT_VERSION };
   const all = loadSync(companyId);
-  all[fyId] = { ...entry, version: REPORT_VERSION };
-  return persist(companyId, all);
+  all[fyId] = stamped;
+  const ok = persist(companyId, all);
+  // Serveur : best-effort (no-op si Vercel KV non configuré côté serveur)
+  storeAPI.save(companyId, fyId, stamped).catch(() => { /* repli local */ });
+  return ok;
 }
 
 export function removeEntry(companyId, fyId) {
   const all = loadSync(companyId);
   delete all[fyId];
-  return persist(companyId, all);
+  const ok = persist(companyId, all);
+  storeAPI.remove(companyId, fyId).catch(() => { /* noop */ });
+  return ok;
+}
+
+/**
+ * Récupère les exercices stockés côté serveur, les fusionne dans le cache local
+ * et renvoie la carte { [fyId]: entry } (version courante uniquement).
+ * Renvoie null si le stockage serveur n'est pas actif ou en cas d'échec.
+ */
+export async function pullServer(companyId) {
+  if (!companyId) return null;
+  try {
+    const { data } = await storeAPI.list(companyId);
+    if (!data?.enabled) return null;
+    const fromServer = {};
+    for (const [fyId, v] of Object.entries(data.entries || {})) {
+      if (v && v.version === REPORT_VERSION) fromServer[fyId] = v;
+    }
+    const combined = { ...loadSync(companyId), ...fromServer };
+    persist(companyId, combined); // rafraîchit le cache local
+    return combined;
+  } catch { return null; }
 }
 
 function persist(companyId, all) {

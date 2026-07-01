@@ -21,6 +21,13 @@ export const authAPI = {
   reset: (token, password) => api.post('/login', { action: 'reset', token, password }),
 };
 
+// Stockage serveur des exercices synchronisés (durable + multi-appareils)
+export const storeAPI = {
+  list: (companyId) => api.get('/store', { params: { company_id: companyId } }),
+  save: (companyId, fyId, entry) => api.post('/store', { company_id: companyId, fy_id: fyId, entry }),
+  remove: (companyId, fyId) => api.delete('/store', { params: { company_id: companyId, fy_id: fyId } }),
+};
+
 export const dataAPI = {
   companies: () => api.get('/companies'),
   fiscalYears: (companyId) => api.get('/fiscal-years', { params: { company_id: companyId } }),
