@@ -1,4 +1,4 @@
-import { cloneElement, useEffect, useMemo, useRef, useState } from 'react';
+import { cloneElement, useEffect, useMemo, useRef, useState, useDeferredValue } from 'react';
 import { RefreshCw, ArrowUpDown, AlertTriangle, Search, SlidersHorizontal, Check, GripVertical, ExternalLink } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { REPORT_VERSION } from '../lib/syncStore';
