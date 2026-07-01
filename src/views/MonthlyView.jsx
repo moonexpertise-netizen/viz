@@ -662,7 +662,7 @@ function AmountCell({ value, decimals = 0, className = '' }) {
 // Category row (expandable)
 function CategoryRow({ cat, months, expanded, onToggle, onClickMonth, onClickTotal, decimals = 0, catIndex = 0 }) {
   return (
-    <tr className="bg-cream border-l-4 border-l-gold cursor-pointer hover:bg-cream transition" onClick={onToggle}>
+    <tr className="bg-cream border-l-4 border-l-navy/40 cursor-pointer hover:bg-cream transition" onClick={onToggle}>
       <td className="py-1.5 px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
         <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}>
           {cat.accounts.length > 0 ? '\u25B6' : ''}
@@ -760,7 +760,7 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
     const catAccountNumbers = allAccounts.map(([, a]) => a.originalNumber || a.number || '').filter(Boolean).join(',');
 
     elements.push(
-      <tr key={key} className="bg-cream border-l-4 border-l-gold cursor-pointer hover:bg-cream transition" onClick={() => toggle(key)}>
+      <tr key={key} className="bg-cream border-l-4 border-l-navy/40 cursor-pointer hover:bg-cream transition" onClick={() => toggle(key)}>
         <td className="py-1.5 px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: `${12 + depth * 16}px` }}>
           <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
             {(node.children || []).length > 0 ? '\u25B6' : ''}
@@ -1256,7 +1256,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                         </td>
                       );
                     })}
-                    <td className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-gold-soft cursor-pointer hover:bg-cream transition ${itemTotal === 0 ? 'text-gray-300' : itemTotal < 0 ? 'text-accent-red' : 'text-navy'}`}
+                    <td className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-100 cursor-pointer hover:bg-cream transition ${itemTotal === 0 ? 'text-gray-300' : itemTotal < 0 ? 'text-accent-red' : 'text-navy'}`}
                       onClick={(e) => { e.stopPropagation(); if (lineAccounts) setModal({ number: lineAccounts, label: item.label }); }}
                     >
                       {fmt(itemTotal, decimals)}
@@ -1306,8 +1306,8 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                 const pctTotal = baseTotalVisible !== 0 ? Math.round(refTotalVisible / baseTotalVisible * 1000) / 10 : 0;
 
                 return (
-                  <tr key={item.key} className="border-b border-gold-soft bg-gold-soft">
-                    <td className="py-1 px-3 sticky left-0 z-10 bg-gold-soft shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
+                  <tr key={item.key} className="border-b border-slate-200 bg-slate-100">
+                    <td className="py-1 px-3 sticky left-0 z-10 bg-slate-100 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
                       <span className="inline-block w-5 mr-1" />
                       <span className="text-xs italic text-gray-custom">{item.label}</span>
                     </td>
@@ -1316,12 +1316,12 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       const refVal = aggRef?.[col.key] || 0;
                       const pct = baseVal !== 0 ? Math.round(refVal / baseVal * 1000) / 10 : 0;
                       return (
-                        <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-gold-soft ${pct < 0 ? 'text-accent-red' : pct === 0 ? 'text-gray-300' : 'text-gray-custom'}`}>
+                        <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-slate-100 ${pct < 0 ? 'text-accent-red' : pct === 0 ? 'text-gray-300' : 'text-gray-custom'}`}>
                           {pct === 0 ? '-' : `${pct.toFixed(1)}%`}
                         </td>
                       );
                     })}
-                    <td className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-gold-soft ${pctTotal < 0 ? 'text-accent-red' : pctTotal === 0 ? 'text-gray-300' : 'text-gray-custom'}`}>
+                    <td className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] italic bg-slate-100 ${pctTotal < 0 ? 'text-accent-red' : pctTotal === 0 ? 'text-gray-300' : 'text-gray-custom'}`}>
                       {pctTotal === 0 ? '-' : `${pctTotal.toFixed(1)}%`}
                     </td>
                   </tr>
@@ -1346,7 +1346,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                         </td>
                       );
                     })}
-                    <td className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-gold-soft cursor-pointer hover:bg-cream transition ${itemTotal === 0 ? 'text-gray-300' : itemTotal < 0 ? 'text-accent-red' : 'text-navy'}`}
+                    <td className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-100 cursor-pointer hover:bg-cream transition ${itemTotal === 0 ? 'text-gray-300' : itemTotal < 0 ? 'text-accent-red' : 'text-navy'}`}
                       onClick={() => { if (accs) setModal({ number: accs, label: item.label }); }}
                     >
                       {fmt(itemTotal, decimals)}
@@ -1382,7 +1382,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       </td>
                     );
                   })}
-                  <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] bg-gold-soft cursor-pointer hover:bg-cream transition ${itemTotal < 0 ? 'text-accent-red' : itemTotal === 0 ? 'text-gray-300' : ''}`}
+                  <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] bg-slate-100 cursor-pointer hover:bg-cream transition ${itemTotal < 0 ? 'text-accent-red' : itemTotal === 0 ? 'text-gray-300' : ''}`}
                     onClick={(e) => { e.stopPropagation(); if (lineAccounts) setModal({ number: lineAccounts, label: item.label }); }}
                   >
                     {fmt(itemTotal, decimals)}
@@ -1627,7 +1627,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
     if (row.isTotal) return { row: 'bg-navy text-white font-semibold', sticky: 'bg-navy', text: 'text-white' };
     if (row.isSubtotal && row.key === 'fluxOperationnel') return { row: 'bg-emerald-100/80 font-semibold border-y border-emerald-200', sticky: 'bg-emerald-100', text: '' };
     if (row.isSubtotal && row.key === 'fluxFinancier') return { row: 'bg-sky-100/80 font-semibold border-y border-sky-200', sticky: 'bg-sky-100', text: '' };
-    if (row.isTreso) return { row: 'bg-gold-soft italic border-y border-sage', sticky: 'bg-gold-soft', text: '' };
+    if (row.isTreso) return { row: 'bg-slate-100 italic border-y border-sage', sticky: 'bg-slate-100', text: '' };
     if (OPERATIONAL_KEYS.includes(row.key)) return { row: 'bg-emerald-50/50 border-l-4 border-emerald-400 hover:bg-emerald-50', sticky: 'bg-white', text: '' };
     if (FINANCIAL_KEYS.includes(row.key)) return { row: 'bg-sky-50/50 border-l-4 border-sky-400 hover:bg-sky-50', sticky: 'bg-white', text: '' };
     return { row: 'bg-cream border-l-4 border-sage hover:bg-cream', sticky: 'bg-white', text: '' };
@@ -2080,6 +2080,23 @@ export default function MonthlyView({ companyId, data, loading = false }) {
           const lastIdx = allMonths.length - 1 - [...allMonths].reverse().findIndex(m => m.startsWith(y));
           return { year: y, startPct: (firstIdx / (allMonths.length - 1)) * 100, endPct: (lastIdx / (allMonths.length - 1)) * 100 };
         });
+        const pctOf = (i) => (allMonths.length > 1 ? (i / (allMonths.length - 1)) * 100 : 0);
+        const monthAt = (clientX, rect) => {
+          const p = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+          return allMonths[Math.round(p * (allMonths.length - 1))];
+        };
+        // Glissement d'un curseur (début/fin) au pointeur/tactile, mois par mois
+        const startDrag = (which) => (e) => {
+          e.preventDefault(); e.stopPropagation();
+          const rect = e.currentTarget.parentElement.getBoundingClientRect();
+          const move = (ev) => {
+            const m = monthAt(ev.clientX, rect);
+            if (which === 'from') setFromMonth(m > toMonth ? toMonth : m);
+            else setToMonth(m < fromMonth ? fromMonth : m);
+          };
+          const up = () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); };
+          document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
+        };
 
         return (
           <div className="bg-white border-b border-sage px-3 sm:px-6 py-4">
@@ -2120,29 +2137,29 @@ export default function MonthlyView({ companyId, data, loading = false }) {
                 </select>
               </div>
 
-              {/* Visual bar — click on a segment to set range boundary */}
-              <div className="relative py-2 cursor-pointer"
-                onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const pct = (e.clientX - rect.left) / rect.width;
-                  const idx = Math.round(pct * (allMonths.length - 1));
-                  const m = allMonths[Math.max(0, Math.min(idx, allMonths.length - 1))];
-                  // Click left half of active range → move from, right half → move to
-                  const fromI = allMonths.indexOf(fromMonth);
-                  const toI = allMonths.indexOf(toMonth);
-                  const mid = (fromI + toI) / 2;
-                  if (idx <= mid) { setFromMonth(m); if (m > toMonth) setToMonth(m); }
-                  else { setToMonth(m); if (m < fromMonth) setFromMonth(m); }
-                }}
-              >
-                <div className="relative h-4 flex items-center rounded-full overflow-hidden bg-sage">
-                  <div
-                    className="absolute h-full bg-gold rounded-full transition-all duration-150"
-                    style={{
-                      left: `${(fromIdx / (allMonths.length - 1)) * 100}%`,
-                      right: `${100 - (toIdx / (allMonths.length - 1)) * 100}%`,
-                    }}
-                  />
+              {/* Barre de période — 2 curseurs déplaçables (début/fin) + clic sur la piste */}
+              <div className="relative py-4 select-none">
+                <div className="relative h-2 rounded-full bg-sage cursor-pointer"
+                  onPointerDown={(e) => {
+                    if (e.target !== e.currentTarget) return; // ne pas intercepter le clic sur un curseur
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const p = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                    const idx = Math.round(p * (allMonths.length - 1));
+                    const m = allMonths[idx];
+                    const closerFrom = Math.abs(idx - fromIdx) <= Math.abs(idx - toIdx);
+                    if (closerFrom) setFromMonth(m > toMonth ? toMonth : m);
+                    else setToMonth(m < fromMonth ? fromMonth : m);
+                  }}
+                >
+                  <div className="absolute h-full bg-navy rounded-full pointer-events-none"
+                    style={{ left: `${pctOf(fromIdx)}%`, right: `${100 - pctOf(toIdx)}%` }} />
+                  {[['from', fromIdx, fromMonth], ['to', toIdx, toMonth]].map(([which, idx, m]) => (
+                    <button key={which} type="button" onPointerDown={startDrag(which)}
+                      aria-label={which === 'from' ? 'Début de période' : 'Fin de période'}
+                      title={formatMonthLabel(m)}
+                      className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white border-2 border-navy shadow-md cursor-grab active:cursor-grabbing touch-none hover:scale-110 transition-transform"
+                      style={{ left: `${pctOf(idx)}%` }} />
+                  ))}
                 </div>
               </div>
 
