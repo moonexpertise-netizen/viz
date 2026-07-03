@@ -30,9 +30,9 @@ export default function FinTable({ id = 'fin', columns, rows, firstColLabel = 'P
         <table className="w-full min-w-max text-sm">
           <thead>
             <tr className="bg-navy text-white">
-              <th className="px-4 py-2.5 text-left font-semibold text-xs uppercase tracking-wide sticky left-0 bg-navy z-10">{firstColLabel}</th>
-              {visibleCols.map((c) => (
-                <th key={c.key} className={cls('px-3 py-2.5 text-right font-semibold text-xs uppercase tracking-wide whitespace-nowrap', c.tinted && 'bg-navy-light')}>
+              <th className="px-4 py-2.5 text-left font-semibold text-xs uppercase tracking-wide sticky left-0 bg-navy z-10 rounded-tl-xl">{firstColLabel}</th>
+              {visibleCols.map((c, i) => (
+                <th key={c.key} className={cls('px-3 py-2.5 text-right font-semibold text-xs uppercase tracking-wide whitespace-nowrap', c.tinted && 'bg-navy-light', i === visibleCols.length - 1 && 'rounded-tr-xl')}>
                   {c.label}
                 </th>
               ))}

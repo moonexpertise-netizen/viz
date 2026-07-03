@@ -193,7 +193,7 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
           </colgroup>
           <thead>
             <tr className="bg-navy text-white">
-              {visibleCols.map((c) => (
+              {visibleCols.map((c, i) => (
                 <th key={c.key}
                   draggable={!c.fixed}
                   onDragStart={(e) => { if (resizingRef.current) { e.preventDefault(); return; } dragKey.current = c.key; }}
@@ -201,7 +201,8 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
                   onDrop={(e) => { e.preventDefault(); if (dragKey.current) moveCol(dragKey.current, c.key); dragKey.current = null; }}
                   onClick={() => { if (!resizingRef.current) toggleSort(c.key); }}
                   className={cls('relative px-2.5 py-2.5 font-semibold text-xs uppercase tracking-wide whitespace-nowrap select-none bg-navy sticky top-0 hover:bg-navy-light',
-                    c.align === 'left' ? 'text-left' : 'text-right', c.key === 'name' ? 'left-0 z-30' : 'z-20', c.fixed ? 'cursor-pointer' : 'cursor-move')}>
+                    c.align === 'left' ? 'text-left' : 'text-right', c.key === 'name' ? 'left-0 z-30' : 'z-20', c.fixed ? 'cursor-pointer' : 'cursor-move',
+                    i === 0 && 'rounded-tl-xl', i === visibleCols.length - 1 && 'rounded-tr-xl')}>
                   <span className="inline-flex items-center gap-1">
                     {!c.fixed && <GripVertical size={11} className="opacity-40" />}
                     {c.label}{sort.key === c.key && <ArrowUpDown size={11} />}
