@@ -39,7 +39,7 @@ export default function ThemeMenu({ value, onChange, collapsed = false }) {
 
       {open && (
         <div role="menu"
-          className={cls('absolute z-50 min-w-[180px] rounded-xl border border-sage bg-white shadow-lg p-1',
+          className={cls('absolute z-50 min-w-[180px] rounded-xl border border-sage bg-white shadow-lg p-1 animate-pop',
             collapsed ? 'left-full bottom-0 ml-2' : 'left-0 right-0 bottom-full mb-2')}>
           <div className="px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-custom">Thème de couleurs</div>
           {THEMES.map((t) => {

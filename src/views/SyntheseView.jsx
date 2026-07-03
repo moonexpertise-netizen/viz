@@ -44,7 +44,7 @@ export default function SyntheseView({ report }) {
   return (
     <div className="space-y-6">
       {/* Indicateurs clés */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 stagger">
         <StatCard label="Chiffre d'affaires" value={fmt(ca)} deltaPct={growth(ca, n1.ca)} />
         <StatCard label="EBE" value={fmt(n.ebe)} accent={n.ebe < 0 ? 'neg' : 'pos'} sub={ca ? `${fmtPct((n.ebe / ca) * 100)} du CA` : null} deltaPct={growth(n.ebe, n1.ebe)} />
         <StatCard label="Résultat net" value={fmt(n.resNet)} accent={n.resNet < 0 ? 'neg' : 'pos'} sub={`Marge ${fmtPct(pl.margeN)}`} deltaPct={growth(n.resNet, n1.resNet)} />

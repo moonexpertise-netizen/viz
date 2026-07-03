@@ -170,7 +170,7 @@ export default function EntryDetailModal({ balanceId, clientId, accountNumber, a
       <div
         role="dialog"
         aria-modal="true"
-        className="bg-white rounded-xl shadow-2xl border border-sage w-full max-w-[950px] max-h-[85vh] flex flex-col mx-4"
+        className="bg-white rounded-xl shadow-2xl border border-sage w-full max-w-[950px] max-h-[85vh] flex flex-col mx-4 animate-pop"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

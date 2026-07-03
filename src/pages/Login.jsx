@@ -47,7 +47,7 @@ export default function Login({ onSuccess, sso = {} }) {
 
   return (
     <div className="min-h-[100dvh] flex items-center justify-center bg-navy px-4 py-10">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md animate-view">
         {/* Marque */}
         <div className="flex flex-col items-center mb-8 text-center">
           <img src="/moon-icon.svg" alt="MoonViz" className="w-16 h-16 mb-4" />

@@ -50,7 +50,7 @@ export default function CommandPalette({ open, onClose, groups }) {
   let idx = -1;
   return (
     <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[12vh] px-4 bg-navy/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-sage overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-sage overflow-hidden animate-pop" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2.5 px-4 border-b border-sage">
           <Search size={18} className="text-gray-custom shrink-0" />
           <input

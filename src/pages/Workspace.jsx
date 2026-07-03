@@ -421,7 +421,7 @@ export default function Workspace({ onLogout }) {
 
           {!companyId && (
             companies.length > 0
-              ? <PortfolioDashboard companies={companies} onOpenCompany={setCompanyId} />
+              ? <div className="animate-view"><PortfolioDashboard companies={companies} onOpenCompany={setCompanyId} /></div>
               : <Home companiesCount={companies.length} />
           )}
 
@@ -451,8 +451,8 @@ export default function Workspace({ onLogout }) {
               />
 
               {anySynced ? (
-                <div className="mt-6">
-                  <Suspense fallback={<div className="card-moon p-10 text-center text-gray-custom">Chargement…</div>}>
+                <div key={tab} className="mt-6 animate-view">
+                  <Suspense fallback={<ViewSkeleton />}>
                     {tab === 'periodic'
                       ? <div className="-mx-3 sm:-mx-5 md:-mx-6"><MonthlyView companyId={companyId} data={mergedMonthly} /></div>
                       : active?.report?.report
@@ -477,12 +477,39 @@ export default function Workspace({ onLogout }) {
   );
 }
 
+/** Squelette de chargement des vues (chargement différé / lazy). */
+function ViewSkeleton() {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-label="Chargement de la vue">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="card-moon p-4">
+            <div className="skeleton-shimmer h-3 w-2/3 rounded-md" />
+            <div className="skeleton-shimmer h-7 w-full rounded-md mt-3" />
+            <div className="skeleton-shimmer h-3 w-1/2 rounded-md mt-3" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[0, 1].map((i) => (
+          <div key={i} className="card-moon p-5">
+            <div className="skeleton-shimmer h-4 w-1/3 rounded-md" />
+            <div className="skeleton-shimmer h-[260px] w-full rounded-lg mt-4" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SideItem({ icon, label, active, onClick, collapsed }) {
   return (
     <button onClick={onClick} title={collapsed ? label : undefined}
-      className={cls('w-full flex items-center gap-2.5 rounded-lg text-sm transition-colors text-left',
+      className={cls('relative w-full flex items-center gap-2.5 rounded-lg text-sm transition-colors text-left',
         collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2',
         active ? 'bg-white/[0.10] text-white font-medium' : 'text-sage hover:text-white hover:bg-white/[0.06]')}>
+      {/* Repère doré de l'item actif (signature MOON) */}
+      {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full bg-gold" aria-hidden />}
       <span className="shrink-0 opacity-90">{icon}</span>
       {!collapsed && <span className="truncate">{label}</span>}
     </button>
@@ -531,7 +558,7 @@ function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedF
 
       {/* Gestion dépliée */}
       {open && (
-        <div className="border-t border-sage/50 divide-y divide-sage/40">
+        <div className="border-t border-sage/50 divide-y divide-sage/40 animate-pop">
           {fiscalYears.map((fy, idx) => {
             const entry = synced[fy.id];
             const busy = syncing[fy.id];

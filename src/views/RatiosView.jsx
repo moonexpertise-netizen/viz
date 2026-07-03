@@ -32,7 +32,7 @@ function RatioCard({ rkey, r }) {
   const delta = (r.ratioN ?? 0) - (r.ratioN1 ?? 0);
   const improving = meta.higher ? delta > 0 : delta < 0;
   return (
-    <div className="card-moon p-5">
+    <div className="card-moon card-lift p-5">
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-semibold text-navy">{r.label}</p>
         <span className={cls('text-[11px] font-semibold px-2 py-0.5 rounded-full border shrink-0', v.pill)}>{v.label}</span>
@@ -64,7 +64,7 @@ export default function RatiosView({ report }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 stagger">
         <StatCard label="CAF" value={fmt(caf)} accent={caf < 0 ? 'neg' : 'pos'} sub="Capacité d'autofinancement" />
         <StatCard label="BFR" value={fmt(bfr)} sub="Besoin en fonds de roulement" />
         <StatCard label="Trésorerie" value={fmt(treso)} accent={treso < 0 ? 'neg' : undefined} sub="Disponibilités" />

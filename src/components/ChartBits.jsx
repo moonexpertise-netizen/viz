@@ -34,7 +34,7 @@ export function StatCard({ label, value, accent, deltaPct, sub }) {
   const hasDelta = deltaPct != null && Number.isFinite(deltaPct) && Math.abs(deltaPct) >= 0.05;
   const up = deltaPct > 0;
   return (
-    <div className="card-moon p-4">
+    <div className="card-moon card-lift p-4">
       <p className="text-[11px] font-medium uppercase tracking-wide text-gray-custom">{label}</p>
       <p className={cls('text-xl sm:text-2xl font-bold mt-1.5 tabular-nums break-words',
         accent === 'neg' ? 'text-accent-red' : accent === 'pos' ? 'text-accent-green' : 'text-navy')}>{value}</p>

@@ -1521,7 +1521,7 @@ function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, acc
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl border border-sage w-full max-w-[950px] max-h-[85vh] flex flex-col mx-4" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-xl shadow-2xl border border-sage w-full max-w-[950px] max-h-[85vh] flex flex-col mx-4 animate-pop" onClick={(e) => e.stopPropagation()}>
         <div className="bg-navy rounded-t-xl px-4 sm:px-6 py-4 flex items-center justify-between">
           <div>
             <h2 className="font-display text-lg font-semibold text-white">{categoryLabel}</h2>

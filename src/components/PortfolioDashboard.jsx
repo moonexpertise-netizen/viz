@@ -260,7 +260,7 @@ function ColumnsMenu({ cols, hidden, onToggle, onReset }) {
         <SlidersHorizontal size={14} /> Colonnes
       </button>
       {open && (
-        <div className="absolute right-0 mt-1 z-30 bg-white border border-sage rounded-lg shadow-lg py-1 min-w-[210px]">
+        <div className="absolute right-0 mt-1 z-30 bg-white border border-sage rounded-lg shadow-lg py-1 min-w-[210px] animate-pop">
           {cols.filter((c) => !c.fixed).map((c) => {
             const visible = !hidden.includes(c.key);
             return (

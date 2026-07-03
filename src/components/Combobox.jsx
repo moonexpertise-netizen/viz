@@ -44,7 +44,7 @@ export default function Combobox({ items = [], value, onChange, placeholder = 'S
       </button>
 
       {open && (
-        <div className="absolute z-30 mt-1 w-full bg-white border border-sage rounded-lg shadow-lg overflow-hidden">
+        <div className="absolute z-30 mt-1 w-full bg-white border border-sage rounded-lg shadow-lg overflow-hidden animate-pop">
           <div className="relative border-b border-sage">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-custom" />
             <input
