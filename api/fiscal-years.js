@@ -2,7 +2,7 @@ import { requireAuth, sendError } from './_lib/auth.js';
 import { getFiscalYears } from './_lib/pennylane.js';
 
 export default async function handler(req, res) {
-  if (!requireAuth(req, res)) return;
+  if (!(await requireAuth(req, res))) return;
   const companyId = req.query.company_id || req.query.companyId;
   if (!companyId) {
     res.status(400).json({ error: 'company_id requis' });

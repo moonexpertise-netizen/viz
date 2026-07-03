@@ -13,9 +13,24 @@ api.interceptors.response.use(
   },
 );
 
+// Identifiant d'appareil stable (vérification e-mail des nouveaux appareils)
+export function deviceId() {
+  try {
+    let id = localStorage.getItem('mv:device');
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
+      localStorage.setItem('mv:device', id);
+    }
+    return id;
+  } catch { return 'nodevice'; }
+}
+
 export const authAPI = {
   session: () => api.get('/session'),
-  login: (email, password) => api.post('/login', { email, password }),
+  login: (email, password) => api.post('/login', { email, password, device: deviceId() }),
+  verify: (email, code) => api.post('/login', { action: 'verify', email, code, device: deviceId() }),
+  signup: (email) => api.post('/login', { action: 'signup', email }),
+  doAction: (action, token) => api.post('/login', { action, token }),
   logout: () => api.post('/logout'),
   forgot: (email) => api.post('/login', { action: 'forgot', email }),
   reset: (token, password) => api.post('/login', { action: 'reset', token, password }),

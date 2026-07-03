@@ -8,7 +8,7 @@ import { allLines } from './_lib/entriesEngine.js';
  * Renvoie le P&L mensuel par compte + le tableau de flux de tresorerie.
  */
 export default async function handler(req, res) {
-  if (!requireAuth(req, res)) return;
+  if (!(await requireAuth(req, res))) return;
   const { company_id, companyId, period_start, period_end } = req.query;
   const cid = company_id || companyId;
   if (!cid || !period_start || !period_end) {

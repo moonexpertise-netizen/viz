@@ -15,7 +15,7 @@ const entryKey = (c, fy) => `mvsync:${c}:${fy}`;
 const idxKey = (c) => `mvsync:idx:${c}`;
 
 export default async function handler(req, res) {
-  if (!requireAuth(req, res)) return;
+  if (!(await requireAuth(req, res))) return;
   if (!kvEnabled()) { res.status(200).json({ enabled: false, entries: {} }); return; }
 
   const company = String(req.query.company_id || req.query.companyId || '');

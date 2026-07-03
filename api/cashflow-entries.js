@@ -7,7 +7,7 @@ import { cashflowEntries, endOfMonth } from './_lib/entriesEngine.js';
  * Mouvements de trésorerie d'une catégorie (et éventuellement d'un compte de contrepartie).
  */
 export default async function handler(req, res) {
-  if (!requireAuth(req, res)) return;
+  if (!(await requireAuth(req, res))) return;
   const { company_id, companyId, category, account, from, to } = req.query;
   const cid = company_id || companyId;
   if (!cid || !category) {

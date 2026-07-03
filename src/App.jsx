@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, Component } from 'react';
 import { authAPI } from './services/api';
 import Login from './pages/Login';
 import ResetPassword from './pages/ResetPassword';
+import ActionPage from './pages/ActionPage';
 import Workspace from './pages/Workspace';
 
 // Garde-fou : un crash de composant affiche un message au lieu d'un écran blanc.
@@ -27,14 +28,16 @@ class ErrorBoundary extends Component {
 
 export default function App() {
   const [authed, setAuthed] = useState(null); // null = inconnu, false, true
-  const [sso, setSso] = useState({ enabled: false, domain: null, resetEnabled: false });
-  const isReset = typeof window !== 'undefined' && window.location.pathname === '/reset';
+  const [sso, setSso] = useState({ enabled: false, domain: null, resetEnabled: false, accountsEnabled: false });
+  const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+  const isReset = path === '/reset';
+  const isAction = path === '/action';
 
   const refresh = useCallback(async () => {
     try {
       const { data } = await authAPI.session();
       setAuthed(Boolean(data.authenticated));
-      setSso({ enabled: Boolean(data.sso), domain: data.domain, resetEnabled: Boolean(data.resetEnabled) });
+      setSso({ enabled: Boolean(data.sso), domain: data.domain, resetEnabled: Boolean(data.resetEnabled), accountsEnabled: Boolean(data.accountsEnabled) });
     } catch (e) {
       // 401 => non authentifié ; erreur réseau transitoire => ne pas déconnecter un utilisateur déjà connecté.
       if (e?.response?.status === 401) setAuthed(false);
@@ -55,7 +58,8 @@ export default function App() {
   };
 
   let content;
-  if (isReset) content = <ResetPassword />;
+  if (isAction) content = <ActionPage />;
+  else if (isReset) content = <ResetPassword />;
   else if (authed === null) content = (
     <div className="min-h-[100dvh] flex items-center justify-center bg-cream text-gray-custom">Chargement…</div>
   );

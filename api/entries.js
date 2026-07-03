@@ -7,7 +7,7 @@ import { accountEntries, endOfMonth } from './_lib/entriesEngine.js';
  * Écritures détaillées d'un compte (ou liste de comptes) sur une période.
  */
 export default async function handler(req, res) {
-  if (!requireAuth(req, res)) return;
+  if (!(await requireAuth(req, res))) return;
   const { company_id, companyId, account, from, to } = req.query;
   const cid = company_id || companyId;
   if (!cid || !account) {

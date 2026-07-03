@@ -8,7 +8,7 @@ import { generateFullReport, computeDisponibilites } from './_lib/accountingEngi
  * Indicateurs de santé d'un dossier sur l'exercice fiscal EN COURS.
  */
 export default async function handler(req, res) {
-  if (!requireAuth(req, res)) return;
+  if (!(await requireAuth(req, res))) return;
   const cid = req.query.company_id || req.query.companyId;
   if (!cid) { res.status(400).json({ error: 'company_id requis' }); return; }
 

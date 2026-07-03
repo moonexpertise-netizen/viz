@@ -19,22 +19,47 @@ function sign(value) {
   return crypto.createHmac('sha256', secret()).update(value).digest('base64url');
 }
 
-/** Cree un jeton `exp.signature`. */
-export function makeSession() {
+/**
+ * Cree un jeton de session.
+ *  - v2 (comptes individuels) : `v2.<payload>.<sig>` avec payload = {e: email, g: generation, exp}
+ *    -> revocable a distance (incrementer la generation invalide toutes les sessions).
+ *  - v1 (mot de passe partage)  : `exp.<sig>` (stateless).
+ */
+export function makeSession(email = null, gen = 0) {
   const exp = Math.floor(Date.now() / 1000) + MAX_AGE;
+  if (email) {
+    const payload = Buffer.from(JSON.stringify({ e: email, g: gen, exp })).toString('base64url');
+    return `v2.${payload}.${sign(payload)}`;
+  }
   const payload = String(exp);
   return `${payload}.${sign(payload)}`;
 }
 
-function verifySession(token) {
-  if (!token || typeof token !== 'string') return false;
-  const [payload, sig] = token.split('.');
-  if (!payload || !sig) return false;
+/** Renvoie null si invalide, sinon { email|null, gen } (la generation n'est verifiee que si getGen est fourni). */
+async function verifySession(token, getGen) {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  const isV2 = parts[0] === 'v2' && parts.length === 3;
+  const payload = isV2 ? parts[1] : parts[0];
+  const sig = isV2 ? parts[2] : parts[1];
+  if (!payload || !sig) return null;
   const expected = sign(payload);
-  if (sig.length !== expected.length) return false;
-  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return false;
-  const exp = parseInt(payload, 10);
-  return Number.isFinite(exp) && exp > Math.floor(Date.now() / 1000);
+  if (sig.length !== expected.length) return null;
+  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  const now = Math.floor(Date.now() / 1000);
+  if (!isV2) {
+    const exp = parseInt(payload, 10);
+    return Number.isFinite(exp) && exp > now ? { email: null, gen: 0 } : null;
+  }
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (!data.exp || data.exp < now) return null;
+    if (getGen) {
+      const current = await getGen(data.e);
+      if (current !== (data.g || 0)) return null; // sessions revoquees
+    }
+    return { email: data.e || null, gen: data.g || 0 };
+  } catch { return null; }
 }
 
 export function parseCookies(req) {
@@ -88,9 +113,19 @@ export function ssoConfig() {
   };
 }
 
-export function isAuthenticated(req) {
+/** Renvoie la session ({email, gen}) ou null. Vérifie la révocation via KV pour les sessions v2. */
+export async function getSession(req) {
   const cookies = parseCookies(req);
-  return verifySession(cookies[COOKIE]);
+  const token = cookies[COOKIE];
+  if (!token) return null;
+  // Vérification de génération (révocation) : importée paresseusement pour éviter un cycle.
+  const { kvEnabled, getSessGen } = await import('./account.js');
+  const getGen = kvEnabled() ? getSessGen : null;
+  return verifySession(token, getGen);
+}
+
+export async function isAuthenticated(req) {
+  return Boolean(await getSession(req));
 }
 
 export function checkPassword(password) {
@@ -104,8 +139,8 @@ export function checkPassword(password) {
  * Garde a placer en tete d'une fonction protegee.
  * Renvoie true si OK ; sinon repond 401 et renvoie false.
  */
-export function requireAuth(req, res) {
-  if (isAuthenticated(req)) return true;
+export async function requireAuth(req, res) {
+  if (await isAuthenticated(req)) return true;
   res.status(401).json({ error: 'Non authentifie' });
   return false;
 }

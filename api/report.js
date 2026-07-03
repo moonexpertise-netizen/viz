@@ -9,7 +9,7 @@ import { generateFullReport } from './_lib/accountingEngine.js';
  * Renvoie bilan + compte de resultat + SIG + ratios (comparatif N / N-1).
  */
 export default async function handler(req, res) {
-  if (!requireAuth(req, res)) return;
+  if (!(await requireAuth(req, res))) return;
 
   const { company_id, companyId, period_start, period_end, prev_start, prev_end } = req.query;
   const cid = company_id || companyId;
