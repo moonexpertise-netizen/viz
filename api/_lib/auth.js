@@ -8,7 +8,11 @@ const COOKIE = 'mv_session';
 const MAX_AGE = 60 * 60 * 12; // 12h
 
 function secret() {
-  return process.env.AUTH_SECRET || 'dev-insecure-secret-change-me';
+  const s = process.env.AUTH_SECRET;
+  if (s) return s;
+  // Jamais de secret par défaut en production : sessions non forgeables.
+  if (process.env.NODE_ENV === 'production') throw new Error('AUTH_SECRET manquant en production');
+  return 'dev-insecure-secret-change-me';
 }
 
 function sign(value) {
@@ -104,4 +108,23 @@ export function requireAuth(req, res) {
   if (isAuthenticated(req)) return true;
   res.status(401).json({ error: 'Non authentifie' });
   return false;
+}
+
+/**
+ * Reponse d'erreur SANS fuite technique : message metier generique au client,
+ * detail complet dans les logs serveur (Vercel).
+ */
+export function sendError(res, err, extra = {}) {
+  const status = err?.status || 500;
+  console.error('API error:', err?.message || err);
+  const map = {
+    400: 'Requête invalide.',
+    401: 'Accès Pennylane refusé — vérifiez le token côté serveur.',
+    403: 'Accès Pennylane refusé — droits insuffisants sur ce dossier.',
+    429: 'Trop de requêtes vers Pennylane, réessayez dans un instant.',
+    502: 'Pennylane est momentanément indisponible. Réessayez.',
+    503: 'Service momentanément indisponible. Réessayez.',
+  };
+  const message = map[status] || 'Erreur inattendue côté serveur. Réessayez.';
+  res.status(status).json({ error: message, code: err?.code, ...extra });
 }

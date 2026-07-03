@@ -1,4 +1,4 @@
-import { requireAuth } from './_lib/auth.js';
+import { requireAuth, sendError } from './_lib/auth.js';
 import { getTrialBalance } from './_lib/pennylane.js';
 import { buildAccounts } from './_lib/normalize.js';
 import { generateFullReport } from './_lib/accountingEngine.js';
@@ -35,6 +35,6 @@ export default async function handler(req, res) {
       report,
     });
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code });
+    sendError(res, err);
   }
 }

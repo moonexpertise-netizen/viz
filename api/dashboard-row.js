@@ -1,4 +1,4 @@
-import { requireAuth } from './_lib/auth.js';
+import { requireAuth, sendError } from './_lib/auth.js';
 import { getFiscalYears, getTrialBalance } from './_lib/pennylane.js';
 import { buildAccounts } from './_lib/normalize.js';
 import { generateFullReport, computeDisponibilites } from './_lib/accountingEngine.js';
@@ -61,7 +61,7 @@ export default async function handler(req, res) {
       tresorerie, openingTreasury, monthsElapsed: round1(monthsElapsed), cashburn, runway,
     });
   } catch (err) {
-    res.status(err.status || 500).json({ companyId: cid, error: err.message, code: err.code });
+    sendError(res, err, { companyId: cid });
   }
 }
 

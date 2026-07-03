@@ -1,4 +1,4 @@
-import { requireAuth } from './_lib/auth.js';
+import { requireAuth, sendError } from './_lib/auth.js';
 import { getLedgerEntryLines, getLedgerEntries, getJournals } from './_lib/pennylane.js';
 import { cashflowEntries, endOfMonth } from './_lib/entriesEngine.js';
 
@@ -25,6 +25,6 @@ export default async function handler(req, res) {
     ]);
     res.status(200).json({ entries: cashflowEntries(lines, entries, journals, category, account) });
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code });
+    sendError(res, err);
   }
 }

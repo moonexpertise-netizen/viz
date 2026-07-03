@@ -1,4 +1,4 @@
-import { requireAuth } from './_lib/auth.js';
+import { requireAuth, sendError } from './_lib/auth.js';
 import { getLedgerEntryLines, getJournals, getTrialBalance, getLedgerEntries } from './_lib/pennylane.js';
 import { linesToMonthly, calculateMonthlyPL, calculateMonthlyCashFlow } from './_lib/monthlyEngine.js';
 import { allLines } from './_lib/entriesEngine.js';
@@ -59,6 +59,6 @@ export default async function handler(req, res) {
       linesCount: lines.length,
     });
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code });
+    sendError(res, err);
   }
 }

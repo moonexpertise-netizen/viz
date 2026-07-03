@@ -1,4 +1,4 @@
-import { requireAuth } from './_lib/auth.js';
+import { requireAuth, sendError } from './_lib/auth.js';
 import { listCompanies } from './_lib/pennylane.js';
 
 export default async function handler(req, res) {
@@ -7,6 +7,6 @@ export default async function handler(req, res) {
     const companies = await listCompanies();
     res.status(200).json({ companies });
   } catch (err) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code });
+    sendError(res, err);
   }
 }

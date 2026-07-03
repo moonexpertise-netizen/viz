@@ -31,6 +31,28 @@ export async function getStoredHash() {
   try { return await kvCmd(['GET', PW_KEY]); } catch { return null; }
 }
 
+/* ── Anti force brute ──
+   Compteur d'échecs par clé (ip / ip+email). KV si disponible (fiable,
+   partagé entre instances) ; sinon mémoire de l'instance (meilleur-effort). */
+const memHits = new Map();
+export async function tooManyAttempts(key, max = 8, windowSec = 600) {
+  const k = `moonviz:rl:${key}`;
+  if (kvEnabled()) {
+    try {
+      const n = await kvCmd(['INCR', k]);
+      if (n === 1) await kvCmd(['EXPIRE', k, String(windowSec)]);
+      return n > max;
+    } catch { /* repli mémoire */ }
+  }
+  const now = Date.now();
+  const rec = memHits.get(k) || { n: 0, reset: now + windowSec * 1000 };
+  if (now > rec.reset) { rec.n = 0; rec.reset = now + windowSec * 1000; }
+  rec.n += 1;
+  memHits.set(k, rec);
+  if (memHits.size > 1000) memHits.clear(); // borne mémoire
+  return rec.n > max;
+}
+
 // ── Helpers KV génériques (stockage serveur des exercices synchronisés) ──
 export const kvGet = (key) => kvCmd(['GET', key]);
 export const kvSet = (key, val) => kvCmd(['SET', key, val]);
@@ -59,7 +81,12 @@ export function verifyPassword(pw, stored) {
 }
 
 /* ── Jeton de réinitialisation (HMAC, sans stockage) ── */
-function secret() { return process.env.AUTH_SECRET || 'dev-secret'; }
+function secret() {
+  const s = process.env.AUTH_SECRET;
+  if (s) return s;
+  if (process.env.NODE_ENV === 'production') throw new Error('AUTH_SECRET manquant en production');
+  return 'dev-secret';
+}
 export function makeResetToken(email, ttlSec = 1800) {
   const exp = Math.floor(Date.now() / 1000) + ttlSec;
   const payload = Buffer.from(JSON.stringify({ email, exp })).toString('base64url');
