@@ -196,13 +196,15 @@ export function buildCashRows(plan, cashflow, months) {
   const byNum = (a, b) => String(a.number).localeCompare(String(b.number));
   const cum = emptyMonths(months);
   let section = emptyMonths(months);
+  let sectionIdx = 0; // pour le style visuel des sections (vert / bleu / neutre)
   const out = [];
   for (const node of plan.nodes) {
     if (node.kind === 'total') {
       const src = node.mode === 'section' ? section : cum;
       const isNet = node.mode !== 'section';
-      out.push({ key: node.id, label: node.label, isSubtotal: !isNet, isTotal: isNet, months: { ...src }, accounts: [] });
+      out.push({ key: node.id, label: node.label, isSubtotal: !isNet, isTotal: isNet, months: { ...src }, accounts: [], section: sectionIdx });
       section = emptyMonths(months);
+      sectionIdx += 1;
       continue;
     }
     const b = buckets[node.id];
@@ -213,7 +215,7 @@ export function buildCashRows(plan, cashflow, months) {
     allAccs.sort(byNum).forEach((a) => addMonths(catMonths, a.months));
     addMonths(cum, catMonths);
     addMonths(section, catMonths);
-    out.push({ key: node.id, label: node.label, months: catMonths, accounts: allAccs });
+    out.push({ key: node.id, label: node.label, months: catMonths, accounts: allAccs, section: sectionIdx });
   }
   // Trésorerie d'ouverture / de clôture : reprises telles quelles (indépendantes du regroupement)
   out.push(...tresoRows);

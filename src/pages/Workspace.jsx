@@ -294,6 +294,10 @@ export default function Workspace({ onLogout }) {
     return Object.values(seen);
   }, [mergedMonthly]);
 
+  // Mapping effectif transmis aux vues : le plan enregistré, sinon le plan par défaut
+  // (ainsi le mode « Standard » de la vision périodique reflète toujours l'éditeur).
+  const effectiveMapping = useMemo(() => mapping || defaultMapping(), [mapping]);
+
   const saveMapping = useCallback((m) => {
     const stamped = { ...m, updatedAt: new Date().toISOString() };
     setMapping(stamped);
@@ -499,7 +503,7 @@ export default function Workspace({ onLogout }) {
                 <div key={tab} className="mt-6 animate-view">
                   <Suspense fallback={<ViewSkeleton />}>
                     {tab === 'periodic'
-                      ? <div className="-mx-3 sm:-mx-5 md:-mx-6"><MonthlyView companyId={companyId} data={mergedMonthly} mapping={mapping} /></div>
+                      ? <div className="-mx-3 sm:-mx-5 md:-mx-6"><MonthlyView companyId={companyId} data={mergedMonthly} mapping={effectiveMapping} /></div>
                       : tab === 'mapping'
                         ? <MappingEditor key={companyId} mapping={mapping || defaultMapping()} accountsPL={accountsPL} accountsCash={accountsCash} onSave={saveMapping} />
                         : active?.report?.report
