@@ -24,7 +24,8 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
   const [menuFor, setMenuFor] = useState(null);   // id du nœud dont le menu est ouvert
   const [editing, setEditing] = useState(null);   // { id, subId?, value }
   const [reclass, setReclass] = useState(false);  // modale de reclassement
-  const dragRef = useRef(null);
+  const [dropTarget, setDropTarget] = useState(null); // clé du nœud survolé pendant un drag de compte
+  const dragRef = useRef(null); // { kind:'node', id } | { kind:'account', number }
 
   const plan = work[tab];
   const accounts = tab === 'pl' ? accountsPL : accountsCash;
@@ -81,9 +82,13 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
 
   const save = () => { onSave(work); setDirty(false); };
 
-  /* ── rendu d'une ligne de comptes ── */
+  /* ── rendu d'une ligne de comptes (déplaçable par glisser-déposer) ── */
   const AccountRow = ({ acc, indent }) => (
-    <div className={cls('flex items-center gap-2 py-1 pr-3 text-xs border-b border-sage/40 last:border-0', indent ? 'pl-14' : 'pl-10')}>
+    <div draggable
+      onDragStart={(e) => { e.stopPropagation(); dragRef.current = { kind: 'account', number: acc.originalNumber || acc.number }; e.dataTransfer.effectAllowed = 'move'; }}
+      onDragEnd={() => { dragRef.current = null; setDropTarget(null); }}
+      className={cls('flex items-center gap-2 py-1 pr-3 text-xs border-b border-sage/40 last:border-0 cursor-grab active:cursor-grabbing group/acc', indent ? 'pl-14' : 'pl-10')}>
+      <GripVertical size={11} className="shrink-0 text-gray-custom/40 group-hover/acc:text-gray-custom" />
       <span className="tabular-nums text-gray-custom shrink-0">{acc.originalNumber || acc.number}</span>
       <span className="text-navy truncate">{acc.label}</span>
       <button onClick={() => setReclass({ preset: acc.originalNumber || acc.number })} title="Déplacer ce compte"
@@ -92,6 +97,24 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
       </button>
     </div>
   );
+
+  /* Cible de dépôt : catégorie (key = catId) ou sous-catégorie (key = catId/subId) */
+  const dropProps = (targetKey, acceptsAccounts) => ({
+    onDragOver: (e) => {
+      const d = dragRef.current;
+      if (d?.kind === 'account' && acceptsAccounts) { e.preventDefault(); e.stopPropagation(); setDropTarget(targetKey); }
+      else if (d?.kind === 'node') e.preventDefault();
+    },
+    onDragLeave: () => { if (dropTarget === targetKey) setDropTarget(null); },
+    onDrop: (e) => {
+      const d = dragRef.current;
+      if (d?.kind === 'account' && acceptsAccounts) {
+        e.preventDefault(); e.stopPropagation();
+        assignAccounts([d.number], targetKey);
+      }
+      dragRef.current = null; setDropTarget(null);
+    },
+  });
 
   const targets = useMemo(() => {
     const out = [];
@@ -151,13 +174,27 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
             const isEditing = editing && editing.id === node.id && !editing.subId;
             return (
               <div key={node.id}
-                draggable={!isEditing}
-                onDragStart={() => { dragRef.current = node.id; }}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => { e.preventDefault(); if (dragRef.current) moveNode(dragRef.current, node.id); dragRef.current = null; }}>
-                {/* Ligne catégorie / total */}
-                <div className={cls('flex items-center gap-2 px-3 py-2.5 group',
-                  isTotal ? (node.mode === 'section' ? 'bg-cream font-semibold text-navy' : 'bg-navy text-white font-semibold') : 'bg-white hover:bg-cream/60 transition')}>
+                onDragOver={(e) => {
+                  const d = dragRef.current;
+                  if (d?.kind === 'account' && !isTotal) { e.preventDefault(); setDropTarget(node.id); }
+                  else if (d?.kind === 'node') e.preventDefault();
+                }}
+                onDragLeave={() => { if (dropTarget === node.id) setDropTarget(null); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const d = dragRef.current;
+                  if (d?.kind === 'account' && !isTotal) assignAccounts([d.number], node.id);
+                  else if (d?.kind === 'node') moveNode(d.id, node.id);
+                  dragRef.current = null; setDropTarget(null);
+                }}>
+                {/* Ligne catégorie / total (déplaçable) */}
+                <div
+                  draggable={!isEditing}
+                  onDragStart={(e) => { e.stopPropagation(); dragRef.current = { kind: 'node', id: node.id }; }}
+                  onDragEnd={() => { dragRef.current = null; setDropTarget(null); }}
+                  className={cls('flex items-center gap-2 px-3 py-2.5 group',
+                    isTotal ? (node.mode === 'section' ? 'bg-cream font-semibold text-navy' : 'bg-navy text-white font-semibold') : 'bg-white hover:bg-cream/60 transition',
+                    dropTarget === node.id && 'ring-2 ring-inset ring-navy/50 bg-cream')}>
                   {!isTotal ? (
                     <button onClick={() => setExpanded((x) => ({ ...x, [node.id]: !x[node.id] }))} className="shrink-0 p-0.5">
                       <ChevronRight size={14} className={cls('transition-transform text-gray-custom', open && 'rotate-90')} />
@@ -201,7 +238,9 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
                       const editingSub = editing && editing.id === node.id && editing.subId === sub.id;
                       return (
                         <div key={sub.id}>
-                          <div className="flex items-center gap-2 pl-8 pr-3 py-2 border-t border-sage/40 group/sub">
+                          <div {...dropProps(`${node.id}/${sub.id}`, true)}
+                            className={cls('flex items-center gap-2 pl-8 pr-3 py-2 border-t border-sage/40 group/sub',
+                              dropTarget === `${node.id}/${sub.id}` && 'ring-2 ring-inset ring-navy/50 bg-cream')}>
                             <button onClick={() => setExpanded((x) => ({ ...x, [`${node.id}/${sub.id}`]: !x[`${node.id}/${sub.id}`] }))} className="shrink-0 p-0.5">
                               <ChevronRight size={13} className={cls('transition-transform text-gray-custom', subOpen && 'rotate-90')} />
                             </button>
@@ -239,7 +278,7 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
       <div className="flex flex-wrap gap-2">
         <button onClick={addCat} className="inline-flex items-center gap-1.5 text-sm border border-sage rounded-lg px-3 py-2 text-navy hover:bg-cream transition"><Plus size={14} /> Ajouter une catégorie</button>
         <button onClick={addTotal} className="inline-flex items-center gap-1.5 text-sm border border-sage rounded-lg px-3 py-2 text-navy hover:bg-cream transition"><Plus size={14} /> Ajouter un total</button>
-        <p className="w-full text-xs text-gray-custom">Glissez-déposez les lignes pour réorganiser. Un total « cumul » additionne tout depuis le haut ; un total « section » additionne depuis le total précédent. N'oubliez pas d'<strong>enregistrer</strong>.</p>
+        <p className="w-full text-xs text-gray-custom">Glissez-déposez les <strong>lignes</strong> pour réorganiser le plan, et les <strong>comptes</strong> directement sur une catégorie ou sous-catégorie pour les reclasser. Un total « cumul » additionne tout depuis le haut ; « section » depuis le total précédent. N'oubliez pas d'<strong>enregistrer</strong>.</p>
       </div>
 
       {/* Modale de reclassement */}
