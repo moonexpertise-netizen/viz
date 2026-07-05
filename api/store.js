@@ -14,11 +14,45 @@ import { kvEnabled, kvGet, kvSet, kvDel, kvSAdd, kvSRem, kvSMembers } from './_l
 const entryKey = (c, fy) => `mvsync:${c}:${fy}`;
 const idxKey = (c) => `mvsync:idx:${c}`;
 
+const mapKey = (c) => `mvmap:${c}`;
+
 export default async function handler(req, res) {
   if (!(await requireAuth(req, res))) return;
   if (!kvEnabled()) { res.status(200).json({ enabled: false, entries: {} }); return; }
 
   const company = String(req.query.company_id || req.query.companyId || '');
+  const kind = String(req.query.kind || (typeof req.body === 'object' && req.body?.kind) || '');
+
+  // ── Mapping personnalisé (affectation des comptes) ──
+  if (kind === 'mapping') {
+    try {
+      if (req.method === 'GET') {
+        if (!company) { res.status(400).json({ error: 'company_id requis' }); return; }
+        const raw = await kvGet(mapKey(company));
+        res.status(200).json({ enabled: true, mapping: raw ? JSON.parse(raw) : null });
+        return;
+      }
+      if (req.method === 'POST') {
+        const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+        if (!body.company_id || !body.mapping) { res.status(400).json({ error: 'company_id et mapping requis' }); return; }
+        await kvSet(mapKey(body.company_id), JSON.stringify(body.mapping));
+        res.status(200).json({ ok: true });
+        return;
+      }
+      if (req.method === 'DELETE') {
+        if (!company) { res.status(400).json({ error: 'company_id requis' }); return; }
+        await kvDel(mapKey(company));
+        res.status(200).json({ ok: true });
+        return;
+      }
+      res.status(405).json({ error: 'Méthode non autorisée' });
+    } catch (e) {
+      console.error('store mapping:', e?.message || e);
+      res.status(500).json({ error: 'Stockage serveur indisponible' });
+    }
+    return;
+  }
+
   try {
     if (req.method === 'GET') {
       if (!company) { res.status(400).json({ error: 'company_id requis' }); return; }

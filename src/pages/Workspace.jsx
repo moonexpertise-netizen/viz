@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
-import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronLeft, ChevronDown, Home as HomeIcon, List, Search, ExternalLink, LayoutGrid, LayoutDashboard, Layers, FileText, Scale, Gauge, Menu, X, Trash2 } from 'lucide-react';
+import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronLeft, ChevronDown, Home as HomeIcon, List, Search, ExternalLink, LayoutGrid, LayoutDashboard, Layers, FileText, Scale, Gauge, Menu, X, Trash2, ListTree } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
 import Combobox from '../components/Combobox';
@@ -8,6 +8,8 @@ import PortfolioDashboard from '../components/PortfolioDashboard';
 import ThemeMenu from '../components/ThemeMenu';
 import { pennylaneCompanyUrl } from '../lib/pennylaneLink';
 import { applyTheme, getTheme } from '../lib/theme';
+import { defaultMapping, loadLocalMapping, saveLocalMapping } from '../lib/mapping';
+import { storeAPI } from '../services/api';
 import { loadSync, saveEntry, removeEntry, pullServer } from '../lib/syncStore';
 import { putLines, removeLines } from '../lib/linesStore';
 import { initSyncWorker, swSupported, enqueueSync, getJob, getAllJobs, clearJob } from '../lib/syncJobs';
@@ -19,6 +21,7 @@ const ResultatView = lazy(() => import('../views/ResultatView'));
 const SIGView = lazy(() => import('../views/SIGView'));
 const RatiosView = lazy(() => import('../views/RatiosView'));
 const MonthlyView = lazy(() => import('../views/MonthlyView'));
+const MappingEditor = lazy(() => import('../components/MappingEditor'));
 
 const TABS = [
   { key: 'synthese', label: 'Synthèse', Icon: LayoutDashboard },
@@ -27,6 +30,7 @@ const TABS = [
   { key: 'resultat', label: 'Compte de résultat', Icon: FileText },
   { key: 'bilan', label: 'Bilan', Icon: Scale },
   { key: 'ratios', label: 'Ratios', Icon: Gauge },
+  { key: 'mapping', label: 'Affectation des comptes', Icon: ListTree },
 ];
 
 const UI_KEY = 'mv:ui';
@@ -58,6 +62,7 @@ export default function Workspace({ onLogout }) {
   const [loading, setLoading] = useState({ companies: false, fy: false });
   const [error, setError] = useState('');
   const [syncErrors, setSyncErrors] = useState({}); // fyId -> message d'échec de synchro
+  const [mapping, setMapping] = useState(null); // affectation des comptes du dossier (null = plan par défaut non enregistré)
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => { try { return localStorage.getItem('mv:sidebar') === '1'; } catch { return false; } });
   const [theme, setTheme] = useState(getTheme);
@@ -149,6 +154,20 @@ export default function Workspace({ onLogout }) {
     }
     const sync = loadSync(companyId);
     setSynced(sync);
+    // Mapping personnalisé : cache local puis serveur (le plus récent gagne)
+    setMapping(loadLocalMapping(companyId));
+    storeAPI.getMapping(companyId).then(({ data }) => {
+      if (String(companyIdRef.current) !== String(companyId)) return;
+      const server = data?.mapping;
+      if (!server) return;
+      setMapping((local) => {
+        if (!local || String(server.updatedAt || '') > String(local.updatedAt || '')) {
+          saveLocalMapping(companyId, server);
+          return server;
+        }
+        return local;
+      });
+    }).catch(() => { /* repli local */ });
     // Compléter avec le stockage serveur (durable / multi-appareils), sans écraser un job récent
     pullServer(companyId).then((serverMap) => {
       if (serverMap && String(companyIdRef.current) === String(companyId)) {
@@ -255,6 +274,32 @@ export default function Workspace({ onLogout }) {
     if (!entries.length) return null;
     return mergeMonthly(entries, company?.name);
   }, [synced, company]);
+
+  // Comptes disponibles pour l'éditeur d'affectation (P&L + contreparties cash)
+  const accountsPL = useMemo(() => {
+    const am = mergedMonthly?.monthly?.accountMonthly || {};
+    return Object.values(am).map((a) => ({ number: a.number, originalNumber: a.number, label: (a.label || '').toUpperCase() }));
+  }, [mergedMonthly]);
+  const accountsCash = useMemo(() => {
+    const rows = mergedMonthly?.monthlyCashflow?.rows || [];
+    const seen = {};
+    for (const r of rows) {
+      if (r.isSubtotal || r.isTotal || r.isTreso) continue;
+      for (const a of r.accounts || []) {
+        if (!seen[a.number] || (a.label || '').length > (seen[a.number].label || '').length) {
+          seen[a.number] = { number: a.number, label: (a.label || '').toUpperCase() };
+        }
+      }
+    }
+    return Object.values(seen);
+  }, [mergedMonthly]);
+
+  const saveMapping = useCallback((m) => {
+    const stamped = { ...m, updatedAt: new Date().toISOString() };
+    setMapping(stamped);
+    saveLocalMapping(companyId, stamped);
+    storeAPI.saveMapping(companyId, stamped).catch(() => { /* repli local */ });
+  }, [companyId]);
 
   const reportMeta = active && {
     company,
@@ -454,10 +499,12 @@ export default function Workspace({ onLogout }) {
                 <div key={tab} className="mt-6 animate-view">
                   <Suspense fallback={<ViewSkeleton />}>
                     {tab === 'periodic'
-                      ? <div className="-mx-3 sm:-mx-5 md:-mx-6"><MonthlyView companyId={companyId} data={mergedMonthly} /></div>
-                      : active?.report?.report
-                        ? <PerExerciseTab tab={tab} report={active.report.report} meta={reportMeta} />
-                        : <NotSynced fy={selectedFy} syncing={syncing[selectedFy?.id]} onSync={() => doSync(selectedFy)} />}
+                      ? <div className="-mx-3 sm:-mx-5 md:-mx-6"><MonthlyView companyId={companyId} data={mergedMonthly} mapping={mapping} /></div>
+                      : tab === 'mapping'
+                        ? <MappingEditor key={companyId} mapping={mapping || defaultMapping()} accountsPL={accountsPL} accountsCash={accountsCash} onSave={saveMapping} />
+                        : active?.report?.report
+                          ? <PerExerciseTab tab={tab} report={active.report.report} meta={reportMeta} />
+                          : <NotSynced fy={selectedFy} syncing={syncing[selectedFy?.id]} onSync={() => doSync(selectedFy)} />}
                   </Suspense>
                 </div>
               ) : (

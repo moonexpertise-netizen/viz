@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { dataAPI } from '../services/api';
 import { getLinesForExercises } from '../lib/linesStore';
+import { buildPLTree, buildCashRows } from '../lib/mapping';
 import EntryDetailModal from '../components/EntryDetailModal';
 
 // Range slider thumb styles (can't do with Tailwind)
@@ -1162,25 +1163,51 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                 if (isEmpty) return null;
               }
 
-              // Group row (custom template) — same as line but accounts are already objects
+              // Group row (custom template) — catégorie avec sous-catégories imbriquées
               if (item.type === 'group' && customTree) {
                 const key = `sig_${item.id || item.key}`;
                 const isExpanded = expanded[key];
+                const subs = item.subs || [];
                 const accs = item.accounts || [];
-                const hasAccounts = accs.length > 0;
-                const accountNumbers = accs.map(a => a.number).join(',');
-                const visibleAccounts = hasAccounts ? accs.filter(acc => {
+                const allNums = [...subs.flatMap(sb => (sb.accounts || []).map(a => a.number)), ...accs.map(a => a.number)].join(',');
+                const hasContent = accs.length > 0 || subs.some(sb => (sb.accounts || []).length > 0);
+                const visibleOf = (list) => (list || []).filter(acc => {
                   if (showEmpty) return true;
                   const aggAcc = aggregateValues ? aggregateValues(acc.months || {}) : (acc.months || {});
                   return cols.some(c => (aggAcc?.[c.key] || 0) !== 0);
-                }) : [];
+                });
+
+                const accountRow = (acc, pad) => {
+                  const aggAcc = aggregateValues ? aggregateValues(acc.months || {}) : (acc.months || {});
+                  const accTotal = cols.reduce((s, c) => s + (aggAcc?.[c.key] || 0), 0);
+                  return (
+                    <tr key={`${key}_${acc.number}`} className="bg-white hover:bg-cream transition border-b border-sage">
+                      <td className={`py-1 px-3 ${pad} sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap cursor-pointer`}
+                        onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label })}>
+                        <span className="text-xs text-gray-400 mr-2">{acc.originalNumber || acc.number}</span>
+                        <span className="text-xs text-gray-custom">{acc.label}</span>
+                      </td>
+                      {cols.map(col => {
+                        const val = aggAcc?.[col.key] || 0;
+                        const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
+                        return (
+                          <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream transition ${val < 0 ? 'text-accent-red' : val === 0 ? 'text-gray-300' : ''}`}
+                            onClick={() => setModal({ number: acc.originalNumber || acc.number, label: acc.label, ...fromTo })}>
+                            {fmt(val, decimals)}
+                          </td>
+                        );
+                      })}
+                      <td className="py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px]">{fmt(accTotal, decimals)}</td>
+                    </tr>
+                  );
+                };
 
                 return [
-                  <tr key={key} className={`border-b border-sage ${hasAccounts ? 'cursor-pointer hover:bg-cream transition' : ''}`}
-                    onClick={() => hasAccounts && toggle(key)}>
+                  <tr key={key} className={`border-b border-sage ${hasContent ? 'cursor-pointer hover:bg-cream transition' : ''}`}
+                    onClick={() => hasContent && toggle(key)}>
                     <td className="py-1.5 px-3 sticky left-0 z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
-                      {hasAccounts && <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 text-xs ${isExpanded ? 'rotate-90' : ''}`}>{'\u25B6'}</span>}
-                      {!hasAccounts && <span className="inline-block w-5 mr-1" />}
+                      {hasContent && <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 text-xs ${isExpanded ? 'rotate-90' : ''}`}>{'\u25B6'}</span>}
+                      {!hasContent && <span className="inline-block w-5 mr-1" />}
                       <span className="text-sm text-navy">{item.label}</span>
                     </td>
                     {cols.map(col => {
@@ -1188,40 +1215,48 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                       return (
                         <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream transition ${val < 0 ? 'text-accent-red' : val === 0 ? 'text-gray-300' : ''}`}
-                          onClick={(e) => { e.stopPropagation(); if (accountNumbers) setModal({ number: accountNumbers, label: item.label, ...fromTo }); }}>
+                          onClick={(e) => { e.stopPropagation(); if (allNums) setModal({ number: allNums, label: item.label, ...fromTo }); }}>
                           {fmt(val, decimals)}
                         </td>
                       );
                     })}
                     <td className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream transition ${itemTotal < 0 ? 'text-accent-red' : itemTotal === 0 ? 'text-gray-300' : ''}`}
-                      onClick={(e) => { e.stopPropagation(); if (accountNumbers) setModal({ number: accountNumbers, label: item.label }); }}>
+                      onClick={(e) => { e.stopPropagation(); if (allNums) setModal({ number: allNums, label: item.label }); }}>
                       {fmt(itemTotal, decimals)}
                     </td>
                   </tr>,
-                  ...(isExpanded ? visibleAccounts.map(acc => {
-                    const aggAcc = aggregateValues ? aggregateValues(acc.months || {}) : (acc.months || {});
-                    const accTotal = cols.reduce((s, c) => s + (aggAcc?.[c.key] || 0), 0);
-                    return (
-                      <tr key={`${key}_${acc.number}`} className="bg-white hover:bg-cream transition border-b border-sage">
-                        <td className="py-1 px-3 pl-12 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap cursor-pointer"
-                          onClick={() => setModal({ number: acc.number, label: acc.label })}>
-                          <span className="text-xs text-gray-400 mr-2">{acc.number}</span>
-                          <span className="text-xs text-gray-custom">{acc.label}</span>
+                  ...(isExpanded ? subs.flatMap(sub => {
+                    const subKey = `${key}_sub_${sub.id}`;
+                    const subExpanded = expanded[subKey];
+                    const aggSub = aggregateValues ? aggregateValues(sub.months || {}) : (sub.months || {});
+                    const subTotal = cols.reduce((s, c) => s + (aggSub?.[c.key] || 0), 0);
+                    const subAccsAll = sub.accounts || [];
+                    if (!showEmpty && subAccsAll.length === 0 && cols.every(c => (aggSub?.[c.key] || 0) === 0)) return [];
+                    const subNums = subAccsAll.map(a => a.number).join(',');
+                    return [
+                      <tr key={subKey} className={`border-b border-sage/60 bg-cream/60 ${subAccsAll.length ? 'cursor-pointer hover:bg-cream transition' : ''}`}
+                        onClick={() => subAccsAll.length && toggle(subKey)}>
+                        <td className="py-1 px-3 pl-8 sticky left-0 z-10 bg-cream/60 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
+                          {subAccsAll.length > 0 && <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 text-xs ${subExpanded ? 'rotate-90' : ''}`}>{'\u25B6'}</span>}
+                          {subAccsAll.length === 0 && <span className="inline-block w-5 mr-1" />}
+                          <span className="text-xs font-medium text-navy">{sub.label}</span>
                         </td>
                         {cols.map(col => {
-                          const val = aggAcc?.[col.key] || 0;
+                          const val = aggSub?.[col.key] || 0;
                           const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                           return (
                             <td key={col.key} className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream transition ${val < 0 ? 'text-accent-red' : val === 0 ? 'text-gray-300' : ''}`}
-                              onClick={() => setModal({ number: acc.number, label: acc.label, ...fromTo })}>
+                              onClick={(e) => { e.stopPropagation(); if (subNums) setModal({ number: subNums, label: sub.label, ...fromTo }); }}>
                               {fmt(val, decimals)}
                             </td>
                           );
                         })}
-                        <td className="py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px]">{fmt(accTotal, decimals)}</td>
-                      </tr>
-                    );
+                        <td className={`py-1 px-3 text-right text-xs tabular-nums whitespace-nowrap min-w-[90px] ${subTotal < 0 ? 'text-accent-red' : subTotal === 0 ? 'text-gray-300' : ''}`}>{fmt(subTotal, decimals)}</td>
+                      </tr>,
+                      ...(subExpanded ? visibleOf(subAccsAll).map(acc => accountRow(acc, 'pl-14')) : []),
+                    ];
                   }) : []),
+                  ...(isExpanded ? visibleOf(accs).map(acc => accountRow(acc, 'pl-12')) : []),
                 ];
               }
 
@@ -1806,7 +1841,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
   );
 }
 
-export default function MonthlyView({ companyId, data, loading = false }) {
+export default function MonthlyView({ companyId, data, loading = false, mapping = null }) {
   const clientId = companyId;
   const balanceId = undefined;
   const error = null;
@@ -1828,14 +1863,9 @@ export default function MonthlyView({ companyId, data, loading = false }) {
   }, [storageKey]);
 
   const [activeTab, setActiveTab] = useState(savedPrefs.activeTab || 'pl');
+  const [plMode, setPlMode] = useState(savedPrefs.plMode || 'sig'); // 'sig' | 'standard'
   const [decimals, setDecimals] = useState(savedPrefs.decimals || '0');
   const [granularity, setGranularity] = useState(savedPrefs.granularity || 'M');
-
-  // Templates desactives (PCG standard uniquement pour l'instant)
-  const templates = [];
-  const selectedTemplate = 'default';
-  const setSelectedTemplate = () => {};
-  const customPLData = null;
 
   // Period filter state
   const [fromMonth, setFromMonth] = useState(savedPrefs.fromMonth || '');
@@ -1843,9 +1873,9 @@ export default function MonthlyView({ companyId, data, loading = false }) {
 
   // Sauvegarder les preferences a chaque changement
   useEffect(() => {
-    const prefs = { activeTab, decimals, granularity, fromMonth, toMonth };
+    const prefs = { activeTab, plMode, decimals, granularity, fromMonth, toMonth };
     try { localStorage.setItem(storageKey, JSON.stringify(prefs)); } catch {}
-  }, [activeTab, decimals, granularity, fromMonth, toMonth, storageKey]);
+  }, [activeTab, plMode, decimals, granularity, fromMonth, toMonth, storageKey]);
 
   const isClientMode = true;
 
@@ -1870,6 +1900,19 @@ export default function MonthlyView({ companyId, data, loading = false }) {
     if (!fromMonth || !toMonth) return allMonths;
     return allMonths.filter(m => m >= fromMonth && m <= toMonth);
   }, [allMonths, fromMonth, toMonth]);
+
+  // Mapping personnalise (Affectation des comptes) — mode Standard du P&L
+  const customPLData = useMemo(() => {
+    if (plMode !== 'standard' || !mapping?.pl || !monthly?.accountMonthly) return null;
+    return buildPLTree(mapping.pl, normalizeAccounts(monthly.accountMonthly), visibleMonths);
+  }, [plMode, mapping, monthly, visibleMonths]);
+
+  // Mapping personnalise du tableau de tresorerie (applique des qu'un mapping est enregistre)
+  const effectiveCashflow = useMemo(() => {
+    if (!mapping?.cash || !monthlyCashflow?.rows) return monthlyCashflow;
+    const built = buildCashRows(mapping.cash, monthlyCashflow, allMonths);
+    return { ...monthlyCashflow, rows: built.rows };
+  }, [mapping, monthlyCashflow, allMonths]);
 
   // Determine fiscal year start month from exercises data
   const fiscalStartMonth = useMemo(() => {
@@ -2048,6 +2091,16 @@ export default function MonthlyView({ companyId, data, loading = false }) {
 
             {/* Decimal toggle + granularity */}
             <div className="flex flex-wrap items-center gap-2">
+              {/* Présentation du P&L : SIG ou plan personnalisé (Affectation des comptes) */}
+              {activeTab === 'pl' && mapping?.pl && (
+                <div className="flex items-center gap-1 bg-cream rounded-lg p-0.5">
+                  {[{ k: 'sig', l: 'SIG' }, { k: 'standard', l: 'Standard' }].map(m => (
+                    <button key={m.k} onClick={() => setPlMode(m.k)}
+                      className={`px-2.5 py-2 text-xs rounded transition ${plMode === m.k ? 'bg-navy text-white font-medium' : 'text-gray-custom hover:text-navy'}`}
+                    >{m.l}</button>
+                  ))}
+                </div>
+              )}
               {/* Granularity toggle */}
               <div className="flex items-center gap-1 bg-cream rounded-lg p-0.5">
                 {[{ k: 'M', l: 'Mois' }, { k: 'T', l: 'Trim.' }, { k: 'S', l: 'Sem.' }, { k: 'A', l: 'An' }, { k: 'E', l: 'Exo' }].map(g => (
@@ -2189,7 +2242,7 @@ export default function MonthlyView({ companyId, data, loading = false }) {
             <PLTab monthly={monthly} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} customTree={customPLData} exercises={data?.exercises || []} cachedLines={cachedLines} />
           )}
           {activeTab === 'cashflow' && hasCashflow && (
-            <CashFlowTab cashflow={monthlyCashflow} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} exercises={data?.exercises || []} />
+            <CashFlowTab cashflow={effectiveCashflow} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} exercises={data?.exercises || []} />
           )}
         </div>
       </main>
