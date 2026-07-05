@@ -111,6 +111,9 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
       if (d?.kind === 'account' && acceptsAccounts) {
         e.preventDefault(); e.stopPropagation();
         assignAccounts([d.number], targetKey);
+        // Déplier la cible pour voir le compte arrivé
+        const catId = String(targetKey).split('/')[0];
+        setExpanded((x) => ({ ...x, [catId]: true, [targetKey]: true }));
       }
       dragRef.current = null; setDropTarget(null);
     },
@@ -183,8 +186,10 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
                 onDrop={(e) => {
                   e.preventDefault();
                   const d = dragRef.current;
-                  if (d?.kind === 'account' && !isTotal) assignAccounts([d.number], node.id);
-                  else if (d?.kind === 'node') moveNode(d.id, node.id);
+                  if (d?.kind === 'account' && !isTotal) {
+                    assignAccounts([d.number], node.id);
+                    setExpanded((x) => ({ ...x, [node.id]: true })); // voir le compte arrivé
+                  } else if (d?.kind === 'node') moveNode(d.id, node.id);
                   dragRef.current = null; setDropTarget(null);
                 }}>
                 {/* Ligne catégorie / total (déplaçable) */}
@@ -192,17 +197,18 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
                   draggable={!isEditing}
                   onDragStart={(e) => { e.stopPropagation(); dragRef.current = { kind: 'node', id: node.id }; }}
                   onDragEnd={() => { dragRef.current = null; setDropTarget(null); }}
+                  onClick={() => { if (!isTotal && !isEditing) setExpanded((x) => ({ ...x, [node.id]: !x[node.id] })); }}
                   className={cls('flex items-center gap-2 px-3 py-2.5 group',
-                    isTotal ? (node.mode === 'section' ? 'bg-cream font-semibold text-navy' : 'bg-navy text-white font-semibold') : 'bg-white hover:bg-cream/60 transition',
+                    isTotal ? (node.mode === 'section' ? 'bg-cream font-semibold text-navy' : 'bg-navy text-white font-semibold') : 'bg-white hover:bg-cream/60 transition cursor-pointer',
                     dropTarget === node.id && 'ring-2 ring-inset ring-navy/50 bg-cream')}>
                   {!isTotal ? (
-                    <button onClick={() => setExpanded((x) => ({ ...x, [node.id]: !x[node.id] }))} className="shrink-0 p-0.5">
+                    <span className="shrink-0 p-0.5">
                       <ChevronRight size={14} className={cls('transition-transform text-gray-custom', open && 'rotate-90')} />
-                    </button>
+                    </span>
                   ) : <span className="w-[22px] shrink-0" />}
 
                   {isEditing ? (
-                    <input autoFocus defaultValue={node.label}
+                    <input autoFocus defaultValue={node.label} onClick={(e) => e.stopPropagation()}
                       onBlur={(e) => { rename(node.id, null, e.target.value.trim() || node.label); setEditing(null); }}
                       onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setEditing(null); }}
                       className="flex-1 text-sm border border-sage rounded-md px-2 py-1 text-navy focus:outline-none focus:ring-2 focus:ring-navy" />
@@ -239,13 +245,14 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
                       return (
                         <div key={sub.id}>
                           <div {...dropProps(`${node.id}/${sub.id}`, true)}
-                            className={cls('flex items-center gap-2 pl-8 pr-3 py-2 border-t border-sage/40 group/sub',
+                            onClick={() => { if (!editingSub) setExpanded((x) => ({ ...x, [`${node.id}/${sub.id}`]: !x[`${node.id}/${sub.id}`] })); }}
+                            className={cls('flex items-center gap-2 pl-8 pr-3 py-2 border-t border-sage/40 group/sub cursor-pointer hover:bg-cream/70 transition',
                               dropTarget === `${node.id}/${sub.id}` && 'ring-2 ring-inset ring-navy/50 bg-cream')}>
-                            <button onClick={() => setExpanded((x) => ({ ...x, [`${node.id}/${sub.id}`]: !x[`${node.id}/${sub.id}`] }))} className="shrink-0 p-0.5">
+                            <span className="shrink-0 p-0.5">
                               <ChevronRight size={13} className={cls('transition-transform text-gray-custom', subOpen && 'rotate-90')} />
-                            </button>
+                            </span>
                             {editingSub ? (
-                              <input autoFocus defaultValue={sub.label}
+                              <input autoFocus defaultValue={sub.label} onClick={(e) => e.stopPropagation()}
                                 onBlur={(e) => { rename(node.id, sub.id, e.target.value.trim() || sub.label); setEditing(null); }}
                                 onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setEditing(null); }}
                                 className="flex-1 text-sm border border-sage rounded-md px-2 py-1 text-navy focus:outline-none focus:ring-2 focus:ring-navy" />
@@ -254,8 +261,8 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
                                 {subAccs.length > 0 && <span className="ml-2 text-xs text-gray-custom">({subAccs.length})</span>}
                               </span>
                             )}
-                            <button onClick={() => setEditing({ id: node.id, subId: sub.id })} className="p-1 rounded hover:bg-cream opacity-0 group-hover/sub:opacity-100"><Pencil size={12} className="text-gray-custom" /></button>
-                            <button onClick={() => removeSub(node.id, sub.id)} className="p-1 rounded hover:bg-red-50 opacity-0 group-hover/sub:opacity-100"><Trash2 size={12} className="text-accent-red" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); setEditing({ id: node.id, subId: sub.id }); }} className="p-1 rounded hover:bg-cream opacity-0 group-hover/sub:opacity-100"><Pencil size={12} className="text-gray-custom" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); removeSub(node.id, sub.id); }} className="p-1 rounded hover:bg-red-50 opacity-0 group-hover/sub:opacity-100"><Trash2 size={12} className="text-accent-red" /></button>
                           </div>
                           {subOpen && subAccs.map((acc) => <AccountRow key={acc.number} acc={acc} indent />)}
                           {subOpen && subAccs.length === 0 && <div className="pl-14 py-1.5 text-xs text-gray-custom/70 border-t border-sage/30">Aucun compte — utilisez « Reclassifier des comptes ».</div>}
