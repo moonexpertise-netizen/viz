@@ -21,26 +21,91 @@ export const newId = () => `n${Date.now().toString(36)}${Math.random().toString(
 export const DEFAULT_PL = () => ({
   overrides: {},
   nodes: [
-    { id: 'ca', kind: 'cat', label: "Chiffre d'affaires", prefixes: ['70'], subs: [] },
+    {
+      id: 'ca', kind: 'cat', label: "Chiffre d'affaires", prefixes: ['70'], subs: [
+        { id: 'ca_main', label: "Chiffre d'affaires", prefixes: ['701', '702', '703', '704', '705', '706', '707', '709'] },
+        { id: 'ca_annexe', label: 'Produits des activités annexes', prefixes: ['708'] },
+      ],
+    },
     {
       id: 'achats', kind: 'cat', label: 'Achats de matières et de fournitures', prefixes: ['60'], subs: [
-        { id: 'achats_mch', label: 'Achats de marchandises', prefixes: ['607', '6037', '6097'] },
-        { id: 'achats_mp', label: 'Achats de matières premières', prefixes: ['601', '602', '6031', '6032', '6091', '6092'] },
+        { id: 'achats_mp', label: 'Achat de matières premières', prefixes: ['601', '602'] },
         { id: 'achats_stocks', label: 'Variations de stocks', prefixes: ['603'] },
-        { id: 'achats_nonstock', label: 'Achats non stockés (énergie, fournitures)', prefixes: ['606', '6096'] },
+        { id: 'achats_presta', label: 'Prestations de service', prefixes: ['604'] },
+        { id: 'achats_mat', label: 'Achat de matériels et fournitures', prefixes: ['605', '607', '608'] },
+        { id: 'achats_rrr', label: 'Rabais, remises et ristournes', prefixes: ['609'] },
       ],
     },
     { id: 'marge_brute', kind: 'total', label: 'Marge brute', mode: 'cumul' },
-    { id: 'personnel', kind: 'cat', label: 'Frais de personnel', prefixes: ['64'], subs: [] },
-    { id: 'impots', kind: 'cat', label: 'Impôts et taxes', prefixes: ['63'], subs: [] },
-    { id: 'charges_ext', kind: 'cat', label: 'Autres achats et charges externes', prefixes: ['61', '62'], subs: [] },
-    { id: 'autres_expl', kind: 'cat', label: "Autres produits et charges d'exploitation", prefixes: ['71', '72', '73', '74', '75', '65', '791'], subs: [] },
+    {
+      id: 'personnel', kind: 'cat', label: 'Frais de personnel', prefixes: ['64'], subs: [
+        { id: 'pers_rem', label: 'Rémunérations', prefixes: ['641', '644'] },
+        { id: 'pers_soc', label: 'Charges sociales', prefixes: ['645', '646'] },
+        { id: 'pers_autres', label: 'Autres charges de personnel', prefixes: ['647', '648'] },
+        { id: 'pers_cice', label: 'CICE', prefixes: ['649'] },
+      ],
+    },
+    {
+      id: 'impots', kind: 'cat', label: 'Impôts et taxes', prefixes: ['63'], subs: [
+        { id: 'impots_main', label: 'Impôts et taxes', prefixes: ['63'] },
+      ],
+    },
+    {
+      id: 'charges_ext', kind: 'cat', label: 'Autres achats et charges externes', prefixes: ['61', '62'], subs: [
+        { id: 'ext_autres', label: 'Autres charges externes', prefixes: ['618', '628'] },
+        { id: 'ext_soustrait', label: 'Sous-traitance', prefixes: ['611'] },
+        { id: 'ext_redev', label: 'Redevances', prefixes: ['612'] },
+        { id: 'ext_loyers', label: 'Loyers', prefixes: ['613', '614'] },
+        { id: 'ext_entretien', label: 'Entretien & maintenance', prefixes: ['615'] },
+        { id: 'ext_assur', label: 'Assurances', prefixes: ['616'] },
+        { id: 'ext_etudes', label: 'Études', prefixes: ['617'] },
+        { id: 'ext_rrr', label: 'RRR sur services extérieurs', prefixes: ['619', '629'] },
+        { id: 'ext_interim', label: 'Intérim', prefixes: ['621'] },
+        { id: 'ext_honoraires', label: 'Honoraires', prefixes: ['622'] },
+        { id: 'ext_pub', label: 'Publicité', prefixes: ['623'] },
+        { id: 'ext_transport', label: 'Transports', prefixes: ['624'] },
+        { id: 'ext_deplacements', label: 'Déplacements', prefixes: ['625'] },
+        { id: 'ext_com', label: 'Communications', prefixes: ['626'] },
+        { id: 'ext_banque', label: 'Frais bancaires', prefixes: ['627'] },
+        { id: 'ext_fournitures', label: 'Fournitures et énergie', prefixes: ['606'] },
+      ],
+    },
+    {
+      id: 'autres_expl', kind: 'cat', label: "Autres produits et charges d'exploitation", prefixes: ['65', '71', '72', '73', '74', '75', '791'], subs: [
+        { id: 'aex_charges', label: "Autres charges d'exploitation", prefixes: ['65'] },
+        { id: 'aex_pertes', label: 'Pertes sur créances irrécouvrables', prefixes: ['654'] },
+        { id: 'aex_prodimmo', label: 'Production immobilisée', prefixes: ['72'] },
+        { id: 'aex_produits', label: "Autres produits d'exploitation", prefixes: ['75', '71', '73'] },
+        { id: 'aex_subv', label: "Subventions d'exploitation", prefixes: ['74'] },
+        { id: 'aex_transferts', label: 'Transferts de charges', prefixes: ['791'] },
+      ],
+    },
     { id: 'ebitda', kind: 'total', label: 'EBITDA', mode: 'cumul' },
-    { id: 'dotations', kind: 'cat', label: 'Dotations/reprises aux amort. et prov.', prefixes: ['68', '78'], subs: [] },
+    {
+      id: 'dotations', kind: 'cat', label: 'Dotation/reprises aux amort. et prov.', prefixes: ['68', '78'], subs: [
+        { id: 'dot_amort', label: 'Dotation aux amortissements et aux PRC', prefixes: ['681'] },
+        { id: 'dot_reprises', label: 'Reprises sur amortissements et provisions', prefixes: ['781'] },
+      ],
+    },
     { id: 'rex', kind: 'total', label: "Résultat d'exploitation", mode: 'cumul' },
-    { id: 'fin', kind: 'cat', label: 'Résultat financier', prefixes: ['66', '76', '796'], subs: [] },
-    { id: 'except', kind: 'cat', label: 'Résultat exceptionnel', prefixes: ['67', '77', '797'], subs: [] },
-    { id: 'is', kind: 'cat', label: 'IS et participation', prefixes: ['69'], subs: [] },
+    {
+      id: 'fin', kind: 'cat', label: 'Résultat financier', prefixes: ['66', '76'], subs: [
+        { id: 'fin_charges', label: 'Charges financières', prefixes: ['66', '686'] },
+        { id: 'fin_produits', label: 'Produits financiers', prefixes: ['76', '786', '796'] },
+      ],
+    },
+    {
+      id: 'except', kind: 'cat', label: 'Résultat exceptionnel', prefixes: ['67', '77'], subs: [
+        { id: 'exc_charges', label: 'Charges exceptionnelles', prefixes: ['67', '687'] },
+        { id: 'exc_produits', label: 'Produits exceptionnels', prefixes: ['77', '787', '797'] },
+      ],
+    },
+    {
+      id: 'is', kind: 'cat', label: 'IS et participation', prefixes: ['69'], subs: [
+        { id: 'is_participation', label: 'Participations et intéressement', prefixes: ['691'] },
+        { id: 'is_impot', label: 'Impôt sur les sociétés', prefixes: ['695', '696', '697', '698', '699'] },
+      ],
+    },
     { id: 'rnet', kind: 'total', label: 'Résultat net', mode: 'cumul' },
   ],
 });
@@ -48,14 +113,49 @@ export const DEFAULT_PL = () => ({
 export const DEFAULT_CASH = () => ({
   overrides: {},
   nodes: [
-    { id: 'enc_clients', kind: 'cat', label: 'Encaissements clients', prefixes: ['41'], subs: [] },
-    { id: 'dec_fourn', kind: 'cat', label: 'Décaissements fournisseurs', prefixes: ['40'], subs: [] },
-    { id: 'salaires', kind: 'cat', label: 'Salaires et charges sociales', prefixes: ['42', '43'], subs: [] },
-    { id: 'fiscal', kind: 'cat', label: 'Paiement de dettes fiscales', prefixes: ['44'], subs: [] },
-    { id: 'autres_op', kind: 'cat', label: 'Autres encaissements/décaissements', prefixes: ['6', '7'], subs: [] },
+    {
+      id: 'enc_clients', kind: 'cat', label: 'Encaissements clients', prefixes: ['41'], subs: [
+        { id: 'cash_creances', label: 'Créances clients', prefixes: ['41'] },
+      ],
+    },
+    {
+      id: 'dec_fourn', kind: 'cat', label: 'Décaissements fournisseurs', prefixes: ['40'], subs: [
+        { id: 'cash_fourn', label: 'Dettes fournisseurs', prefixes: ['40'] },
+      ],
+    },
+    {
+      id: 'salaires', kind: 'cat', label: 'Salaires et charges sociales', prefixes: ['42', '43'], subs: [
+        { id: 'cash_social', label: 'Dettes sociales', prefixes: ['42', '43'] },
+      ],
+    },
+    {
+      id: 'fiscal', kind: 'cat', label: 'Paiement des dettes fiscales', prefixes: ['44'], subs: [
+        { id: 'cash_fiscal', label: 'Dettes fiscales', prefixes: ['44'] },
+      ],
+    },
+    {
+      id: 'autres_op', kind: 'cat', label: 'Autres encaissements et décaissements', prefixes: ['6', '7'], subs: [
+        { id: 'cash_autres_cd', label: 'Autres créances et dettes', prefixes: ['46', '47'] },
+      ],
+    },
     { id: 'flux_op', kind: 'total', label: 'Flux de trésorerie opérationnel', mode: 'section' },
-    { id: 'emprunts', kind: 'cat', label: 'Emprunts', prefixes: ['16'], subs: [] },
-    { id: 'autres_fin', kind: 'cat', label: 'Autres flux financiers', prefixes: ['1'], subs: [] },
+    {
+      id: 'emprunts', kind: 'cat', label: 'Emprunts', prefixes: ['16'], subs: [
+        { id: 'emp_oblig', label: 'Emprunts obligataires', prefixes: ['161', '163'] },
+        { id: 'emp_credit', label: 'Emprunts auprès des établissements de crédit', prefixes: ['164'] },
+      ],
+    },
+    {
+      id: 'autres_fin', kind: 'cat', label: 'Autres flux financiers', prefixes: ['1'], subs: [
+        { id: 'fin_immo', label: 'Immobilisations financières', prefixes: ['26', '27'] },
+        { id: 'fin_autres_emp', label: 'Autres emprunts et dettes financières', prefixes: ['166', '167', '168'] },
+        { id: 'fin_depots', label: 'Dépôts et cautionnements reçus', prefixes: ['165'] },
+        { id: 'fin_cca', label: "Comptes courants d'associés", prefixes: ['455'] },
+        { id: 'fin_capital', label: 'Capital', prefixes: ['10'] },
+        { id: 'fin_subv', label: "Subventions d'investissement", prefixes: ['13'] },
+        { id: 'fin_banque', label: 'Frais bancaires', prefixes: ['627', '66'] },
+      ],
+    },
     { id: 'flux_fin', kind: 'total', label: 'Flux de trésorerie financier', mode: 'section' },
     { id: 'autres_flux', kind: 'cat', label: 'Autres flux', prefixes: [], catchAll: true, subs: [] },
     { id: 'flux_net', kind: 'total', label: 'Flux de trésorerie net', mode: 'cumul' },
@@ -73,18 +173,21 @@ export function resolveAccount(plan, number, originalNumber) {
     const [catId, subId] = String(ov).split('/');
     if (plan.nodes.some((n) => n.id === catId)) return { catId, subId: subId || null };
   }
-  let best = null; let bestLen = -1;
+  // Score = 2×longueur du préfixe (+1 pour une sous-catégorie : à longueur
+  // égale, l'affectation la plus fine gagne).
+  let best = null; let bestScore = -1;
+  const matches = (p) => p && (String(originalNumber).startsWith(p) || String(number).startsWith(p));
   for (const node of plan.nodes) {
     if (node.kind !== 'cat') continue;
     for (const p of node.prefixes || []) {
-      if (p && (String(originalNumber).startsWith(p) || String(number).startsWith(p)) && p.length > bestLen) {
-        best = { catId: node.id, subId: null }; bestLen = p.length;
+      if (matches(p) && p.length * 2 > bestScore) {
+        best = { catId: node.id, subId: null }; bestScore = p.length * 2;
       }
     }
     for (const sub of node.subs || []) {
       for (const p of sub.prefixes || []) {
-        if (p && (String(originalNumber).startsWith(p) || String(number).startsWith(p)) && p.length > bestLen) {
-          best = { catId: node.id, subId: sub.id }; bestLen = p.length;
+        if (matches(p) && p.length * 2 + 1 > bestScore) {
+          best = { catId: node.id, subId: sub.id }; bestScore = p.length * 2 + 1;
         }
       }
     }
