@@ -55,14 +55,23 @@ export function buildSyntheticAN(prevItems) {
       simulatedAN: true,
     });
   }
-  // Résultat de l'exercice précédent = produits - charges = -(Σ soldes 6/7)
+  // Résultat de l'exercice précédent = produits - charges = -(Σ soldes 6/7).
+  // Convention : 120000 si bénéfice (créditeur), 129000 si perte (débiteur) — jamais 110.
   const result = round2(-sumBal67);
-  if (result !== 0) {
+  if (result > 0) {
     out.push({
-      number: '110000',
-      label: 'REPORT À NOUVEAU (À-NOUVEAUX SIMULÉS)',
-      debits: result < 0 ? String(-result) : '0',
-      credits: result > 0 ? String(result) : '0',
+      number: '120000',
+      label: 'RÉSULTAT DE L\'EXERCICE — BÉNÉFICE (À-NOUVEAUX SIMULÉS)',
+      debits: '0',
+      credits: String(result),
+      simulatedAN: true,
+    });
+  } else if (result < 0) {
+    out.push({
+      number: '129000',
+      label: 'RÉSULTAT DE L\'EXERCICE — PERTE (À-NOUVEAUX SIMULÉS)',
+      debits: String(-result),
+      credits: '0',
       simulatedAN: true,
     });
   }
