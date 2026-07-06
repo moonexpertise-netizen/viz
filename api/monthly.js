@@ -1,7 +1,7 @@
 import { requireAuth, sendError } from './_lib/auth.js';
 import { getLedgerEntryLines, getJournals, getTrialBalance, getLedgerEntries, getFiscalYears } from './_lib/pennylane.js';
 import { getTrialBalanceWithAN, needsSimulatedAN, buildSyntheticAN, prevFyOf } from './_lib/anSimulation.js';
-import { linesToMonthly, calculateMonthlyPL, calculateMonthlyCashFlow } from './_lib/monthlyEngine.js';
+import { linesToMonthly, calculateMonthlyPL, calculateMonthlyCashFlow, isCashAccount } from './_lib/monthlyEngine.js';
 import { allLines } from './_lib/entriesEngine.js';
 
 /**
@@ -10,7 +10,7 @@ import { allLines } from './_lib/entriesEngine.js';
  */
 export default async function handler(req, res) {
   if (!(await requireAuth(req, res))) return;
-  const { company_id, companyId, period_start, period_end } = req.query;
+  const { company_id, companyId, period_start, period_end, journals: journalsParam } = req.query;
   const cid = company_id || companyId;
   if (!cid || !period_start || !period_end) {
     res.status(400).json({ error: 'company_id, period_start et period_end requis' });
@@ -35,6 +35,23 @@ export default async function handler(req, res) {
     const journalCode = new Map();
     for (const j of journals) journalCode.set(j.id, j.code || j.label || '');
 
+    // Journaux retenus pour la trésorerie : sélection utilisateur, sinon présélection
+    // « intelligente » = journaux de banque (type finances) + tout journal qui mouvemente
+    // réellement un compte de trésorerie (ex. un OD de correction sur 512) — ainsi la
+    // ligne de trésorerie colle au relevé bancaire par défaut, tout en restant ajustable.
+    const financeCodes = journals.filter((j) => j.type === 'finances').map((j) => String(j.code || '').toUpperCase()).filter(Boolean);
+    const touchingCodes = new Set();
+    for (const ln of lines) {
+      const num = String(ln.ledger_account?.number ?? '');
+      if (isCashAccount(num)) {
+        const code = String(journalCode.get(ln.journal?.id) || '').toUpperCase();
+        if (code && code !== 'AN') touchingCodes.add(code);
+      }
+    }
+    const defaultCodes = [...new Set([...financeCodes, ...touchingCodes])].filter((c) => c !== 'AN');
+    const requested = String(journalsParam || '').split(',').map((c) => c.trim().toUpperCase()).filter(Boolean);
+    const cashJournalCodes = requested.length ? requested : (defaultCodes.length ? defaultCodes : null);
+
     // Map numero compte -> libelle (balance generale + auxiliaire pour les tiers clients/fournisseurs)
     const labelMap = {};
     for (const it of [...tb, ...tbAux]) {
@@ -42,7 +59,7 @@ export default async function handler(req, res) {
       if (num && it.label) labelMap[num] = String(it.label).toUpperCase();
     }
 
-    const { monthlyData, cashFlowEntries, accounts, initialTresorerie } = linesToMonthly(lines, journalCode, labelMap);
+    const { monthlyData, cashFlowEntries, accounts, initialTresorerie } = linesToMonthly(lines, journalCode, labelMap, cashJournalCodes);
     const pl = calculateMonthlyPL(monthlyData, accounts);
 
     // À-nouveaux simulés : si l'exercice précédent n'est pas clôturé, la trésorerie
@@ -75,6 +92,13 @@ export default async function handler(req, res) {
       counts: { lines: lines.length, accounts: accounts.length },
       initialTresorerie: initialTresorerie + openingAdjust,
       anSimulated,
+      // Seuls les journaux pertinents (banque ou mouvementant la trésorerie) sont proposés
+      journals: journals
+        .filter((j) => j.code && j.type !== 'carryover')
+        .map((j) => ({ id: j.id, code: String(j.code).toUpperCase(), label: j.label || '', type: j.type || '' }))
+        .filter((j) => defaultCodes.includes(j.code) || (cashJournalCodes || []).includes(j.code)),
+      journalsUsed: cashJournalCodes || [],
+      journalsDefault: defaultCodes,
       months: pl.months,
       plSummary: pl.summary,
       accountMonthly: pl.accountMonthly,

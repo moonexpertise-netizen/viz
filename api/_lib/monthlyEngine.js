@@ -6,6 +6,10 @@
  */
 
 const round2 = (n) => Math.round(n * 100) / 100;
+
+// Trésorerie réelle = disponibilités : classe 5 HORS 511 (valeurs à l'encaissement),
+// 58 (virements internes) et 59 (dépréciations). Le relevé bancaire fait foi.
+export const isCashAccount = (num) => String(num).charAt(0) === '5' && !String(num).startsWith('511') && !String(num).startsWith('58') && !String(num).startsWith('59');
 const toNum = (v) => {
   if (v === null || v === undefined || v === '') return 0;
   const f = parseFloat(String(v).replace(/\s/g, '').replace(',', '.'));
@@ -20,15 +24,16 @@ const AN_CODES = new Set(['AN', 'RAN', 'OUV', 'ANO', 'ANOUVEAUX']);
  * @param {Map}   journalCode  id journal -> code (ex 'AN', 'BQ1')
  * @param {Object} labelMap    number -> libelle compte
  */
-export function linesToMonthly(lines, journalCode = new Map(), labelMap = {}) {
+export function linesToMonthly(lines, journalCode = new Map(), labelMap = {}, cashJournalCodes = null) {
+  // cashJournalCodes : codes des journaux retenus pour l'analyse de trésorerie
+  // (façon Finthesis — par défaut les journaux de type 'finances'). Le P&L
+  // mensuel, lui, reste calculé sur TOUS les journaux (hors à-nouveaux).
+  const cashSet = cashJournalCodes ? new Set([...cashJournalCodes].map((c) => String(c).toUpperCase())) : null;
   const monthlyData = {};      // 'YYYY-MM' -> { number -> {debit, credit} }
   const entryGroups = {};      // entryId -> [{ number, debit, credit, month, journalAN }]
   const accountsSet = {};      // number -> {label, class}
   let initialTresorerie = 0;
-  // Trésorerie réelle = disponibilités : classe 5 HORS 511 (valeurs à l'encaissement),
-  // 58 (virements internes) et 59 (dépréciations). Un chèque remis mais non crédité
-  // n'est pas encore en banque — le relevé fait foi.
-  const isCash = (num) => num.charAt(0) === '5' && !num.startsWith('511') && !num.startsWith('58') && !num.startsWith('59');
+  const isCash = isCashAccount;
 
   for (const ln of lines) {
     const number = String(ln.ledger_account?.number ?? '').trim();
@@ -58,8 +63,8 @@ export function linesToMonthly(lines, journalCode = new Map(), labelMap = {}) {
       monthlyData[month][number].credit += credit;
     }
 
-    // Groupes d'ecritures pour le cashflow (hors a-nouveaux)
-    if (month && !isAN) {
+    // Groupes d'ecritures pour le cashflow (hors a-nouveaux, journaux retenus uniquement)
+    if (month && !isAN && (!cashSet || cashSet.has(jcode.toUpperCase()))) {
       if (!entryGroups[entryId]) entryGroups[entryId] = [];
       entryGroups[entryId].push({ number, debit, credit, month, label: accountsSet[number].label });
     }

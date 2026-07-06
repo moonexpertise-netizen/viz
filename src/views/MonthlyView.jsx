@@ -2,6 +2,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { dataAPI } from '../services/api';
 import { getLinesForExercises } from '../lib/linesStore';
 import { buildPLTree, buildCashRows } from '../lib/mapping';
+import { buildCashflowFromLines, canRebuildCashflow } from '../lib/cashflowClient';
+import { cls } from '../lib/format';
 import EntryDetailModal from '../components/EntryDetailModal';
 
 // Range slider thumb styles (can't do with Tailwind)
@@ -1507,7 +1509,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
 }
 
 // Cash Flow Detail Modal
-function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, account, month, from, to, onClose }) {
+function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, account, month, from, to, onClose, journals = [] }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -1524,6 +1526,7 @@ function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, acc
           company_id: balanceId || clientId,
           category,
           account: account || undefined,
+          journals: journals.length ? journals.join(',') : undefined,
           from: fromM || undefined,
           to: toM || undefined,
         });
@@ -1609,7 +1612,7 @@ function CashFlowDetailModal({ balanceId, clientId, category, categoryLabel, acc
 }
 
 // Cash Flow Tab
-function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, clientId, decimals = 0, exercises = [] }) {
+function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, clientId, decimals = 0, exercises = [], journalsAll = [], selectedJournals = [], onToggleJournal = null, canCustomJournals = false }) {
   const rows = cashflow.rows || [];
 
   // Trésorerie d'ouverture/clôture = soldes progressifs : on ne somme JAMAIS.
@@ -1706,6 +1709,28 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
 
   return (
     <>
+      {/* Journaux de banque retenus pour l'analyse (façon Finthesis) */}
+      {journalsAll.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-3 rounded-xl border border-sage bg-cream/60 px-3 py-2.5">
+          <span className="text-xs font-medium text-gray-custom">Journaux de trésorerie retenus :</span>
+          {journalsAll.map((j) => {
+            const checked = selectedJournals.includes(j.code);
+            const disabled = !canCustomJournals;
+            return (
+              <label key={j.code} title={j.label + (disabled ? ' — resynchronisez l\'exercice pour modifier la sélection' : '')}
+                className={cls('inline-flex items-center gap-1.5 text-xs rounded-full border px-2.5 py-1.5 transition select-none',
+                  checked ? 'border-navy/25 bg-white text-navy font-medium' : 'border-sage text-gray-custom',
+                  disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-white')}>
+                <input type="checkbox" checked={checked} disabled={disabled}
+                  onChange={() => onToggleJournal && onToggleJournal(j.code)}
+                  className="accent-[var(--gold)] w-3.5 h-3.5" />
+                {j.code}
+                {j.type === 'finances' && <span className="w-1.5 h-1.5 rounded-full bg-accent-green" title="Journal de banque" />}
+              </label>
+            );
+          })}
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2 justify-between mb-3">
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => { const d = buildCFExportData(); copyToClipboard(d.headers, d.rows).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }} className={exportBtnClass}>
@@ -1841,6 +1866,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
         <CashFlowDetailModal
           balanceId={clientId ? undefined : balanceId}
           clientId={clientId}
+          journals={selectedJournals}
           category={modal.category}
           categoryLabel={modal.label}
           account={modal.account}
@@ -1883,12 +1909,14 @@ export default function MonthlyView({ companyId, data, loading = false, mapping 
   // Period filter state
   const [fromMonth, setFromMonth] = useState(savedPrefs.fromMonth || '');
   const [toMonth, setToMonth] = useState(savedPrefs.toMonth || '');
+  // Journaux retenus pour la trésorerie (null = présélection : journaux de banque)
+  const [cfJournals, setCfJournals] = useState(savedPrefs.cfJournals || null);
 
   // Sauvegarder les preferences a chaque changement
   useEffect(() => {
-    const prefs = { activeTab, plMode, decimals, granularity, fromMonth, toMonth };
+    const prefs = { activeTab, plMode, decimals, granularity, fromMonth, toMonth, cfJournals };
     try { localStorage.setItem(storageKey, JSON.stringify(prefs)); } catch {}
-  }, [activeTab, plMode, decimals, granularity, fromMonth, toMonth, storageKey]);
+  }, [activeTab, plMode, decimals, granularity, fromMonth, toMonth, cfJournals, storageKey]);
 
   const isClientMode = true;
 
@@ -1920,12 +1948,45 @@ export default function MonthlyView({ companyId, data, loading = false, mapping 
     return buildPLTree(mapping.pl, normalizeAccounts(monthly.accountMonthly), visibleMonths);
   }, [plMode, mapping, monthly, visibleMonths]);
 
+  // ── Sélection des journaux de trésorerie (façon Finthesis) ──
+  const journalsAll = useMemo(() => {
+    const list = monthly?.journals || [];
+    return [...list].sort((a, b) => String(a.code).localeCompare(String(b.code)));
+  }, [monthly]);
+  const journalsDefault = useMemo(() => {
+    const fromServer = monthly?.journalsDefault || [];
+    if (fromServer.length) return fromServer;
+    const fin = journalsAll.filter((j) => j.type === 'finances').map((j) => j.code);
+    return fin.length ? fin : journalsAll.map((j) => j.code);
+  }, [journalsAll, monthly]);
+  const selectedJournals = cfJournals || journalsDefault;
+  const canCustomJournals = canRebuildCashflow(cachedLines);
+  const isDefaultSelection = !cfJournals
+    || (cfJournals.length === journalsDefault.length && cfJournals.every((c) => journalsDefault.includes(c)));
+
+  const toggleJournal = (code) => {
+    const cur = new Set(selectedJournals);
+    if (cur.has(code)) cur.delete(code); else cur.add(code);
+    const next = journalsAll.map((j) => j.code).filter((c) => cur.has(c));
+    if (!next.length) return; // au moins un journal
+    const isDef = next.length === journalsDefault.length && next.every((c) => journalsDefault.includes(c));
+    setCfJournals(isDef ? null : next);
+  };
+
+  // Reconstruction client quand la sélection diffère de la présélection
+  const baseCashflow = useMemo(() => {
+    if (isDefaultSelection || !canCustomJournals || !monthlyCashflow?.rows) return monthlyCashflow;
+    const opening = monthly?.initialTresorerie ?? (monthlyCashflow.rows.find((r) => r.key === 'tresorerieOuverture')?.months?.[allMonths[0]] ?? 0);
+    const built = buildCashflowFromLines(cachedLines, selectedJournals, opening, allMonths);
+    return { ...monthlyCashflow, rows: built.rows };
+  }, [isDefaultSelection, canCustomJournals, monthlyCashflow, cachedLines, selectedJournals, allMonths, monthly]);
+
   // Mapping personnalise du tableau de tresorerie (applique des qu'un mapping est enregistre)
   const effectiveCashflow = useMemo(() => {
-    if (!mapping?.cash || !monthlyCashflow?.rows) return monthlyCashflow;
-    const built = buildCashRows(mapping.cash, monthlyCashflow, allMonths);
-    return { ...monthlyCashflow, rows: built.rows };
-  }, [mapping, monthlyCashflow, allMonths]);
+    if (!mapping?.cash || !baseCashflow?.rows) return baseCashflow;
+    const built = buildCashRows(mapping.cash, baseCashflow, allMonths);
+    return { ...baseCashflow, rows: built.rows };
+  }, [mapping, baseCashflow, allMonths]);
 
   // Determine fiscal year start month from exercises data
   const fiscalStartMonth = useMemo(() => {
@@ -2255,7 +2316,8 @@ export default function MonthlyView({ companyId, data, loading = false, mapping 
             <PLTab monthly={monthly} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} customTree={customPLData} exercises={data?.exercises || []} cachedLines={cachedLines} />
           )}
           {activeTab === 'cashflow' && hasCashflow && (
-            <CashFlowTab cashflow={effectiveCashflow} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} exercises={data?.exercises || []} />
+            <CashFlowTab cashflow={effectiveCashflow} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} exercises={data?.exercises || []}
+              journalsAll={journalsAll} selectedJournals={selectedJournals} onToggleJournal={toggleJournal} canCustomJournals={canCustomJournals} />
           )}
         </div>
       </main>

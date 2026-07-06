@@ -92,6 +92,7 @@ export function allLines(lines, entries, journals) {
       debit: toNum(l.debit),
       credit: toNum(l.credit),
       journalCode: jmap.get(l.journal?.id) || '',
+      entryId: l.ledger_entry?.id ?? l.id, // regroupement par écriture côté client
       pieceUrl: e.pieceUrl || '',
       pieceRef: e.piece || '',
     });
@@ -120,7 +121,8 @@ const CATEGORY_OF = (counterNum) => {
 /**
  * Mouvements de trésorerie d'une catégorie (et éventuellement d'un compte de contrepartie).
  */
-export function cashflowEntries(lines, entries, journals, category, account) {
+export function cashflowEntries(lines, entries, journals, category, account, journalCodes = null) {
+  const jset = journalCodes && journalCodes.length ? new Set(journalCodes.map((c) => String(c).toUpperCase())) : null;
   const jmap = journalCodeMap(journals);
   const emap = entryInfoMap(entries);
 
@@ -129,6 +131,7 @@ export function cashflowEntries(lines, entries, journals, category, account) {
   for (const l of lines || []) {
     const jcode = (jmap.get(l.journal?.id) || '').toUpperCase();
     if (AN_CODES.has(jcode)) continue;
+    if (jset && !jset.has(jcode)) continue; // journaux retenus uniquement
     const id = l.ledger_entry?.id ?? l.id;
     (groups[id] = groups[id] || []).push(l);
   }

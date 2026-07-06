@@ -8,7 +8,7 @@ import { cashflowEntries, endOfMonth } from './_lib/entriesEngine.js';
  */
 export default async function handler(req, res) {
   if (!(await requireAuth(req, res))) return;
-  const { company_id, companyId, category, account, from, to } = req.query;
+  const { company_id, companyId, category, account, journals: journalsParam, from, to } = req.query;
   const cid = company_id || companyId;
   if (!cid || !category) {
     res.status(400).json({ error: 'company_id et category requis' });
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
       getLedgerEntries(cid, ps, pe),
       getJournals(cid),
     ]);
-    res.status(200).json({ entries: cashflowEntries(lines, entries, journals, category, account) });
+    res.status(200).json({ entries: cashflowEntries(lines, entries, journals, category, account, String(journalsParam || '').split(',').map((c) => c.trim()).filter(Boolean)) });
   } catch (err) {
     sendError(res, err);
   }

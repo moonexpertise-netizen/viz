@@ -15,11 +15,17 @@ export function mergeMonthly(entries, clientName) {
   const plByMonth = {};
   const cfRows = {}; // key -> { ...meta, months:{}, accounts:{num:{label,months,total}} }
   let cfOrder = [];
+  const journalsById = {}; // union des journaux (sélecteur de trésorerie)
+  const journalsDefaultSet = new Set(); // présélection (banque + journaux touchant la trésorerie)
+  let initialTresorerie = null; // ouverture du 1er exercice
   const lines = []; // lignes d'écritures (détail des comptes), chargées à la synchro
 
   for (const e of valid) {
     const m = e.monthly;
     (m.months || []).forEach((mo) => months.add(mo));
+    for (const j of m.journals || []) journalsById[j.id || j.code] = j;
+    for (const c of m.journalsDefault || m.journalsUsed || []) journalsDefaultSet.add(c);
+    if (initialTresorerie === null && typeof m.initialTresorerie === 'number') initialTresorerie = m.initialTresorerie;
     if (Array.isArray(m.lines)) lines.push(...m.lines);
 
     // P&L par compte
@@ -80,7 +86,7 @@ export function mergeMonthly(entries, clientName) {
   const exercises = valid.map((e) => ({ id: e.fy.id, fiscal_year: e.fy.year, period_start: e.fy.start, period_end: e.fy.end }));
 
   return {
-    monthly: { months: sortedMonths, accountMonthly, plSummary },
+    monthly: { months: sortedMonths, accountMonthly, plSummary, journals: Object.values(journalsById), journalsDefault: [...journalsDefaultSet], initialTresorerie: initialTresorerie ?? 0 },
     monthlyCashflow: { months: sortedMonths, rows },
     lines,
     exercises,
