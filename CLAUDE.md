@@ -40,6 +40,7 @@ Outil d'analyse financière pour le cabinet **MOON Expertise**. Il récupère le
 - `normalize.js` : trial_balance → comptes `{accountNumber, accountLabel, soldeN, soldeN1, accountClass}`. **Les libellés de comptes sont mis en MAJUSCULES** ici et dans `monthly.js` (labelMap).
 - `accountingEngine.js` : `calculateBilan` (capitaux propres = classe 1 préfixes 10-14 + résultat à date ; emprunts 16-18 → dettes), `calculatePL`, `calculateSIG` (avec `SIG_DETAIL` = comptes contributeurs par solde), `calculateRatios`, `computeDisponibilites` (trésorerie = classe 5 hors 511/58/59).
 - `monthlyEngine.js`, `entriesEngine.js` : mensuel + drill-down écritures.
+- `anSimulation.js` : **à-nouveaux simulés** — quand l'exercice précédent n'est pas clôturé (statut Pennylane `open`, donc aucune écriture AN), les soldes de bilan (classes 1-5) du précédent sont reportés automatiquement + résultat antérieur en 110000 (récursif sur une chaîne d'exercices ouverts). Branché dans report.js, monthly.js (trésorerie d'ouverture) et dashboard-row.js. Un statut `frozen` génère de vrais AN (vérifié) → pas de simulation.
 
 ## Authentification (`api/_lib/auth.js`, `api/login.js`)
 - **Login e-mail `@moonexpertise.fr` + mot de passe.** Garde de domaine côté serveur. Mot de passe : hash KV si défini, sinon `APP_PASSWORD` (env). Cookie de session HMAC HttpOnly SameSite=Lax.

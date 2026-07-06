@@ -44,10 +44,11 @@ function fyFlags(fiscalYears, idx) {
   const enCours = !!(fy.start && fy.end && fy.start <= t && t <= fy.end);
   const closedLike = (s) => s === 'closed' || s === 'frozen';
   const cloture = closedLike(fy.status);
-  // à-nouveaux générés seulement quand l'exercice précédent (plus ancien) est clôturé/gelé
+  // Pennylane ne génère les à-nouveaux qu'à la clôture (closed/frozen) du précédent ;
+  // sinon MoonViz les SIMULE automatiquement (report des soldes de bilan).
   const prev = fiscalYears[idx + 1];
-  const sansANouveaux = !(prev && closedLike(prev.status));
-  return { enCours, cloture, sansANouveaux };
+  const anSimules = !!(prev && prev.status === 'open');
+  return { enCours, cloture, anSimules };
 }
 
 export default function Workspace({ onLogout }) {
@@ -626,7 +627,7 @@ function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedF
                   {fy.start && <span className="text-xs text-gray-custom">{fr(fy.start)} → {fr(fy.end)}</span>}
                   {fl.enCours && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-navy text-white">Exercice en cours</span>}
                   {!fl.cloture && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Non clôturé</span>}
-                  {fl.sansANouveaux && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Sans à-nouveaux</span>}
+                  {fl.anSimules && <span title="L'exercice précédent n'est pas clôturé : les soldes de bilan (trésorerie, capital…) sont reportés automatiquement." className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">À-nouveaux simulés</span>}
                   {entry && (
                     <span className={cls('text-[11px] font-medium px-2 py-0.5 rounded-full',
                       isSel ? 'bg-accent-green text-white' : 'bg-emerald-100 text-emerald-700')}>{isSel ? 'Affiché' : 'Chargé'}</span>

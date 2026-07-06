@@ -2,6 +2,7 @@ import { requireAuth, sendError } from './_lib/auth.js';
 import { getFiscalYears, getTrialBalance } from './_lib/pennylane.js';
 import { buildAccounts } from './_lib/normalize.js';
 import { generateFullReport, computeDisponibilites } from './_lib/accountingEngine.js';
+import { getTrialBalanceWithAN, needsSimulatedAN } from './_lib/anSimulation.js';
 
 /**
  * GET /api/dashboard-row?company_id=..
@@ -21,14 +22,17 @@ export default async function handler(req, res) {
     // Exercice en cours = celui qui contient aujourd'hui, sinon le plus récent
     const current = usable.find((f) => f.start <= today && today <= f.end) || usable[0];
 
-    // tb = mouvements de l'exercice ; tbOpen = à-nouveaux (balance au 1er jour) -> tréso d'ouverture
-    // (l'à-nouveau fonctionne même pour un premier exercice, sans N-1)
-    const [tb, tbOpen] = await Promise.all([
-      getTrialBalance(cid, current.start, current.end),
-      getTrialBalance(cid, current.start, current.start),
+    // À-nouveaux simulés si l'exercice précédent n'est pas clôturé (statut 'open') :
+    // les soldes de bilan du précédent sont reportés (trésorerie, capital, etc.).
+    const simulate = needsSimulatedAN(current, usable);
+    const [tbRes, tbOpen] = await Promise.all([
+      simulate
+        ? getTrialBalanceWithAN(cid, current, usable)
+        : getTrialBalance(cid, current.start, current.end).then((items) => ({ items, simulated: false, synth: [] })),
+      simulate ? Promise.resolve([]) : getTrialBalance(cid, current.start, current.start),
     ]);
 
-    const accounts = buildAccounts(tb, []);
+    const accounts = buildAccounts(tbRes.items, []);
     const rep = generateFullReport(accounts);
 
     const ca = round2(rep.sig.n.ca);
@@ -43,8 +47,10 @@ export default async function handler(req, res) {
       .reduce((s, a) => s + (a.soldeN || 0), 0));
     const ratioCpCapital = capital !== 0 ? round2(capitauxPropres / capital) : null;
 
-    // Trésorerie d'ouverture = à-nouveaux (disponibilités au 1er jour de l'exercice)
-    const openingTreasury = computeDisponibilites(buildAccounts(tbOpen, []));
+    // Trésorerie d'ouverture = à-nouveaux (réels au 1er jour, ou simulés depuis l'exercice précédent)
+    const openingTreasury = tbRes.simulated
+      ? computeDisponibilites(buildAccounts(tbRes.synth, []))
+      : computeDisponibilites(buildAccounts(tbOpen, []));
 
     // Nombre de mois écoulés sur l'exercice en cours (jusqu'à aujourd'hui, borné à la clôture)
     const end = today < current.end ? today : current.end;
@@ -59,6 +65,7 @@ export default async function handler(req, res) {
       fy: { label: current.label, start: current.start, end: current.end, inProgress: current.start <= today && today <= current.end },
       ca, ebitda, resultat, capitauxPropres, capital, ratioCpCapital,
       tresorerie, openingTreasury, monthsElapsed: round1(monthsElapsed), cashburn, runway,
+      anSimulated: tbRes.simulated,
     });
   } catch (err) {
     sendError(res, err, { companyId: cid });

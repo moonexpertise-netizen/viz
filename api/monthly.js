@@ -1,5 +1,8 @@
 import { requireAuth, sendError } from './_lib/auth.js';
-import { getLedgerEntryLines, getJournals, getTrialBalance, getLedgerEntries } from './_lib/pennylane.js';
+import { getLedgerEntryLines, getJournals, getTrialBalance, getLedgerEntries, getFiscalYears } from './_lib/pennylane.js';
+import { getTrialBalanceWithAN, needsSimulatedAN, buildSyntheticAN, prevFyOf } from './_lib/anSimulation.js';
+import { buildAccounts } from './_lib/normalize.js';
+import { computeDisponibilites } from './_lib/accountingEngine.js';
 import { linesToMonthly, calculateMonthlyPL, calculateMonthlyCashFlow } from './_lib/monthlyEngine.js';
 import { allLines } from './_lib/entriesEngine.js';
 
@@ -43,12 +46,31 @@ export default async function handler(req, res) {
 
     const { monthlyData, cashFlowEntries, accounts, initialTresorerie } = linesToMonthly(lines, journalCode, labelMap);
     const pl = calculateMonthlyPL(monthlyData, accounts);
-    const cashflow = calculateMonthlyCashFlow(cashFlowEntries, initialTresorerie);
+
+    // À-nouveaux simulés : si l'exercice précédent n'est pas clôturé, la trésorerie
+    // d'ouverture (normalement portée par le journal AN) est reconstituée depuis
+    // la balance complète de l'exercice précédent.
+    let openingAdjust = 0;
+    let anSimulated = false;
+    try {
+      const fys = await getFiscalYears(cid);
+      const fy = fys.find((f) => f.start === period_start && f.end === period_end);
+      if (fy && needsSimulatedAN(fy, fys)) {
+        const prev = prevFyOf(fy, fys);
+        const { items: prevFull } = await getTrialBalanceWithAN(cid, prev, fys, 1);
+        const synth = buildSyntheticAN(prevFull);
+        openingAdjust = computeDisponibilites(buildAccounts(synth, []));
+        anSimulated = true;
+      }
+    } catch (e) { console.error('AN simulation (monthly):', e?.message || e); }
+
+    const cashflow = calculateMonthlyCashFlow(cashFlowEntries, initialTresorerie + openingAdjust);
 
     res.status(200).json({
       period: { start: period_start, end: period_end },
       counts: { lines: lines.length, accounts: accounts.length },
-      initialTresorerie,
+      initialTresorerie: initialTresorerie + openingAdjust,
+      anSimulated,
       months: pl.months,
       plSummary: pl.summary,
       accountMonthly: pl.accountMonthly,
