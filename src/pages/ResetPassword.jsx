@@ -27,7 +27,7 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center bg-navy px-4 py-10">
+    <div className="auth-screen min-h-[100dvh] flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8 text-center">
           <img src="/moon-icon.svg" alt="MoonViz" className="w-16 h-16 mb-4" />
@@ -46,10 +46,10 @@ export default function ResetPassword() {
           ) : (
             <form onSubmit={submit} className="space-y-3">
               <input type="password" autoFocus autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl bg-white/[0.05] border border-white/[0.10] px-3.5 py-2.5 text-white placeholder:text-sage/50 focus:outline-none focus:ring-2 focus:ring-gold/60 focus:border-transparent transition"
+                className="w-full rounded-xl bg-white/[0.05] border border-white/[0.10] px-3.5 py-2.5 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-gold/60 focus:border-transparent transition"
                 placeholder="Nouveau mot de passe" />
               <input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
-                className="w-full rounded-xl bg-white/[0.05] border border-white/[0.10] px-3.5 py-2.5 text-white placeholder:text-sage/50 focus:outline-none focus:ring-2 focus:ring-gold/60 focus:border-transparent transition"
+                className="w-full rounded-xl bg-white/[0.05] border border-white/[0.10] px-3.5 py-2.5 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-gold/60 focus:border-transparent transition"
                 placeholder="Confirmer le mot de passe" />
               {error && <div className="text-sm text-red-200 bg-red-500/15 border border-red-500/25 rounded-xl px-3.5 py-2.5">{error}</div>}
               <button type="submit" disabled={loading} className="w-full rounded-xl bg-gold text-white font-semibold px-4 py-3 hover:brightness-95 transition disabled:opacity-60">

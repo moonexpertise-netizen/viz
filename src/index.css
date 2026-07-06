@@ -3,44 +3,96 @@
 @tailwind utilities;
 
 :root {
-  /* Harmonisé avec MOON CRM (Attio/Linear/Stripe) : neutres zinc, accent doré,
-     fond très doux, ombres ultra-subtiles, encre navy MOON #01071B. */
-  --navy: #01071B;
+  /* ── Mode CLAIR (défaut) — tokens alignés sur MOON CRM ── */
+  --navy: #01071B;          /* surfaces fortes : sidebar, en-têtes de tableaux, pills */
+  --navy-rgb: 1 7 27;
   --navy-light: #121a33;
-  --sage: #e9eaec;          /* bordures zinc neutres (ex-sage vert) */
+  --ink: #01071B;           /* encre des textes forts (text-navy) */
+  --sage: #e9eaec;          /* bordures */
+  --sage-rgb: 233 234 236;
   --sage-light: #f1f1f3;
-  --cream: #f6f6f8;         /* fond page très doux (CRM) */
+  --cream: #f6f6f8;         /* fond de page */
+  --cream-rgb: 246 246 248;
   --cream-dark: #f1f1f3;
+  --surface: #ffffff;       /* cartes */
+  --surface-elevated: #ffffff; /* popovers / modales */
   --text-dark: #01071B;
-  --text-gray: #71717a;     /* zinc-500 (CRM muted-foreground) */
-  --text-light: #a1a1aa;    /* zinc-400 */
+  --text-gray: #71717a;
+  --text-light: #a1a1aa;
   --accent-green: #1f7a45;
   --accent-red: #c0392b;
   --accent-blue: #2563eb;
-  --accent-gold: #a88962;   /* doré MOON (CRM) */
+  --accent-gold: #a88962;
   --gold: #a88962;
   --gold-soft: #ecdfca;
   --gold-dark: #6e5a3f;
+  --chart-grid: #ececf0;
+  --chart-axis: #71717a;
+  --chart-muted: #d4d8df;   /* barres N-1 */
+  --chart-primary: #01071B; /* barres N */
+  --sidebar-fg: #e9eaec;    /* texte de la sidebar (fond navy) */
 }
 
-/* ── Thèmes de couleurs (façon MOON CRM) ──────────────────────────────
-   On ne change que l'encre primaire (--navy : ruban / titres / en-têtes
-   de tableaux), le fond de page (--cream) et les bordures (--sage). Le doré
-   MOON reste l'accent commun. Re-skin cohérent, contenu en cartes blanches. */
+/* ── Mode SOMBRE (graphite, façon MOON CRM .dark) ── */
+:root[data-theme="dark"] {
+  --navy: #202024;          /* sidebar / en-têtes (un cran au-dessus du fond) */
+  --navy-rgb: 32 32 36;
+  --navy-light: #2c2c31;
+  --ink: #f1f1f1;
+  --sage: #2b2b2b;
+  --sage-rgb: 43 43 43;
+  --sage-light: #232323;
+  --cream: #191919;
+  --cream-rgb: 25 25 25;
+  --cream-dark: #151515;
+  --surface: #202020;
+  --surface-elevated: #262626;
+  --text-dark: #f1f1f1;
+  --text-gray: #a3a3a3;
+  --text-light: #737373;
+  --accent-green: #34d399;
+  --accent-red: #f87171;
+  --accent-blue: #60a5fa;
+  --accent-gold: #d3b88a;
+  --gold: #d3b88a;
+  --gold-soft: #3a2f1d;
+  --gold-dark: #e6cda0;
+  --chart-grid: #2e2e2e;
+  --chart-axis: #9a9a9a;
+  --chart-muted: #3f3f46;
+  --chart-primary: #d3b88a;
+  --sidebar-fg: #cfcfcf;
+}
+
+/* ── Mode NAVY MOON (bleu marine profond, façon MOON CRM .navy) ── */
 :root[data-theme="navy"] {
-  --navy: #01071B; --navy-light: #121a33; --cream: #f6f6f8; --sage: #e9eaec;
-}
-:root[data-theme="ardoise"] {
-  --navy: #1e293b; --navy-light: #334155; --cream: #f6f7f9; --sage: #e2e6ec;
-}
-:root[data-theme="emeraude"] {
-  --navy: #052e22; --navy-light: #0b4536; --cream: #f3f7f5; --sage: #dde8e2;
-}
-:root[data-theme="bordeaux"] {
-  --navy: #2e0a16; --navy-light: #4a1525; --cream: #faf5f6; --sage: #ecdde1;
-}
-:root[data-theme="indigo"] {
-  --navy: #1a1438; --navy-light: #2b2356; --cream: #f6f5fb; --sage: #e4e0ef;
+  --navy: #01061a;
+  --navy-rgb: 1 6 26;
+  --navy-light: #0e1730;
+  --ink: #f1f1f1;
+  --sage: #192448;
+  --sage-rgb: 25 36 72;
+  --sage-light: #0d1734;
+  --cream: #01071B;
+  --cream-rgb: 1 7 27;
+  --cream-dark: #020a24;
+  --surface: #060d23;
+  --surface-elevated: #0e1730;
+  --text-dark: #f1f1f1;
+  --text-gray: #9aa5c4;
+  --text-light: #64719a;
+  --accent-green: #34d399;
+  --accent-red: #f87171;
+  --accent-blue: #7ba3f7;
+  --accent-gold: #d3b88a;
+  --gold: #d3b88a;
+  --gold-soft: #2a2540;
+  --gold-dark: #e6cda0;
+  --chart-grid: #1a2547;
+  --chart-axis: #8fa0c9;
+  --chart-muted: #26335f;
+  --chart-primary: #d3b88a;
+  --sidebar-fg: #aeb9dd;
 }
 
 /* Accessibilité : focus visible cohérent au clavier */
@@ -50,7 +102,7 @@
   border-radius: 6px;
 }
 
-::selection { background: color-mix(in srgb, var(--navy) 14%, transparent); }
+::selection { background: color-mix(in srgb, var(--ink) 18%, transparent); }
 
 /* Scrollbars discrètes (tableaux larges) */
 * { scrollbar-width: thin; scrollbar-color: var(--sage) transparent; }
@@ -66,7 +118,7 @@
 .animate-view { animation: mv-fade-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .animate-pop { animation: mv-pop-in 0.14s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .skeleton-shimmer {
-  background: linear-gradient(90deg, var(--cream) 25%, var(--sage-light) 50%, var(--cream) 75%);
+  background: linear-gradient(90deg, var(--cream-dark) 25%, var(--sage-light) 50%, var(--cream-dark) 75%);
   background-size: 200% 100%;
   animation: mv-shimmer 1.6s linear infinite;
 }
@@ -110,7 +162,7 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--ink);
   letter-spacing: -0.021em;          /* tracking serré premium (CRM) */
   font-feature-settings: "ss01";
 }
@@ -131,8 +183,8 @@ h1, h2, h3, h4, h5, h6 {
 .bg-cream { background-color: var(--cream); }
 .bg-cream-dark { background-color: var(--cream-dark); }
 
-.text-navy { color: var(--navy); }
-.text-sage { color: var(--sage); }
+.text-navy { color: var(--ink); }
+.text-sage { color: var(--sidebar-fg); }
 .text-gray-custom { color: var(--text-gray); }
 .text-accent-green { color: var(--accent-green); }
 .text-accent-red { color: var(--accent-red); }
@@ -153,7 +205,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Cards moonexpertise style */
 .card-moon {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   border: 1px solid var(--sage);
   box-shadow: 0 1px 2px 0 rgba(1, 7, 27, 0.05), 0 0 0 1px rgba(1, 7, 27, 0.015);
@@ -165,7 +217,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* KPI card style */
 .kpi-card {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   border: 1px solid var(--sage);
   padding: 1.25rem 1.5rem;
@@ -254,4 +306,64 @@ h1, h2, h3, h4, h5, h6 {
 .btn-navy:hover {
   background-color: var(--navy-light);
   box-shadow: 0 2px 8px -2px rgba(1, 7, 27, 0.35);
+}
+
+
+/* ═══ Adaptation des utilitaires codés en dur aux modes sombres ═══
+   Les surfaces blanches deviennent des cartes sombres, les badges pastel
+   deviennent des teintes translucides — sans toucher aux composants. */
+:root[data-theme="dark"] .bg-white, :root[data-theme="navy"] .bg-white { background-color: var(--surface); }
+:root[data-theme="dark"] .hover\:bg-white:hover, :root[data-theme="navy"] .hover\:bg-white:hover { background-color: var(--surface-elevated); }
+
+:root[data-theme="dark"] .bg-emerald-50, :root[data-theme="navy"] .bg-emerald-50 { background-color: rgba(52, 211, 153, 0.13); }
+:root[data-theme="dark"] .bg-emerald-50\/50, :root[data-theme="navy"] .bg-emerald-50\/50 { background-color: rgba(52, 211, 153, 0.08); }
+:root[data-theme="dark"] .bg-emerald-50\/40, :root[data-theme="navy"] .bg-emerald-50\/40 { background-color: rgba(52, 211, 153, 0.07); }
+:root[data-theme="dark"] .bg-emerald-100, :root[data-theme="navy"] .bg-emerald-100 { background-color: rgba(52, 211, 153, 0.22); }
+:root[data-theme="dark"] .bg-emerald-100\/80, :root[data-theme="navy"] .bg-emerald-100\/80 { background-color: rgba(52, 211, 153, 0.18); }
+:root[data-theme="dark"] .hover\:bg-emerald-50:hover, :root[data-theme="navy"] .hover\:bg-emerald-50:hover { background-color: rgba(52, 211, 153, 0.16); }
+:root[data-theme="dark"] .text-emerald-700, :root[data-theme="navy"] .text-emerald-700 { color: #6ee7b7; }
+:root[data-theme="dark"] .border-emerald-200, :root[data-theme="navy"] .border-emerald-200 { border-color: rgba(52, 211, 153, 0.35); }
+:root[data-theme="dark"] .border-emerald-400, :root[data-theme="navy"] .border-emerald-400 { border-color: rgba(52, 211, 153, 0.55); }
+
+:root[data-theme="dark"] .bg-amber-50, :root[data-theme="navy"] .bg-amber-50 { background-color: rgba(251, 191, 36, 0.13); }
+:root[data-theme="dark"] .text-amber-700, :root[data-theme="navy"] .text-amber-700 { color: #fcd34d; }
+:root[data-theme="dark"] .text-amber-600, :root[data-theme="navy"] .text-amber-600 { color: #fbbf24; }
+:root[data-theme="dark"] .border-amber-100, :root[data-theme="navy"] .border-amber-100 { border-color: rgba(251, 191, 36, 0.25); }
+:root[data-theme="dark"] .border-amber-200, :root[data-theme="navy"] .border-amber-200 { border-color: rgba(251, 191, 36, 0.35); }
+:root[data-theme="dark"] .text-amber-800, :root[data-theme="navy"] .text-amber-800 { color: #fde68a; }
+
+:root[data-theme="dark"] .bg-red-50, :root[data-theme="navy"] .bg-red-50 { background-color: rgba(248, 113, 113, 0.13); }
+:root[data-theme="dark"] .hover\:bg-red-50:hover, :root[data-theme="navy"] .hover\:bg-red-50:hover { background-color: rgba(248, 113, 113, 0.18); }
+:root[data-theme="dark"] .text-red-700, :root[data-theme="navy"] .text-red-700 { color: #fca5a5; }
+:root[data-theme="dark"] .border-red-200, :root[data-theme="navy"] .border-red-200 { border-color: rgba(248, 113, 113, 0.35); }
+
+:root[data-theme="dark"] .bg-sky-50, :root[data-theme="navy"] .bg-sky-50 { background-color: rgba(96, 165, 250, 0.13); }
+:root[data-theme="dark"] .bg-sky-50\/50, :root[data-theme="navy"] .bg-sky-50\/50 { background-color: rgba(96, 165, 250, 0.08); }
+:root[data-theme="dark"] .bg-sky-100, :root[data-theme="navy"] .bg-sky-100 { background-color: rgba(96, 165, 250, 0.22); }
+:root[data-theme="dark"] .bg-sky-100\/80, :root[data-theme="navy"] .bg-sky-100\/80 { background-color: rgba(96, 165, 250, 0.18); }
+:root[data-theme="dark"] .hover\:bg-sky-50:hover, :root[data-theme="navy"] .hover\:bg-sky-50:hover { background-color: rgba(96, 165, 250, 0.16); }
+:root[data-theme="dark"] .text-sky-700, :root[data-theme="navy"] .text-sky-700 { color: #93c5fd; }
+:root[data-theme="dark"] .border-sky-200, :root[data-theme="navy"] .border-sky-200 { border-color: rgba(96, 165, 250, 0.35); }
+:root[data-theme="dark"] .border-sky-400, :root[data-theme="navy"] .border-sky-400 { border-color: rgba(96, 165, 250, 0.55); }
+
+:root[data-theme="dark"] .bg-slate-100, :root[data-theme="navy"] .bg-slate-100 { background-color: var(--cream-dark); }
+:root[data-theme="dark"] .bg-slate-300, :root[data-theme="navy"] .bg-slate-300 { background-color: #3f3f46; }
+:root[data-theme="dark"] .bg-gray-300, :root[data-theme="navy"] .bg-gray-300 { background-color: #3f3f46; }
+:root[data-theme="dark"] .text-gray-300, :root[data-theme="navy"] .text-gray-300 { color: #4b4b55; }
+:root[data-theme="dark"] .text-gray-400, :root[data-theme="navy"] .text-gray-400 { color: #8b8b94; }
+:root[data-theme="dark"] .hover\:border-gray-300:hover, :root[data-theme="navy"] .hover\:border-gray-300:hover { border-color: #52525b; }
+
+/* Fond de page : halos plus discrets en sombre */
+:root[data-theme="dark"] body, :root[data-theme="navy"] body {
+  background-image:
+    radial-gradient(at 18% -12%, rgba(211, 184, 138, 0.04) 0px, transparent 48%),
+    radial-gradient(at 92% -4%, rgba(255, 255, 255, 0.02) 0px, transparent 48%);
+}
+
+
+/* Écrans d'auth (login / reset / action) : identité Navy MOON figée, quel que soit le mode */
+.auth-screen {
+  --sidebar-fg: #e9eaec;
+  --gold: #a88962;
+  background-color: #01071B !important;
 }

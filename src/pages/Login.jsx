@@ -81,10 +81,10 @@ export default function Login({ onSuccess, sso = {} }) {
     }
   };
 
-  const inputCls = 'w-full rounded-xl bg-white/[0.05] border border-white/[0.10] px-3.5 py-2.5 text-white placeholder:text-sage/50 focus:outline-none focus:ring-2 focus:ring-gold/60 focus:border-transparent transition';
+  const inputCls = 'w-full rounded-xl bg-white/[0.05] border border-white/[0.10] px-3.5 py-2.5 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-gold/60 focus:border-transparent transition';
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center bg-navy px-4 py-10">
+    <div className="auth-screen min-h-[100dvh] flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md animate-view">
         {/* Marque */}
         <div className="flex flex-col items-center mb-8 text-center">
@@ -156,12 +156,12 @@ export default function Login({ onSuccess, sso = {} }) {
             </form>
           )}
 
-          <p className="text-xs text-sage/70 text-center">
+          <p className="text-xs text-sage opacity-70 text-center">
             Accès réservé aux comptes <strong className="text-sage">@{domain}</strong>.
           </p>
         </div>
 
-        <p className="text-center text-xs text-sage/50 mt-6">MoonViz · Analyse financière · Pennylane</p>
+        <p className="text-center text-xs text-sage opacity-50 mt-6">MoonViz · Analyse financière · Pennylane</p>
       </div>
     </div>
   );

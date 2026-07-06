@@ -32,9 +32,9 @@ export default function WaterfallChart({ data = [], height = 350 }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={waterfallData}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#ececf0" />
-        <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#71717a' }} />
-        <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: '#71717a' }} />
+        <CartesianGrid strokeDasharray="3 3" stroke={C.grid} />
+        <XAxis dataKey="name" tick={{ fontSize: 11, fill: C.axis }} />
+        <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: C.axis }} />
         <Tooltip
           formatter={(v, name) => name === 'invisible' ? null : fmt(v)}
           itemStyle={{ display: (v, name) => name === 'invisible' ? 'none' : 'block' }}

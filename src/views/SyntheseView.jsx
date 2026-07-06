@@ -3,7 +3,7 @@ import {
   XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 import { fmt, fmtPct, cls } from '../lib/format';
-import { chartColors, CATEGORICAL, fmtCompact } from '../lib/chartColors';
+import { chartColors, categoricalColors, fmtCompact } from '../lib/chartColors';
 import { SeriesTooltip, StatCard, ChartCard } from '../components/ChartBits';
 
 const growth = (a, b) => (b ? ((a - b) / Math.abs(b)) * 100 : null);
@@ -13,6 +13,7 @@ export default function SyntheseView({ report }) {
     return <div className="card-moon p-10 text-center text-gray-custom">Données indisponibles pour cet exercice. Resynchronisez-le.</div>;
 
   const C = chartColors();
+  const PALETTE = categoricalColors();
   const n = report.sig?.n || {};
   const n1 = report.sig?.n1 || {};
   const pl = report.pl.summary;
@@ -58,12 +59,12 @@ export default function SyntheseView({ report }) {
         <ChartCard title="Soldes de gestion" subtitle="Exercice N comparé à N-1">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={sigBars} margin={{ top: 8, right: 8, left: 8, bottom: 4 }} barGap={4}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ececf0" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#71717a' }} tickLine={false} axisLine={{ stroke: '#ececf0' }} />
-              <YAxis tickFormatter={fmtCompact} tick={{ fontSize: 11, fill: '#71717a' }} tickLine={false} axisLine={false} width={56} />
-              <Tooltip content={<SeriesTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
-              <Bar dataKey="N-1" fill="#d4d8df" radius={[3, 3, 0, 0]} maxBarSize={26} />
-              <Bar dataKey="N" fill={C.navy} radius={[3, 3, 0, 0]} maxBarSize={26} />
+              <CartesianGrid strokeDasharray="3 3" stroke={C.grid} vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: C.axis }} tickLine={false} axisLine={{ stroke: C.grid }} />
+              <YAxis tickFormatter={fmtCompact} tick={{ fontSize: 11, fill: C.axis }} tickLine={false} axisLine={false} width={56} />
+              <Tooltip content={<SeriesTooltip />} cursor={{ fill: C.cursor }} />
+              <Bar dataKey="N-1" fill={C.muted} radius={[3, 3, 0, 0]} maxBarSize={26} />
+              <Bar dataKey="N" fill={C.primary} radius={[3, 3, 0, 0]} maxBarSize={26} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -78,7 +79,7 @@ export default function SyntheseView({ report }) {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={charges} dataKey="value" nameKey="name" innerRadius={60} outerRadius={92} paddingAngle={1.5} stroke="none">
-                      {charges.map((d, i) => <Cell key={i} fill={CATEGORICAL[i % CATEGORICAL.length]} />)}
+                      {charges.map((d, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
                     </Pie>
                     <Tooltip cursor={false} content={({ active, payload }) => active && payload?.length ? (
                       <div className="rounded-lg border border-sage bg-white px-3 py-2 shadow-lg text-xs">
@@ -95,7 +96,7 @@ export default function SyntheseView({ report }) {
               <ul className="flex-1 w-full space-y-1.5">
                 {charges.map((d, i) => (
                   <li key={i} className="flex items-center gap-2 text-xs">
-                    <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: CATEGORICAL[i % CATEGORICAL.length] }} />
+                    <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
                     <span className="text-navy truncate">{d.name}</span>
                     <span className="ml-auto tabular-nums text-gray-custom">{fmtPct((d.value / totalCharges) * 100)}</span>
                     <span className="tabular-nums font-medium text-navy w-16 text-right">{fmtCompact(d.value)}</span>

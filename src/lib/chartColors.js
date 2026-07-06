@@ -12,6 +12,8 @@ export function chartColors() {
     const raw = (s.getPropertyValue(name) || '').trim();
     return raw || fb;
   };
+  const dark = document.documentElement.getAttribute('data-theme') !== 'light'
+    && document.documentElement.hasAttribute('data-theme');
   return {
     navy: v('--navy', FALLBACK.navy),
     navyLight: v('--navy-light', FALLBACK.navyLight),
@@ -19,11 +21,24 @@ export function chartColors() {
     green: v('--accent-green', FALLBACK.green),
     red: v('--accent-red', FALLBACK.red),
     blue: v('--accent-blue', FALLBACK.blue),
+    ink: v('--ink', FALLBACK.navy),
+    primary: v('--chart-primary', FALLBACK.navy),
+    grid: v('--chart-grid', '#ececf0'),
+    axis: v('--chart-axis', '#71717a'),
+    muted: v('--chart-muted', '#d4d8df'),
+    cursor: dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
   };
 }
 
-// Palette catégorielle (donut charges) : élégante, lisible sur fond clair.
+// Palette catégorielle (donut charges) : élégante, adaptée au mode clair/sombre.
 export const CATEGORICAL = ['#01071B', '#a88962', '#2563eb', '#1f7a45', '#c0392b', '#7c6f9c', '#0e7490', '#b45309'];
+export function categoricalColors() {
+  const t = typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') : 'light';
+  if (t === 'dark' || t === 'navy') {
+    return ['#9db1ff', '#d3b88a', '#60a5fa', '#34d399', '#f87171', '#b3a6d9', '#22d3ee', '#fbbf24'];
+  }
+  return CATEGORICAL;
+}
 
 // € compact pour axes / labels (1 234 k, 2,3 M…)
 export const fmtCompact = (n) => {

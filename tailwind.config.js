@@ -6,9 +6,9 @@ export default {
         display: ['"Funnel Display"', 'sans-serif'],
       },
       colors: {
-        navy: '#1a223d',
-        sage: '#ced5ce',
-        cream: '#f6f5f2',
+        navy: 'rgb(var(--navy-rgb) / <alpha-value>)',
+        sage: 'rgb(var(--sage-rgb) / <alpha-value>)',
+        cream: 'rgb(var(--cream-rgb) / <alpha-value>)',
       },
     },
   },

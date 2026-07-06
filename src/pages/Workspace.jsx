@@ -8,7 +8,7 @@ import PortfolioDashboard from '../components/PortfolioDashboard';
 import ThemeMenu from '../components/ThemeMenu';
 import { Tip } from '../components/ChartBits';
 import { pennylaneCompanyUrl } from '../lib/pennylaneLink';
-import { applyTheme, getTheme } from '../lib/theme';
+import { applyTheme, getTheme, watchSystemTheme } from '../lib/theme';
 import { defaultMapping, loadLocalMapping, saveLocalMapping } from '../lib/mapping';
 import { storeAPI } from '../services/api';
 import { loadSync, saveEntry, removeEntry, pullServer } from '../lib/syncStore';
@@ -72,6 +72,7 @@ export default function Workspace({ onLogout }) {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => { try { localStorage.setItem('mv:sidebar', collapsed ? '1' : '0'); } catch { /* noop */ } }, [collapsed]);
   useEffect(() => { applyTheme(theme); }, [theme]);
+  useEffect(() => watchSystemTheme(() => theme), [theme]); // suit l'OS quand « Système »
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)');
     const on = () => setIsMobile(mq.matches);
@@ -396,7 +397,7 @@ export default function Workspace({ onLogout }) {
           {company && (
             <div className="pt-4">
               {!effCollapsed ? (
-                <div className="px-3 pb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-sage/70">
+                <div className="px-3 pb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-sage opacity-70">
                   <Building2 size={12} className="shrink-0" />
                   <span className="truncate">{company.name}</span>
                 </div>
@@ -409,7 +410,7 @@ export default function Workspace({ onLogout }) {
                     active={tab === t.key} onClick={() => { setTab(t.key); setMobileOpen(false); }} collapsed={effCollapsed} />
                 ))
               ) : (
-                !effCollapsed && <div className="px-3 py-2 text-xs text-sage/60 leading-snug">Synchronisez un exercice pour démarrer l'analyse.</div>
+                !effCollapsed && <div className="px-3 py-2 text-xs text-sage opacity-60 leading-snug">Synchronisez un exercice pour démarrer l'analyse.</div>
               )}
             </div>
           )}
