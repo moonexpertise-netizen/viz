@@ -30,14 +30,19 @@
   --chart-axis: #71717a;
   --chart-muted: #d4d8df;   /* barres N-1 */
   --chart-primary: #01071B; /* barres N */
-  --sidebar-fg: #e9eaec;    /* texte de la sidebar (fond navy) */
+  --sidebar: #01071B;       /* fond de la sidebar */
+  --sidebar-fg: #e9eaec;    /* texte de la sidebar */
+  --hover-soft: #f1f1f3;    /* survol doux des lignes/menus (accent CRM) */
+  --btn-bg: #01071B;        /* CTA principal */
+  --btn-bg-hover: #121a33;
+  --btn-fg: #ffffff;
 }
 
 /* ── Mode SOMBRE (graphite, façon MOON CRM .dark) ── */
 :root[data-theme="dark"] {
-  --navy: #202024;          /* sidebar / en-têtes (un cran au-dessus du fond) */
-  --navy-rgb: 32 32 36;
-  --navy-light: #2c2c31;
+  --navy: #2e2e33;          /* surfaces fortes : en-têtes de tableaux, pills actives */
+  --navy-rgb: 46 46 51;
+  --navy-light: #3a3a41;
   --ink: #f1f1f1;
   --sage: #2b2b2b;
   --sage-rgb: 43 43 43;
@@ -61,14 +66,19 @@
   --chart-axis: #9a9a9a;
   --chart-muted: #3f3f46;
   --chart-primary: #d3b88a;
+  --sidebar: #1c1c1c;
   --sidebar-fg: #cfcfcf;
+  --hover-soft: #2f2f2f;    /* CRM : surface hover sombre */
+  --btn-bg: #eaeaea;        /* CRM : CTA principal devient clair */
+  --btn-bg-hover: #ffffff;
+  --btn-fg: #191919;
 }
 
 /* ── Mode NAVY MOON (bleu marine profond, façon MOON CRM .navy) ── */
 :root[data-theme="navy"] {
-  --navy: #01061a;
-  --navy-rgb: 1 6 26;
-  --navy-light: #0e1730;
+  --navy: #1b2850;          /* surfaces fortes visibles sur le bleu nuit */
+  --navy-rgb: 27 40 80;
+  --navy-light: #24346a;
   --ink: #f1f1f1;
   --sage: #192448;
   --sage-rgb: 25 36 72;
@@ -92,7 +102,12 @@
   --chart-axis: #8fa0c9;
   --chart-muted: #26335f;
   --chart-primary: #d3b88a;
+  --sidebar: #01061a;
   --sidebar-fg: #aeb9dd;
+  --hover-soft: #111c3f;    /* CRM navy : hover doux bleuté */
+  --btn-bg: #eaeaea;
+  --btn-bg-hover: #ffffff;
+  --btn-fg: #01071B;
 }
 
 /* Accessibilité : focus visible cohérent au clavier */
@@ -177,6 +192,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .bg-navy { background-color: var(--navy); }
+.bg-sidebar { background-color: var(--sidebar); }
 .bg-navy-light { background-color: var(--navy-light); }
 .bg-sage { background-color: var(--sage); }
 .bg-sage-light { background-color: var(--sage-light); }
@@ -268,7 +284,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .table-moon tbody tr { transition: background-color 0.12s ease; }
 .table-moon tr:hover td {
-  background-color: var(--cream);
+  background-color: var(--hover-soft);
 }
 .table-moon .row-total td {
   font-weight: 700;
@@ -293,10 +309,10 @@ h1, h2, h3, h4, h5, h6 {
 .badge-down { color: var(--accent-red); }
 .badge-neutral { color: var(--text-gray); }
 
-/* Button primary */
+/* Button primary — CTA clair sur fond sombre (convention MOON CRM) */
 .btn-navy {
-  background-color: var(--navy);
-  color: white;
+  background-color: var(--btn-bg);
+  color: var(--btn-fg);
   border-radius: 9px;
   padding: 0.6rem 1.5rem;
   font-weight: 500;
@@ -304,7 +320,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .btn-navy:active { transform: translateY(1px); }
 .btn-navy:hover {
-  background-color: var(--navy-light);
+  background-color: var(--btn-bg-hover);
   box-shadow: 0 2px 8px -2px rgba(1, 7, 27, 0.35);
 }
 
@@ -366,4 +382,32 @@ h1, h2, h3, h4, h5, h6 {
   --sidebar-fg: #e9eaec;
   --gold: #a88962;
   background-color: #01071B !important;
+}
+
+
+/* ═══ États interactifs en modes sombres (conventions MOON CRM) ═══
+   En sombre, un survol ÉCLAIRCIT (voile blanc), il n'assombrit jamais. */
+:root[data-theme="dark"] .hover\:bg-cream:hover, :root[data-theme="navy"] .hover\:bg-cream:hover,
+:root[data-theme="dark"] .hover\:bg-cream\/70:hover, :root[data-theme="navy"] .hover\:bg-cream\/70:hover,
+:root[data-theme="dark"] .hover\:bg-cream\/60:hover, :root[data-theme="navy"] .hover\:bg-cream\/60:hover,
+:root[data-theme="dark"] .hover\:bg-cream\/50:hover, :root[data-theme="navy"] .hover\:bg-cream\/50:hover {
+  background-color: var(--hover-soft);
+}
+
+/* Boutons pleins : texte sombre sur accents clairs (contraste AA) */
+:root[data-theme="dark"] .bg-gold, :root[data-theme="navy"] .bg-gold { color: #231a0b; }
+:root[data-theme="dark"] .bg-accent-green, :root[data-theme="navy"] .bg-accent-green { color: #052e1d; }
+:root[data-theme="dark"] .bg-accent-red, :root[data-theme="navy"] .bg-accent-red { color: #450a0a; }
+
+/* Anneau de focus visible sur fond sombre */
+:root[data-theme="dark"] .focus\:ring-navy:focus, :root[data-theme="navy"] .focus\:ring-navy:focus {
+  --tw-ring-color: var(--accent-blue);
+}
+:root[data-theme="dark"] .focus\:ring-2:focus, :root[data-theme="navy"] .focus\:ring-2:focus {
+  --tw-ring-offset-color: var(--surface);
+}
+
+/* CTA principal : légère bordure de définition sur carte sombre */
+:root[data-theme="dark"] .btn-navy, :root[data-theme="navy"] .btn-navy {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }

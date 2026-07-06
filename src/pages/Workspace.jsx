@@ -364,7 +364,7 @@ export default function Workspace({ onLogout }) {
         className={cls('md:hidden fixed inset-0 z-40 bg-black/40 transition-opacity duration-200', mobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')} />
 
       {/* Bandeau latéral — desktop : fixe/repliable ; mobile : tiroir coulissant */}
-      <aside className={cls('fixed left-0 top-0 z-50 h-[100dvh] bg-navy text-white flex flex-col transition-[transform,width] duration-200 w-64',
+      <aside className={cls('fixed left-0 top-0 z-50 h-[100dvh] bg-sidebar text-white flex flex-col transition-[transform,width] duration-200 w-64',
         effCollapsed ? 'md:w-16' : 'md:w-60',
         mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0')}>
         {/* Onglet de repli sur le bord droit (desktop uniquement) */}
@@ -373,7 +373,7 @@ export default function Workspace({ onLogout }) {
           title={collapsed ? 'Déployer le menu' : 'Réduire le menu'}
           className="group/divider absolute top-0 -right-3.5 h-full w-7 z-40 hidden md:flex items-center justify-center cursor-pointer">
           <span className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-white/10 group-hover/divider:bg-gold/70 group-hover/divider:w-0.5 transition-all duration-200" />
-          <span className="flex items-center justify-center w-5 h-10 rounded-md bg-navy border border-white/15 text-white/80 shadow-md group-hover/divider:border-gold/60 group-hover/divider:text-gold group-hover/divider:scale-110 transition-all duration-150">
+          <span className="flex items-center justify-center w-5 h-10 rounded-md bg-sidebar border border-white/15 text-white/80 shadow-md group-hover/divider:border-gold/60 group-hover/divider:text-gold group-hover/divider:scale-110 transition-all duration-150">
             {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
           </span>
         </button>
