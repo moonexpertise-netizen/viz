@@ -1,8 +1,6 @@
 import { requireAuth, sendError } from './_lib/auth.js';
 import { getLedgerEntryLines, getJournals, getTrialBalance, getLedgerEntries, getFiscalYears } from './_lib/pennylane.js';
 import { getTrialBalanceWithAN, needsSimulatedAN, buildSyntheticAN, prevFyOf } from './_lib/anSimulation.js';
-import { buildAccounts } from './_lib/normalize.js';
-import { computeDisponibilites } from './_lib/accountingEngine.js';
 import { linesToMonthly, calculateMonthlyPL, calculateMonthlyCashFlow } from './_lib/monthlyEngine.js';
 import { allLines } from './_lib/entriesEngine.js';
 
@@ -59,7 +57,13 @@ export default async function handler(req, res) {
         const prev = prevFyOf(fy, fys);
         const { items: prevFull } = await getTrialBalanceWithAN(cid, prev, fys, 1);
         const synth = buildSyntheticAN(prevFull);
-        openingAdjust = computeDisponibilites(buildAccounts(synth, []));
+        // Meme perimetre que le moteur mensuel : TOUTE la classe 5 (le tableau
+        // de flux suit les comptes 5x au complet, y compris 511/58) — sinon la
+        // treso d'ouverture ne raccorde pas avec la cloture de l'exercice precedent.
+        const toNum = (v) => { const f = parseFloat(String(v ?? '0')); return Number.isFinite(f) ? f : 0; };
+        openingAdjust = Math.round(synth
+          .filter((it) => String(it.number).charAt(0) === '5')
+          .reduce((sum, it) => sum + toNum(it.debits) - toNum(it.credits), 0) * 100) / 100;
         anSimulated = true;
       }
     } catch (e) { console.error('AN simulation (monthly):', e?.message || e); }
