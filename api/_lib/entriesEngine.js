@@ -99,12 +99,18 @@ export function allLines(lines, entries, journals) {
   return out;
 }
 
+// Meme perimetre de tresorerie que monthlyEngine : classe 5 HORS 511/58/59
+// (valeurs a l'encaissement et virements internes = contreparties, pas banque).
+const isCash = (num) => num.charAt(0) === '5' && !num.startsWith('511') && !num.startsWith('58') && !num.startsWith('59');
+
 const CATEGORY_OF = (counterNum) => {
   const p2 = counterNum.substring(0, 2);
   if (p2 === '41') return 'encaissementsClients';
   if (p2 === '40') return 'decaissementsFournisseurs';
   if (p2 === '42' || p2 === '43') return 'salairesCharges';
   if (p2 === '44') return 'dettesFiscales';
+  if (p2 === '51') return 'encaissementsClients';
+  if (p2 === '58') return 'autresFlux';
   if (p2 === '16') return 'emprunts';
   if (counterNum.charAt(0) === '6' || counterNum.charAt(0) === '7') return 'autresOperationnels';
   if (counterNum.charAt(0) === '1') return 'autresFinanciers';
@@ -129,14 +135,23 @@ export function cashflowEntries(lines, entries, journals, category, account) {
 
   const out = [];
   for (const [id, gls] of Object.entries(groups)) {
-    const bank = gls.filter((l) => String(l.ledger_account?.number || '').charAt(0) === '5');
+    const bank = gls.filter((l) => isCash(String(l.ledger_account?.number || '')));
     if (!bank.length) continue;
-    const nonBank = gls.filter((l) => String(l.ledger_account?.number || '').charAt(0) !== '5');
+    const nonBank = gls.filter((l) => !isCash(String(l.ledger_account?.number || '')));
     const counter = nonBank[0];
     const counterNum = String(counter?.ledger_account?.number || '');
-    const cat = counterNum ? CATEGORY_OF(counterNum) : 'autresFlux';
-    if (category && cat !== category) continue;
-    if (account && counterNum !== account && !counterNum.startsWith(account)) continue;
+    // Filtrage par compte de contrepartie PRIORITAIRE (les categories du mapping
+    // personnalise ont leurs propres cles : on ne filtre par categorie que sans compte).
+    if (account) {
+      const hit = nonBank.some((l) => {
+        const n = String(l.ledger_account?.number || '');
+        return n === account || n.startsWith(account);
+      });
+      if (!hit) continue;
+    } else if (category) {
+      const cat = counterNum ? CATEGORY_OF(counterNum) : 'autresFlux';
+      if (cat !== category) continue;
+    }
 
     const e = emap.get(Number(id)) || emap.get(id) || {};
     for (const b of bank) {
