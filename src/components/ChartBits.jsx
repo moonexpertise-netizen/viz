@@ -61,6 +61,26 @@ export function SegToggle({ value, onChange, options }) {
   );
 }
 
+/**
+ * Infobulle au thème (remplace le title natif) : bulle navy arrondie au survol.
+ * side : 'left' (ancrée à gauche de l'élément) | 'bottom' (dessous).
+ */
+export function Tip({ content, children, side = 'left' }) {
+  if (!content) return children;
+  return (
+    <span className="relative inline-flex group/tip">
+      {children}
+      <span className={cls(
+        'pointer-events-none absolute z-50 hidden group-hover/tip:block w-max max-w-[280px]',
+        'rounded-lg bg-navy text-white text-xs leading-snug px-3 py-2 shadow-xl text-left font-normal normal-case tracking-normal',
+        side === 'left' ? 'right-full top-1/2 -translate-y-1/2 mr-2' : 'left-1/2 -translate-x-1/2 top-full mt-1.5',
+      )}>
+        {content}
+      </span>
+    </span>
+  );
+}
+
 /** Carte graphique avec en-tête (titre + sous-titre + action à droite). */
 export function ChartCard({ title, subtitle, action, children, className }) {
   return (

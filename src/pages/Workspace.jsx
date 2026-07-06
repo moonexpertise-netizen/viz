@@ -6,6 +6,7 @@ import Combobox from '../components/Combobox';
 import CommandPalette from '../components/CommandPalette';
 import PortfolioDashboard from '../components/PortfolioDashboard';
 import ThemeMenu from '../components/ThemeMenu';
+import { Tip } from '../components/ChartBits';
 import { pennylaneCompanyUrl } from '../lib/pennylaneLink';
 import { applyTheme, getTheme } from '../lib/theme';
 import { defaultMapping, loadLocalMapping, saveLocalMapping } from '../lib/mapping';
@@ -627,7 +628,11 @@ function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedF
                   {fy.start && <span className="text-xs text-gray-custom">{fr(fy.start)} → {fr(fy.end)}</span>}
                   {fl.enCours && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-navy text-white">Exercice en cours</span>}
                   {!fl.cloture && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Non clôturé</span>}
-                  {fl.anSimules && <span title="L'exercice précédent n'est pas clôturé : les soldes de bilan (trésorerie, capital…) sont reportés automatiquement." className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">À-nouveaux simulés</span>}
+                  {fl.anSimules && (
+                    <Tip side="bottom" content="L'exercice précédent n'est pas clôturé : les soldes de bilan (trésorerie, capital, résultat antérieur…) sont reportés automatiquement.">
+                      <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200 cursor-help">À-nouveaux simulés</span>
+                    </Tip>
+                  )}
                   {entry && (
                     <span className={cls('text-[11px] font-medium px-2 py-0.5 rounded-full',
                       isSel ? 'bg-accent-green text-white' : 'bg-emerald-100 text-emerald-700')}>{isSel ? 'Affiché' : 'Chargé'}</span>

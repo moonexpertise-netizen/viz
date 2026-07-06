@@ -4,6 +4,7 @@ import { dataAPI } from '../services/api';
 import { REPORT_VERSION } from '../lib/syncStore';
 import { pennylaneCompanyUrl } from '../lib/pennylaneLink';
 import { fmt, fmtNum, cls } from '../lib/format';
+import { Tip } from './ChartBits';
 
 const CACHE_KEY = 'mv:dashboard';
 // Version du cache tableau de bord : suit le moteur comptable (REPORT_VERSION)
@@ -58,9 +59,12 @@ function health(r) {
     if (runway < 3) alerts.push(`Runway ${runway} mois : cessation de paiements possible à court terme`);
     else if (runway < 6) warns.push(`Runway ${runway} mois (< 6 mois)`);
   }
-  // Couverture des charges : trésorerie < 1 mois de charges décaissables
+  // Couverture des charges : trésorerie < 1 mois de charges décaissables.
+  // Ignorée si le dossier GÉNÈRE de la trésorerie (cashburn < 0) : une caisse
+  // basse y est un choix de gestion, pas un risque de liquidité.
+  const generating = (r.cashburn || 0) < 0;
   const chargesMens = Math.max(0, ca - resultat) / mois;
-  if (treso >= 0 && chargesMens > 500 && treso < chargesMens) {
+  if (treso >= 0 && !generating && chargesMens > 500 && treso < chargesMens) {
     warns.push('Trésorerie < 1 mois de charges (tension de liquidité)');
   }
 
@@ -88,7 +92,16 @@ const COLS = [
   { key: 'tresorerie', label: 'Trésorerie', sort: (r) => r?.tresorerie, render: (r) => <Money v={r.tresorerie} signed danger={r.tresorerie < 0} /> },
   { key: 'cashburn', label: 'Cashburn /mois', sort: (r) => (r?.cashburn == null ? -Infinity : r.cashburn), render: (r) => <Cashburn v={r.cashburn} /> },
   { key: 'runway', label: 'Runway (mois)', sort: (r) => (r?.runway == null ? Infinity : r.runway), render: (r) => <Runway v={r.runway} /> },
-  { key: 'santé', label: 'Santé', sort: (r) => health(r).rank, render: (r) => { const h = health(r); return <td className="px-2.5 py-2 text-right"><span title={h.reasons?.length ? h.reasons.join('\n') : (h.key === 'green' ? 'Aucun signal défavorable' : undefined)} className={cls('inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full cursor-help', h.key === 'red' ? 'bg-red-50 text-accent-red' : h.key === 'orange' ? 'bg-amber-50 text-amber-700' : h.key === 'green' ? 'bg-emerald-50 text-emerald-700' : 'bg-cream text-gray-custom')}>{h.label}{h.reasons?.length > 0 && <span className="tabular-nums opacity-70">({h.reasons.length})</span>}</span></td>; } },
+  { key: 'santé', label: 'Santé', sort: (r) => health(r).rank, render: (r) => {
+    const h = health(r);
+    const tip = h.key === 'na' ? null : (h.reasons?.length
+      ? <ul className="space-y-1 py-0.5">{h.reasons.map((x, i) => <li key={i} className="flex gap-1.5"><span className="text-gold shrink-0">•</span><span>{x}</span></li>)}</ul>
+      : 'Aucun signal défavorable');
+    return <td className="px-2.5 py-2 text-right">
+      <Tip content={tip} side="left">
+        <span className={cls('inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full cursor-help', h.key === 'red' ? 'bg-red-50 text-accent-red' : h.key === 'orange' ? 'bg-amber-50 text-amber-700' : h.key === 'green' ? 'bg-emerald-50 text-emerald-700' : 'bg-cream text-gray-custom')}>{h.label}{h.reasons?.length > 0 && <span className="tabular-nums opacity-70">({h.reasons.length})</span>}</span>
+      </Tip>
+    </td>; } },
 ];
 
 const COLCFG_KEY = 'mv:dashcols';
