@@ -411,3 +411,22 @@ h1, h2, h3, h4, h5, h6 {
 :root[data-theme="dark"] .btn-navy, :root[data-theme="navy"] .btn-navy {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
+
+
+/* ═══ Variantes Tailwind « navy » recalées sur l'ENCRE (pas la surface) ═══
+   Tailwind génère hover:text-navy etc. depuis la couleur de config (surface
+   sombre dans tous les modes) → texte sombre sur fond sombre au survol.
+   Ici : tout ce qui ÉCRIT utilise l'encre, tout ce qui REMPLIT garde la surface. */
+.hover\:text-navy:hover { color: var(--ink); }
+.border-navy\/25 { border-color: color-mix(in srgb, var(--ink) 25%, transparent); }
+.ring-navy\/50 { --tw-ring-color: color-mix(in srgb, var(--ink) 50%, transparent); }
+.ring-navy\/30 { --tw-ring-color: color-mix(in srgb, var(--ink) 30%, transparent); }
+.focus\:ring-navy\/30:focus { --tw-ring-color: color-mix(in srgb, var(--ink) 30%, transparent); }
+
+/* Popovers / modales : ombres CRM en modes sombres (détachent de la carte) */
+:root[data-theme="dark"] .shadow-lg, :root[data-theme="navy"] .shadow-lg {
+  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.55), 0 3px 6px -3px rgba(0, 0, 0, 0.35);
+}
+:root[data-theme="dark"] .shadow-2xl, :root[data-theme="navy"] .shadow-2xl {
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.7);
+}
