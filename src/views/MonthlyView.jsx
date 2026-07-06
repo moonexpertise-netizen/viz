@@ -2278,7 +2278,7 @@ export default function MonthlyView({ companyId, data, loading = false, mapping 
                     else setToMonth(m < fromMonth ? fromMonth : m);
                   }}
                 >
-                  <div className="absolute h-full bg-navy rounded-full pointer-events-none"
+                  <div className="absolute h-full bg-gold rounded-full pointer-events-none"
                     style={{ left: `${pctOf(fromIdx)}%`, right: `${100 - pctOf(toIdx)}%` }} />
                   {[['from', fromIdx, fromMonth], ['to', toIdx, toMonth]].map(([which, idx, m]) => (
                     <button key={which} type="button" onPointerDown={startDrag(which)}

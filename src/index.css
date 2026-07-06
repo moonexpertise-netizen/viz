@@ -17,7 +17,7 @@
   --surface: #ffffff;       /* cartes */
   --surface-elevated: #ffffff; /* popovers / modales */
   --text-dark: #01071B;
-  --text-gray: #71717a;
+  --text-gray: #64646d;   /* ≥4.5:1 sur fond crème ET sur cartes */
   --text-light: #a1a1aa;
   --accent-green: #1f7a45;
   --accent-red: #c0392b;
@@ -214,7 +214,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Accent doré MOON (CRM) */
 .text-gold { color: var(--gold); }
-.bg-gold { background-color: var(--gold); }
+.bg-gold { background-color: var(--gold); color: #2a2113; } /* texte foncé : AA sur doré, tous modes */
 .bg-gold-soft { background-color: var(--gold-soft); }
 .border-gold { border-color: var(--gold); }
 .hover\:text-gold:hover { color: var(--gold); }
@@ -430,3 +430,14 @@ h1, h2, h3, h4, h5, h6 {
 :root[data-theme="dark"] .shadow-2xl, :root[data-theme="navy"] .shadow-2xl {
   box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.7);
 }
+
+
+/* Champs de formulaire : suivent le thème (sinon blanc UA en mode sombre) */
+input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+  background-color: var(--surface);
+  color: var(--ink);
+}
+input::placeholder, textarea::placeholder { color: var(--text-light); }
+
+/* Badges rouges : texte éclairci en modes sombres (AA sur teinte translucide) */
+:root[data-theme="dark"] .bg-red-50.text-accent-red, :root[data-theme="navy"] .bg-red-50.text-accent-red { color: #fecaca; }
