@@ -12,14 +12,68 @@ const CACHE_VERSION = `${REPORT_VERSION}-2`;
 const loadCache = () => { try { const c = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); return c.version === CACHE_VERSION ? (c.rows || {}) : {}; } catch { return {}; } };
 const saveCache = (rows) => { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ version: CACHE_VERSION, rows, at: new Date().toISOString() })); } catch { /* noop */ } };
 
-// Statut de santé d'un dossier
+/**
+ * Statut de santé d'un dossier — analyse en 3 axes, avec raisons explicites.
+ *
+ * ALERTE (critique, action immédiate) :
+ *   A1. Capitaux propres négatifs (situation nette insolvable)
+ *   A2. CP < ½ du capital social — seuil légal de reconstitution (L.223-42 / L.225-248)
+ *   A3. Trésorerie négative (découvert)
+ *   A4. Runway < 3 mois alors que le dossier consomme de la trésorerie
+ *
+ * À SURVEILLER (signal dégradé) :
+ *   S1. CP entamés (< capital, mais ≥ ½)
+ *   S2. Runway entre 3 et 6 mois
+ *   S3. Trésorerie < 1 mois de charges décaissables (tension de liquidité,
+ *       même sans consommation nette — un retard client suffit à bloquer)
+ *   S4. Exploitation déficitaire (EBITDA < 0) — jugée seulement après 2 mois
+ *       d'exercice ou si la perte est significative (anti-bruit de début d'exercice)
+ *   S5. Résultat net négatif (EBITDA positif : perte due aux dotations/exceptionnel)
+ *
+ * SAIN : aucun des signaux ci-dessus.
+ */
 function health(r) {
-  if (!r || r.empty || r.error) return { rank: 4, key: 'na', label: '—', color: 'bg-slate-300' };
-  const danger = (r.capitauxPropres < 0) || (r.ratioCpCapital != null && r.ratioCpCapital < 0.5) || (r.tresorerie < 0) || (r.runway != null && r.runway < 3);
-  if (danger) return { rank: 0, key: 'red', label: 'Alerte', color: 'bg-accent-red' };
-  const warn = (r.resultat < 0) || (r.runway != null && r.runway < 6) || (r.ratioCpCapital != null && r.ratioCpCapital < 1);
-  if (warn) return { rank: 1, key: 'orange', label: 'À surveiller', color: 'bg-amber-500' };
-  return { rank: 2, key: 'green', label: 'Bonne santé', color: 'bg-accent-green' };
+  if (!r || r.empty || r.error) return { rank: 4, key: 'na', label: '—', color: 'bg-slate-300', reasons: [] };
+  const ca = r.ca || 0;
+  const ebitda = r.ebitda || 0;
+  const resultat = r.resultat || 0;
+  const cp = r.capitauxPropres || 0;
+  const capital = r.capital || 0;
+  const treso = r.tresorerie || 0;
+  const runway = r.runway;
+  const burning = (r.cashburn || 0) > 0;
+  const mois = Math.max(1, r.monthsElapsed || 1);
+
+  const alerts = [];
+  const warns = [];
+
+  // ── Solvabilité ──
+  if (cp < 0) alerts.push('Capitaux propres négatifs');
+  else if (capital > 0 && cp < capital / 2) alerts.push('CP < ½ du capital social (obligation légale de reconstitution)');
+  else if (capital > 0 && cp < capital) warns.push('Capitaux propres entamés (< capital social)');
+
+  // ── Liquidité ──
+  if (treso < -10) alerts.push('Trésorerie négative (découvert)');
+  if (burning && runway != null) {
+    if (runway < 3) alerts.push(`Runway ${runway} mois : cessation de paiements possible à court terme`);
+    else if (runway < 6) warns.push(`Runway ${runway} mois (< 6 mois)`);
+  }
+  // Couverture des charges : trésorerie < 1 mois de charges décaissables
+  const chargesMens = Math.max(0, ca - resultat) / mois;
+  if (treso >= 0 && chargesMens > 500 && treso < chargesMens) {
+    warns.push('Trésorerie < 1 mois de charges (tension de liquidité)');
+  }
+
+  // ── Rentabilité (anti-bruit : ignorée les 2 premiers mois sauf perte significative) ──
+  const significatif = mois >= 2 || Math.abs(resultat) > Math.max(1000, ca * 0.1);
+  if (significatif) {
+    if (ebitda < 0) warns.push('Exploitation déficitaire (EBITDA négatif)');
+    else if (resultat < 0) warns.push('Résultat net négatif (dotations / exceptionnel)');
+  }
+
+  if (alerts.length) return { rank: 0, key: 'red', label: 'Alerte', color: 'bg-accent-red', reasons: [...alerts, ...warns] };
+  if (warns.length) return { rank: 1, key: 'orange', label: 'À surveiller', color: 'bg-amber-500', reasons: warns };
+  return { rank: 2, key: 'green', label: 'Bonne santé', color: 'bg-accent-green', reasons: [] };
 }
 
 const COLS = [
@@ -34,7 +88,7 @@ const COLS = [
   { key: 'tresorerie', label: 'Trésorerie', sort: (r) => r?.tresorerie, render: (r) => <Money v={r.tresorerie} signed danger={r.tresorerie < 0} /> },
   { key: 'cashburn', label: 'Cashburn /mois', sort: (r) => (r?.cashburn == null ? -Infinity : r.cashburn), render: (r) => <Cashburn v={r.cashburn} /> },
   { key: 'runway', label: 'Runway (mois)', sort: (r) => (r?.runway == null ? Infinity : r.runway), render: (r) => <Runway v={r.runway} /> },
-  { key: 'santé', label: 'Santé', sort: (r) => health(r).rank, render: (r) => { const h = health(r); return <td className="px-2.5 py-2 text-right"><span className={cls('inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full', h.key === 'red' ? 'bg-red-50 text-accent-red' : h.key === 'orange' ? 'bg-amber-50 text-amber-700' : h.key === 'green' ? 'bg-emerald-50 text-emerald-700' : 'bg-cream text-gray-custom')}>{h.label}</span></td>; } },
+  { key: 'santé', label: 'Santé', sort: (r) => health(r).rank, render: (r) => { const h = health(r); return <td className="px-2.5 py-2 text-right"><span title={h.reasons?.length ? h.reasons.join('\n') : (h.key === 'green' ? 'Aucun signal défavorable' : undefined)} className={cls('inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full cursor-help', h.key === 'red' ? 'bg-red-50 text-accent-red' : h.key === 'orange' ? 'bg-amber-50 text-amber-700' : h.key === 'green' ? 'bg-emerald-50 text-emerald-700' : 'bg-cream text-gray-custom')}>{h.label}{h.reasons?.length > 0 && <span className="tabular-nums opacity-70">({h.reasons.length})</span>}</span></td>; } },
 ];
 
 const COLCFG_KEY = 'mv:dashcols';
