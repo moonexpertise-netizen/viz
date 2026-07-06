@@ -25,6 +25,10 @@ export function linesToMonthly(lines, journalCode = new Map(), labelMap = {}) {
   const entryGroups = {};      // entryId -> [{ number, debit, credit, month, journalAN }]
   const accountsSet = {};      // number -> {label, class}
   let initialTresorerie = 0;
+  // Trésorerie réelle = disponibilités : classe 5 HORS 511 (valeurs à l'encaissement),
+  // 58 (virements internes) et 59 (dépréciations). Un chèque remis mais non crédité
+  // n'est pas encore en banque — le relevé fait foi.
+  const isCash = (num) => num.charAt(0) === '5' && !num.startsWith('511') && !num.startsWith('58') && !num.startsWith('59');
 
   for (const ln of lines) {
     const number = String(ln.ledger_account?.number ?? '').trim();
@@ -41,8 +45,8 @@ export function linesToMonthly(lines, journalCode = new Map(), labelMap = {}) {
       accountsSet[number] = { number, label: labelMap[number] || ln.label || '', cls: number.charAt(0) };
     }
 
-    // Tresorerie d'ouverture = a-nouveaux des comptes classe 5
-    if (isAN && number.charAt(0) === '5') {
+    // Tresorerie d'ouverture = a-nouveaux des disponibilites
+    if (isAN && isCash(number)) {
       initialTresorerie += debit - credit;
     }
 
@@ -64,9 +68,9 @@ export function linesToMonthly(lines, journalCode = new Map(), labelMap = {}) {
   // Construire les entrees de cashflow (mouvements de banque + contrepartie)
   const cashFlowEntries = [];
   for (const groupLines of Object.values(entryGroups)) {
-    const bankLines = groupLines.filter((l) => l.number.charAt(0) === '5');
+    const bankLines = groupLines.filter((l) => isCash(l.number));
     if (!bankLines.length) continue;
-    const nonBank = groupLines.filter((l) => l.number.charAt(0) !== '5');
+    const nonBank = groupLines.filter((l) => !isCash(l.number));
 
     for (const bank of bankLines) {
       const amount = round2(bank.debit - bank.credit);
@@ -78,6 +82,8 @@ export function linesToMonthly(lines, journalCode = new Map(), labelMap = {}) {
         if (p2 === '40') { category = 'decaissementsFournisseurs'; break; }
         if (p2 === '42' || p2 === '43') { category = 'salairesCharges'; break; }
         if (p2 === '44') { category = 'dettesFiscales'; break; }
+        if (p2 === '51') { category = 'encaissementsClients'; break; } // crédit d'une remise (511)
+        if (p2 === '58') { category = 'autresFlux'; break; }           // virement interne (net nul)
         if (p2 === '16') { category = 'emprunts'; break; }
         if (cp.number.charAt(0) === '6' || cp.number.charAt(0) === '7') { category = 'autresOperationnels'; break; }
         if (cp.number.charAt(0) === '1') { category = 'autresFinanciers'; break; }

@@ -57,12 +57,12 @@ export default async function handler(req, res) {
         const prev = prevFyOf(fy, fys);
         const { items: prevFull } = await getTrialBalanceWithAN(cid, prev, fys, 1);
         const synth = buildSyntheticAN(prevFull);
-        // Meme perimetre que le moteur mensuel : TOUTE la classe 5 (le tableau
-        // de flux suit les comptes 5x au complet, y compris 511/58) — sinon la
-        // treso d'ouverture ne raccorde pas avec la cloture de l'exercice precedent.
+        // Meme perimetre que le moteur mensuel : DISPONIBILITES (classe 5 hors
+        // 511/58/59) — la treso affichee suit le releve bancaire reel.
         const toNum = (v) => { const f = parseFloat(String(v ?? '0')); return Number.isFinite(f) ? f : 0; };
+        const isCash = (num) => String(num).charAt(0) === '5' && !String(num).startsWith('511') && !String(num).startsWith('58') && !String(num).startsWith('59');
         openingAdjust = Math.round(synth
-          .filter((it) => String(it.number).charAt(0) === '5')
+          .filter((it) => isCash(it.number))
           .reduce((sum, it) => sum + toNum(it.debits) - toNum(it.credits), 0) * 100) / 100;
         anSimulated = true;
       }
