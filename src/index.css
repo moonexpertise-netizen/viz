@@ -416,12 +416,16 @@ h1, h2, h3, h4, h5, h6 {
 /* ═══ Variantes Tailwind « navy » recalées sur l'ENCRE (pas la surface) ═══
    Tailwind génère hover:text-navy etc. depuis la couleur de config (surface
    sombre dans tous les modes) → texte sombre sur fond sombre au survol.
-   Ici : tout ce qui ÉCRIT utilise l'encre, tout ce qui REMPLIT garde la surface. */
-.hover\:text-navy:hover { color: var(--ink); }
-.border-navy\/25 { border-color: color-mix(in srgb, var(--ink) 25%, transparent); }
-.ring-navy\/50 { --tw-ring-color: color-mix(in srgb, var(--ink) 50%, transparent); }
-.ring-navy\/30 { --tw-ring-color: color-mix(in srgb, var(--ink) 30%, transparent); }
-.focus\:ring-navy\/30:focus { --tw-ring-color: color-mix(in srgb, var(--ink) 30%, transparent); }
+   Ici : tout ce qui ÉCRIT utilise l'encre, tout ce qui REMPLIT garde la surface.
+   Préfixe :root obligatoire : Tailwind émet ses utilities À VARIANTES après ce
+   fichier dans le bundle final ; seule une spécificité supérieure (0,3,0) garantit
+   que l'encre gagne quel que soit l'ordre d'émission. */
+:root .hover\:text-navy:hover { color: var(--ink); }
+:root .border-navy\/25 { border-color: color-mix(in srgb, var(--ink) 25%, transparent); }
+:root .ring-navy\/50 { --tw-ring-color: color-mix(in srgb, var(--ink) 50%, transparent); }
+:root .ring-navy\/30 { --tw-ring-color: color-mix(in srgb, var(--ink) 30%, transparent); }
+:root .focus\:ring-navy\/30:focus { --tw-ring-color: color-mix(in srgb, var(--ink) 30%, transparent); }
+:root .focus\:border-navy:focus { border-color: var(--ink); }
 
 /* Popovers / modales : ombres CRM en modes sombres (détachent de la carte) */
 :root[data-theme="dark"] .shadow-lg, :root[data-theme="navy"] .shadow-lg {
