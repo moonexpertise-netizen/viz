@@ -21,6 +21,7 @@
   --text-light: #a1a1aa;
   --accent-green: #1f7a45;
   --accent-red: #c0392b;
+  --num-neg: #5c1717; /* négatifs (vision périodique) : rouge très foncé (bordeaux) */
   --accent-blue: #2563eb;
   --accent-gold: #a88962;
   --gold: #a88962;
@@ -58,6 +59,7 @@
   --text-light: #737373;
   --accent-green: #34d399;
   --accent-red: #f87171;
+  --num-neg: #d68a8a; /* négatifs : rouge sombre atténué, lisible sur fond graphite */
   --accent-blue: #60a5fa;
   --accent-gold: #d3b88a;
   --gold: #d3b88a;
@@ -95,6 +97,7 @@
   --text-light: #64719a;
   --accent-green: #34d399;
   --accent-red: #f87171;
+  --num-neg: #d68a8a; /* négatifs : rouge sombre atténué, lisible sur fond navy */
   --accent-blue: #7ba3f7;
   --accent-gold: #d3b88a;
   --gold: #d3b88a;
@@ -452,6 +455,8 @@ h1, h2, h3, h4, h5, h6 {
 .mv-ptable tr.mv-ind-row td { padding-top: 0.22rem; padding-bottom: 0.22rem; line-height: 1.25; font-size: 0.8rem; vertical-align: middle; }
 /* Cible de dépôt d'un indicateur : fond doré net + barre inférieure (l'indicateur ira juste sous cette ligne). */
 .mv-ptable tr.mv-drop-anchor td { background-color: rgb(var(--gold-rgb) / 0.16) !important; box-shadow: inset 0 -3px 0 0 rgb(var(--gold-rgb)); }
+/* Chiffres négatifs : rouge très foncé (bordeaux), signe moins normal. */
+.mv-ptable td.text-accent-red { color: var(--num-neg); }
 
 /* Champs de formulaire : suivent le thème (sinon blanc UA en mode sombre) */
 input:not([type="checkbox"]):not([type="radio"]), select, textarea {
