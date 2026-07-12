@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import {
   ChevronRight, GripVertical, Plus, RotateCcw, Save, Search, X,
-  ArrowRightLeft, Trash2, Pencil, CornerDownRight, AlertTriangle, Check,
+  ArrowRightLeft, Trash2, Pencil, AlertTriangle, Check, Folder, FolderTree, Sigma,
 } from 'lucide-react';
 import { cls } from '../lib/format';
 import ConfirmDialog from './ConfirmDialog';
@@ -11,30 +11,31 @@ import { newId, resolveAccount, DEFAULT_PL, DEFAULT_CASH } from '../lib/mapping'
  * « Affectation des comptes » (façon Finthesis) : édition du mapping P&L standard
  * et du mapping encaissements/décaissements d'un dossier.
  *
- * props :
- *   mapping      { version, pl, cash } (copie de travail gérée ici)
- *   accountsPL   [{ number, originalNumber, label }]
- *   accountsCash [{ number, label }]
- *   onSave(mapping)
+ * Glisser-déposer :
+ *   • un COMPTE (puce jaune ou ligne)  -> dans une catégorie ou sous-catégorie
+ *   • une SOUS-CATÉGORIE               -> dans une autre catégorie, ou avant une sous-catégorie
+ *   • une CATÉGORIE / un TOTAL         -> réordonné avant une autre ligne
+ *
+ * props : mapping / accountsPL / accountsCash / onSave(mapping)
  */
 export default function MappingEditor({ mapping, accountsPL = [], accountsCash = [], onSave }) {
   const [tab, setTab] = useState('pl');
   const [work, setWork] = useState(() => JSON.parse(JSON.stringify(mapping)));
   const [dirty, setDirty] = useState(false);
   const [expanded, setExpanded] = useState({});
-  const [editing, setEditing] = useState(null);   // { id, subId?, value }
-  const [reclass, setReclass] = useState(false);  // modale de reclassement
-  const [dropTarget, setDropTarget] = useState(null); // clé du nœud survolé pendant un drag de compte
-  const [dragging, setDragging] = useState(null); // 'account' | 'node' | null
-  const [confirmReset, setConfirmReset] = useState(false); // fenêtre de confirmation de réinitialisation
-  const dragRef = useRef(null); // { kind:'node', id } | { kind:'account', number }
+  const [editing, setEditing] = useState(null);   // { id, subId? }
+  const [reclass, setReclass] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [drop, setDrop] = useState(null);          // { key, mode:'into'|'before' }
+  const [dragging, setDragging] = useState(null);  // 'account' | 'sub' | 'node'
+  const dragRef = useRef(null);                    // { kind, ... }
 
   const plan = work[tab];
   const accounts = tab === 'pl' ? accountsPL : accountsCash;
 
   const update = (fn) => setWork((w) => { const n = JSON.parse(JSON.stringify(w)); fn(n[tab]); n.updatedAt = new Date().toISOString(); setDirty(true); return n; });
 
-  /* Affectation courante de chaque compte (pour l'affichage + la modale) */
+  /* Affectation courante de chaque compte */
   const assignment = useMemo(() => {
     const byNode = {}; const un = [];
     for (const acc of accounts) {
@@ -48,14 +49,9 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
     return { byNode, unassigned: un.sort(cmp) };
   }, [plan, accounts]);
 
-  /* Tous les nœuds/sous-nœuds dépliés (pour révéler les cibles pendant un drag) */
   const allExpandedMap = () => {
     const m = {};
-    for (const n of plan.nodes) {
-      if (n.kind !== 'cat') continue;
-      m[n.id] = true;
-      for (const s of n.subs || []) m[`${n.id}/${s.id}`] = true;
-    }
+    for (const n of plan.nodes) { if (n.kind !== 'cat') continue; m[n.id] = true; for (const s of n.subs || []) m[`${n.id}/${s.id}`] = true; }
     return m;
   };
 
@@ -73,27 +69,48 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
   const addCatAt = (index) => {
     const id = newId();
     update((p) => { p.nodes.splice(index, 0, { id, kind: 'cat', label: 'Nouvelle catégorie', prefixes: [], subs: [] }); });
-    setExpanded((x) => ({ ...x, [id]: true }));
-    setEditing({ id });
+    setExpanded((x) => ({ ...x, [id]: true })); setEditing({ id });
   };
   const addTotalAt = (index) => {
     const id = newId();
     update((p) => { p.nodes.splice(index, 0, { id, kind: 'total', label: 'Nouveau total', mode: 'cumul' }); });
     setEditing({ id });
   };
-  const addSub = (id) => {
+  const addSub = (catId, afterSubId = null) => {
     const sid = newId();
-    update((p) => { const node = p.nodes.find((n) => n.id === id); if (node) (node.subs = node.subs || []).push({ id: sid, label: 'Nouvelle sous-catégorie', prefixes: [] }); });
-    setExpanded((x) => ({ ...x, [id]: true, [`${id}/${sid}`]: true }));
-    setEditing({ id, subId: sid });
+    update((p) => {
+      const node = p.nodes.find((n) => n.id === catId); if (!node) return;
+      node.subs = node.subs || [];
+      const at = afterSubId ? node.subs.findIndex((s) => s.id === afterSubId) + 1 : node.subs.length;
+      node.subs.splice(at, 0, { id: sid, label: 'Nouvelle sous-catégorie', prefixes: [] });
+    });
+    setExpanded((x) => ({ ...x, [catId]: true })); setEditing({ id: catId, subId: sid });
   };
-  const toggleMode = (id) => update((p) => {
-    const node = p.nodes.find((n) => n.id === id); if (node) node.mode = node.mode === 'section' ? 'cumul' : 'section';
+  const toggleMode = (id) => update((p) => { const n = p.nodes.find((x) => x.id === id); if (n) n.mode = n.mode === 'section' ? 'cumul' : 'section'; });
+  const moveNodeBefore = (fromId, beforeId) => update((p) => {
+    if (fromId === beforeId) return;
+    const i = p.nodes.findIndex((n) => n.id === fromId); if (i < 0) return;
+    const [node] = p.nodes.splice(i, 1);
+    let j = beforeId == null ? p.nodes.length : p.nodes.findIndex((n) => n.id === beforeId);
+    if (j < 0) j = p.nodes.length;
+    p.nodes.splice(j, 0, node);
   });
-  const moveNode = (fromId, toId) => update((p) => {
-    const i = p.nodes.findIndex((n) => n.id === fromId); const j = p.nodes.findIndex((n) => n.id === toId);
-    if (i < 0 || j < 0 || i === j) return;
-    p.nodes.splice(j, 0, p.nodes.splice(i, 1)[0]);
+  const moveSub = (subId, fromCatId, toCatId, beforeSubId = null) => update((p) => {
+    const fromCat = p.nodes.find((n) => n.id === fromCatId);
+    const toCat = p.nodes.find((n) => n.id === toCatId);
+    if (!fromCat || !toCat || toCat.kind !== 'cat') return;
+    const i = (fromCat.subs || []).findIndex((s) => s.id === subId); if (i < 0) return;
+    const [sub] = fromCat.subs.splice(i, 1);
+    toCat.subs = toCat.subs || [];
+    let j = beforeSubId == null ? toCat.subs.length : toCat.subs.findIndex((s) => s.id === beforeSubId);
+    if (j < 0) j = toCat.subs.length;
+    toCat.subs.splice(j, 0, sub);
+    // Les comptes affectés à cette sous-catégorie suivent le déplacement.
+    if (fromCatId !== toCatId) {
+      p.overrides = p.overrides || {};
+      const oldKey = `${fromCatId}/${subId}`; const newKey = `${toCatId}/${subId}`;
+      for (const acc of Object.keys(p.overrides)) if (p.overrides[acc] === oldKey) p.overrides[acc] = newKey;
+    }
   });
   const assignAccounts = (numbers, targetKey) => update((p) => {
     p.overrides = p.overrides || {};
@@ -103,37 +120,40 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
     update((p) => { const d = tab === 'pl' ? DEFAULT_PL() : DEFAULT_CASH(); p.nodes = d.nodes; p.overrides = {}; });
     setConfirmReset(false);
   };
-
   const save = () => { onSave(work); setDirty(false); };
 
-  /* ── drag d'un compte (depuis la bande « non affectés » ou une ligne) ── */
-  const startAccountDrag = (number) => (e) => {
-    e.stopPropagation();
-    dragRef.current = { kind: 'account', number };
-    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-    setDragging('account');
-    setExpanded((m) => ({ ...m, ...allExpandedMap() })); // révèle toutes les cibles
-  };
-  const endDrag = () => { dragRef.current = null; setDropTarget(null); setDragging(null); };
+  /* ── drag ── */
+  const startAccountDrag = (number) => (e) => { e.stopPropagation(); dragRef.current = { kind: 'account', number }; if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'; setDragging('account'); setExpanded((m) => ({ ...m, ...allExpandedMap() })); };
+  const startSubDrag = (subId, fromCatId) => (e) => { e.stopPropagation(); dragRef.current = { kind: 'sub', subId, fromCatId }; if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'; setDragging('sub'); setExpanded((m) => ({ ...m, ...allExpandedMap() })); };
+  const startNodeDrag = (id) => (e) => { e.stopPropagation(); dragRef.current = { kind: 'node', id }; if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'; setDragging('node'); };
+  const endDrag = () => { dragRef.current = null; setDrop(null); setDragging(null); };
 
-  /* Cible de dépôt : catégorie (key = catId) ou sous-catégorie (key = catId/subId) */
-  const dropProps = (targetKey) => ({
-    onDragOver: (e) => {
-      const d = dragRef.current;
-      if (d?.kind === 'account') { e.preventDefault(); e.stopPropagation(); setDropTarget(targetKey); }
-    },
-    onDragLeave: (e) => { e.stopPropagation(); if (dropTarget === targetKey) setDropTarget(null); },
-    onDrop: (e) => {
-      const d = dragRef.current;
-      if (d?.kind === 'account') {
-        e.preventDefault(); e.stopPropagation();
-        assignAccounts([d.number], targetKey);
-        const catId = String(targetKey).split('/')[0];
-        setExpanded((x) => ({ ...x, [catId]: true, [targetKey]: true }));
-      }
-      endDrag();
-    },
-  });
+  // targetKind : 'cat' | 'sub' | 'total' | 'insert'
+  const overRow = (targetKind, key) => (e) => {
+    const d = dragRef.current; if (!d) return;
+    if (d.kind === 'account') { if (targetKind === 'cat' || targetKind === 'sub') { e.preventDefault(); e.stopPropagation(); setDrop({ key, mode: 'into' }); } }
+    else if (d.kind === 'sub') {
+      if (targetKind === 'cat') { e.preventDefault(); e.stopPropagation(); setDrop({ key, mode: 'into' }); }
+      else if (targetKind === 'sub') { e.preventDefault(); e.stopPropagation(); setDrop({ key, mode: 'before' }); }
+    } else if (d.kind === 'node') {
+      if (targetKind === 'cat' || targetKind === 'total' || targetKind === 'insert') { e.preventDefault(); e.stopPropagation(); setDrop({ key, mode: 'before' }); }
+    }
+  };
+  const dropRow = (targetKind, node, sub) => (e) => {
+    const d = dragRef.current; if (!d) return; e.preventDefault(); e.stopPropagation();
+    if (d.kind === 'account') {
+      const key = sub ? `${node.id}/${sub.id}` : node.id;
+      assignAccounts([d.number], key); setExpanded((x) => ({ ...x, [node.id]: true, [key]: true }));
+    } else if (d.kind === 'sub') {
+      if (targetKind === 'cat') moveSub(d.subId, d.fromCatId, node.id, null);
+      else if (targetKind === 'sub' && sub.id !== d.subId) moveSub(d.subId, d.fromCatId, node.id, sub.id);
+      setExpanded((x) => ({ ...x, [node.id]: true }));
+    } else if (d.kind === 'node') {
+      if (targetKind === 'insert') moveNodeBefore(d.id, node); // node = beforeId (ou null)
+      else moveNodeBefore(d.id, node.id);
+    }
+    endDrag();
+  };
 
   const targets = useMemo(() => {
     const out = [];
@@ -145,14 +165,16 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
     return out;
   }, [plan]);
 
-  const isAccountDrag = dragging === 'account';
+  const isInto = (key) => drop?.key === key && drop.mode === 'into';
+  const isBefore = (key) => drop?.key === key && drop.mode === 'before';
+  const beforeBar = 'shadow-[inset_0_3px_0_0_rgb(var(--navy-rgb))]';
 
-  /* Ligne d'un compte affecté (déplaçable vers une autre rubrique) */
+  /* Ligne d'un compte (déplaçable) */
   const AccountRow = ({ acc, indent }) => {
     const num = acc.originalNumber || acc.number;
     return (
       <div draggable onDragStart={startAccountDrag(num)} onDragEnd={endDrag}
-        className={cls('flex items-center gap-2 py-1.5 pr-3 text-xs border-t border-sage/30 cursor-grab active:cursor-grabbing group/acc hover:bg-cream/70 transition', indent ? 'pl-16' : 'pl-12')}>
+        className={cls('flex items-center gap-2 py-1.5 pr-3 text-xs border-t border-sage/30 cursor-grab active:cursor-grabbing group/acc hover:bg-cream/70 transition', indent ? 'pl-[4.5rem]' : 'pl-14')}>
         <GripVertical size={12} className="shrink-0 text-gray-custom/40 group-hover/acc:text-gray-custom" />
         <span className="tabular-nums text-gray-custom shrink-0">{num}</span>
         <span className="text-navy truncate">{acc.label}</span>
@@ -164,16 +186,22 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
     );
   };
 
+  const IconBtn = ({ icon, title, onClick, danger, light }) => (
+    <button onClick={(e) => { e.stopPropagation(); onClick(); }} title={title}
+      className={cls('p-1 rounded transition opacity-0 group-hover:opacity-100',
+        danger ? 'hover:bg-red-50 text-accent-red' : light ? 'hover:bg-white/15 text-white/80' : 'hover:bg-cream text-gray-custom')}>
+      {icon}
+    </button>
+  );
+
   return (
     <div className="space-y-4">
-      {/* Sélecteur P&L / Cash + actions */}
+      {/* Onglet + actions */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-cream border border-sage/70 text-sm">
           {[['pl', 'Compte de résultat'], ['cash', 'Encaissements / décaissements']].map(([k, l]) => (
             <button key={k} onClick={() => setTab(k)}
-              className={cls('px-3 py-1.5 rounded-md transition', tab === k ? 'bg-navy text-white font-medium shadow-sm' : 'text-gray-custom hover:text-navy')}>
-              {l}
-            </button>
+              className={cls('px-3 py-1.5 rounded-md transition', tab === k ? 'bg-navy text-white font-medium shadow-sm' : 'text-gray-custom hover:text-navy')}>{l}</button>
           ))}
         </div>
         <div className="flex-1" />
@@ -189,7 +217,7 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
         </button>
       </div>
 
-      {/* Bande des comptes NON AFFECTÉS : puces déplaçables (warning) */}
+      {/* Comptes non affectés (warning, puces déplaçables) */}
       {assignment.unassigned.length > 0 ? (
         <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3">
           <div className="flex flex-wrap items-center gap-2 mb-2.5">
@@ -203,8 +231,7 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
             {assignment.unassigned.map((acc) => {
               const num = acc.originalNumber || acc.number;
               return (
-                <div key={num} draggable onDragStart={startAccountDrag(num)} onDragEnd={endDrag}
-                  title="Glissez ce compte dans une rubrique"
+                <div key={num} draggable onDragStart={startAccountDrag(num)} onDragEnd={endDrag} title="Glissez ce compte dans une rubrique"
                   className="inline-flex items-center gap-1.5 pl-1.5 pr-2 py-1 rounded-lg bg-white border border-amber-300 text-xs cursor-grab active:cursor-grabbing hover:border-amber-400 hover:shadow-sm transition">
                   <GripVertical size={11} className="text-amber-400 shrink-0" />
                   <span className="tabular-nums text-gray-custom shrink-0">{num}</span>
@@ -220,94 +247,96 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
         </div>
       )}
 
+      {/* Légende hiérarchie */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-custom">
+        <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-navy inline-block" /> Total / agrégat</span>
+        <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm border-l-[3px] border-gold bg-white inline-block" /> Catégorie</span>
+        <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm border-l-[3px] border-navy/40 bg-cream inline-block" /> Sous-catégorie</span>
+      </div>
+
       {/* Le plan */}
       <div className="card-moon overflow-hidden">
         <div className="bg-navy text-white px-4 py-2.5 text-sm font-semibold flex items-center justify-between">
           <span>{tab === 'pl' ? 'Compte de résultat' : 'Encaissements / décaissements'}</span>
-          {isAccountDrag && <span className="text-[11px] font-normal text-white/80 inline-flex items-center gap-1">Déposez le compte sur une rubrique en surbrillance</span>}
+          {dragging && <span className="text-[11px] font-normal text-white/80">{dragging === 'node' ? 'Déposez pour réordonner' : dragging === 'sub' ? 'Déposez dans une catégorie' : 'Déposez sur une rubrique'}</span>}
         </div>
         <div>
-          <InsertDivider onCat={() => addCatAt(0)} onTotal={() => addTotalAt(0)} />
+          <InsertDivider onCat={() => addCatAt(0)} onTotal={() => addTotalAt(0)}
+            nodeDrop={dragging === 'node'} before={isBefore('ins:0')} {...(dragging === 'node' ? { onDragOver: overRow('insert', 'ins:0'), onDrop: dropRow('insert', plan.nodes[0]?.id ?? null) } : {})} />
+
           {plan.nodes.map((node, idx) => {
             const isTotal = node.kind === 'total';
             const open = expanded[node.id];
             const direct = assignment.byNode[node.id] || [];
             const count = direct.length + (node.subs || []).reduce((s, sub) => s + (assignment.byNode[`${node.id}/${sub.id}`] || []).length, 0);
-            const isEditing = editing && editing.id === node.id && !editing.subId;
-            const isTarget = dropTarget === node.id;
-            const droppable = isAccountDrag && !isTotal;
+            const editingCat = editing && editing.id === node.id && !editing.subId;
+            const nodeDroppableInto = (dragging === 'account' || dragging === 'sub') && !isTotal;
+
             return (
               <div key={node.id} className="border-b border-sage/50">
-                {/* Ligne catégorie / total */}
-                <div
-                  draggable={!isEditing}
-                  onDragStart={(e) => { if (isEditing) return; e.stopPropagation(); dragRef.current = { kind: 'node', id: node.id }; setDragging('node'); }}
-                  onDragEnd={endDrag}
-                  onDragOver={(e) => {
-                    const d = dragRef.current;
-                    if (d?.kind === 'account' && !isTotal) { e.preventDefault(); setDropTarget(node.id); }
-                    else if (d?.kind === 'node') e.preventDefault();
-                  }}
-                  onDragLeave={() => { if (isTarget) setDropTarget(null); }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const d = dragRef.current;
-                    if (d?.kind === 'account' && !isTotal) { assignAccounts([d.number], node.id); setExpanded((x) => ({ ...x, [node.id]: true })); }
-                    else if (d?.kind === 'node') moveNode(d.id, node.id);
-                    endDrag();
-                  }}
-                  onClick={() => { if (!isTotal && !isEditing) setExpanded((x) => ({ ...x, [node.id]: !x[node.id] })); }}
-                  className={cls('flex items-center gap-2 px-3 py-2.5 group transition',
-                    isTotal ? (node.mode === 'section' ? 'bg-cream font-semibold text-navy' : 'bg-navy text-white font-semibold') : 'bg-white hover:bg-cream/60 cursor-pointer',
-                    droppable && !isTarget && 'ring-1 ring-inset ring-gold/50',
-                    isTarget && 'ring-2 ring-inset ring-navy bg-cream')}>
-                  {!isTotal ? (
-                    <span className="shrink-0 p-0.5">
-                      <ChevronRight size={14} className={cls('transition-transform text-gray-custom', open && 'rotate-90')} />
-                    </span>
-                  ) : <span className="w-[22px] shrink-0" />}
-
-                  {isEditing ? (
-                    <input autoFocus defaultValue={node.label} onClick={(e) => e.stopPropagation()}
-                      onBlur={(e) => { rename(node.id, null, e.target.value.trim() || node.label); setEditing(null); }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setEditing(null); }}
-                      className="flex-1 text-sm border border-sage rounded-md px-2 py-1 text-navy focus:outline-none focus:ring-2 focus:ring-navy" />
-                  ) : (
-                    <span className="flex-1 text-sm truncate">{node.label}
-                      {!isTotal && count > 0 && <span className="ml-2 text-xs text-gray-custom">({count})</span>}
-                      {isTotal && <span className="ml-2 text-[10px] uppercase tracking-wide opacity-60">{node.mode === 'section' ? 'section' : 'cumul'}</span>}
-                    </span>
-                  )}
-
-                  {/* Actions visibles au survol */}
-                  {!isEditing && (
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      {!isTotal && (
+                {/* ── Ligne TOTAL ── */}
+                {isTotal ? (
+                  <div draggable={!editingCat} onDragStart={startNodeDrag(node.id)} onDragEnd={endDrag}
+                    onDragOver={overRow('total', node.id)} onDrop={dropRow('total', node)}
+                    className={cls('flex items-center gap-2 px-3 py-2.5 group text-white font-semibold cursor-grab active:cursor-grabbing',
+                      node.mode === 'section' ? 'bg-navy/75' : 'bg-navy', isBefore(node.id) && beforeBar)}>
+                    <Sigma size={15} className="shrink-0 text-white/80" />
+                    {editingCat ? (
+                      <input autoFocus defaultValue={node.label} onClick={(e) => e.stopPropagation()}
+                        onBlur={(e) => { rename(node.id, null, e.target.value.trim() || node.label); setEditing(null); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setEditing(null); }}
+                        className="flex-1 text-sm rounded-md px-2 py-1 text-navy focus:outline-none" />
+                    ) : (
+                      <span className="flex-1 text-sm truncate">{node.label}
+                        <span className="ml-2 text-[10px] uppercase tracking-wide text-white/60">{node.mode === 'section' ? 'section' : 'cumul'}</span>
+                      </span>
+                    )}
+                    {!editingCat && (
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <IconBtn light icon={<ArrowRightLeft size={13} />} title={node.mode === 'section' ? 'Passer en cumul (depuis le début)' : 'Passer en section (depuis le total précédent)'} onClick={() => toggleMode(node.id)} />
+                        <IconBtn light icon={<Pencil size={13} />} title="Renommer" onClick={() => setEditing({ id: node.id })} />
+                        <IconBtn light icon={<Trash2 size={13} />} title="Supprimer" onClick={() => removeNode(node.id)} />
+                        <GripVertical size={14} className="text-white/50 opacity-0 group-hover:opacity-100" />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* ── Ligne CATÉGORIE ── */
+                  <div draggable={!editingCat} onDragStart={startNodeDrag(node.id)} onDragEnd={endDrag}
+                    onDragOver={overRow('cat', node.id)} onDrop={dropRow('cat', node)}
+                    onClick={() => { if (!editingCat) setExpanded((x) => ({ ...x, [node.id]: !x[node.id] })); }}
+                    className={cls('flex items-center gap-2 pl-2 pr-3 py-2.5 group bg-white border-l-[3px] border-gold cursor-pointer transition',
+                      nodeDroppableInto && !isInto(node.id) && 'bg-gold/[0.06]',
+                      isInto(node.id) && 'ring-2 ring-inset ring-navy bg-cream',
+                      isBefore(node.id) && beforeBar,
+                      !nodeDroppableInto && !isInto(node.id) && 'hover:bg-cream/60')}>
+                    <ChevronRight size={14} className={cls('shrink-0 transition-transform text-gray-300', open && 'rotate-90')} />
+                    <Folder size={15} className="shrink-0 text-gold" />
+                    {editingCat ? (
+                      <input autoFocus defaultValue={node.label} onClick={(e) => e.stopPropagation()}
+                        onBlur={(e) => { rename(node.id, null, e.target.value.trim() || node.label); setEditing(null); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setEditing(null); }}
+                        className="flex-1 text-sm border border-sage rounded-md px-2 py-1 text-navy focus:outline-none focus:ring-2 focus:ring-navy" />
+                    ) : (
+                      <span className="flex-1 text-sm font-semibold text-navy truncate">{node.label}
+                        {count > 0 && <span className="ml-2 text-xs font-normal text-gray-custom">({count})</span>}
+                      </span>
+                    )}
+                    {!editingCat && (
+                      <div className="flex items-center gap-0.5 shrink-0">
                         <button onClick={(e) => { e.stopPropagation(); addSub(node.id); }} title="Ajouter une sous-catégorie"
-                          className="inline-flex items-center gap-1 text-[11px] text-gray-custom hover:text-navy px-1.5 py-1 rounded hover:bg-cream opacity-0 group-hover:opacity-100 transition">
-                          <CornerDownRight size={12} /> sous-cat.
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-navy border border-sage rounded-md px-1.5 py-0.5 hover:bg-cream opacity-0 group-hover:opacity-100 transition">
+                          <Plus size={11} /> sous-cat.
                         </button>
-                      )}
-                      {isTotal && (
-                        <button onClick={(e) => { e.stopPropagation(); toggleMode(node.id); }} title={node.mode === 'section' ? 'Passer en cumul (depuis le début)' : 'Passer en section (depuis le total précédent)'}
-                          className={cls('p-1 rounded opacity-0 group-hover:opacity-100 transition', node.mode !== 'section' ? 'hover:bg-white/15 text-white/80' : 'hover:bg-cream text-gray-custom')}>
-                          <ArrowRightLeft size={13} />
-                        </button>
-                      )}
-                      <button onClick={(e) => { e.stopPropagation(); setEditing({ id: node.id }); }} title="Renommer"
-                        className={cls('p-1 rounded opacity-0 group-hover:opacity-100 transition', isTotal && node.mode !== 'section' ? 'hover:bg-white/15 text-white/80' : 'hover:bg-cream text-gray-custom')}>
-                        <Pencil size={13} />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); removeNode(node.id); }} title="Supprimer"
-                        className="p-1 rounded hover:bg-red-50 text-accent-red opacity-0 group-hover:opacity-100 transition">
-                        <Trash2 size={13} />
-                      </button>
-                      <GripVertical size={14} className={cls('cursor-grab opacity-0 group-hover:opacity-50', isTotal && node.mode !== 'section' ? 'text-white' : 'text-gray-custom')} />
-                    </div>
-                  )}
-                </div>
+                        <IconBtn icon={<Pencil size={13} />} title="Renommer" onClick={() => setEditing({ id: node.id })} />
+                        <IconBtn danger icon={<Trash2 size={13} />} title="Supprimer" onClick={() => removeNode(node.id)} />
+                        <GripVertical size={14} className="text-gray-custom opacity-0 group-hover:opacity-50" />
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                {/* Contenu déplié : sous-catégories + comptes */}
+                {/* Contenu déplié : sous-catégories + comptes directs */}
                 {!isTotal && open && (
                   <div className="bg-cream/40">
                     {(node.subs || []).map((sub) => {
@@ -315,17 +344,18 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
                       const subAccs = assignment.byNode[subKey] || [];
                       const subOpen = expanded[subKey];
                       const editingSub = editing && editing.id === node.id && editing.subId === sub.id;
-                      const subTarget = dropTarget === subKey;
                       return (
                         <div key={sub.id}>
-                          <div {...dropProps(subKey)}
+                          <div draggable={!editingSub} onDragStart={startSubDrag(sub.id, node.id)} onDragEnd={endDrag}
+                            onDragOver={overRow('sub', subKey)} onDrop={dropRow('sub', node, sub)}
                             onClick={() => { if (!editingSub) setExpanded((x) => ({ ...x, [subKey]: !x[subKey] })); }}
-                            className={cls('flex items-center gap-2 pl-9 pr-3 py-2 border-t border-sage/40 group/sub cursor-pointer hover:bg-cream/70 transition',
-                              isAccountDrag && !subTarget && 'ring-1 ring-inset ring-gold/50',
-                              subTarget && 'ring-2 ring-inset ring-navy bg-cream')}>
-                            <span className="shrink-0 p-0.5">
-                              <ChevronRight size={13} className={cls('transition-transform text-gray-custom', subOpen && 'rotate-90')} />
-                            </span>
+                            className={cls('flex items-center gap-2 pl-6 pr-3 py-2 ml-2 border-l-[3px] border-navy/30 border-t border-sage/40 group/sub cursor-pointer transition',
+                              dragging === 'account' && !isInto(subKey) && 'bg-gold/[0.06]',
+                              isInto(subKey) && 'ring-2 ring-inset ring-navy bg-cream',
+                              isBefore(subKey) && beforeBar,
+                              !isInto(subKey) && 'hover:bg-cream/70')}>
+                            <ChevronRight size={13} className={cls('shrink-0 transition-transform text-gray-300', subOpen && 'rotate-90')} />
+                            <FolderTree size={13} className="shrink-0 text-navy/45" />
                             {editingSub ? (
                               <input autoFocus defaultValue={sub.label} onClick={(e) => e.stopPropagation()}
                                 onBlur={(e) => { rename(node.id, sub.id, e.target.value.trim() || sub.label); setEditing(null); }}
@@ -336,38 +366,49 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
                                 {subAccs.length > 0 && <span className="ml-2 text-xs text-gray-custom">({subAccs.length})</span>}
                               </span>
                             )}
+                            <button onClick={(e) => { e.stopPropagation(); addSub(node.id, sub.id); }} title="Ajouter une sous-catégorie ici"
+                              className="p-1 rounded hover:bg-cream text-gray-custom opacity-0 group-hover/sub:opacity-100 transition"><Plus size={12} /></button>
                             <button onClick={(e) => { e.stopPropagation(); setEditing({ id: node.id, subId: sub.id }); }} title="Renommer" className="p-1 rounded hover:bg-cream text-gray-custom opacity-0 group-hover/sub:opacity-100 transition"><Pencil size={12} /></button>
                             <button onClick={(e) => { e.stopPropagation(); removeSub(node.id, sub.id); }} title="Supprimer" className="p-1 rounded hover:bg-red-50 text-accent-red opacity-0 group-hover/sub:opacity-100 transition"><Trash2 size={12} /></button>
+                            <GripVertical size={13} className="text-navy/40 opacity-0 group-hover/sub:opacity-60" />
                           </div>
                           {subOpen && subAccs.map((acc) => <AccountRow key={acc.number} acc={acc} indent />)}
-                          {subOpen && subAccs.length === 0 && <div className="pl-16 py-1.5 text-xs text-gray-custom/70 border-t border-sage/30">Vide : glissez-y un compte non affecté.</div>}
+                          {subOpen && subAccs.length === 0 && <div className="pl-[4.5rem] py-1.5 text-xs text-gray-custom/70 border-t border-sage/30">Vide : glissez-y un compte non affecté.</div>}
                         </div>
                       );
                     })}
                     {direct.map((acc) => <AccountRow key={acc.number} acc={acc} />)}
-                    {direct.length === 0 && (node.subs || []).length === 0 && (
-                      <div className="pl-12 py-2 text-xs text-gray-custom/70 border-t border-sage/30">Vide : glissez-y un compte, ou ajoutez une sous-catégorie.</div>
-                    )}
+                    {/* Ajout rapide d'une sous-catégorie + hint si vide */}
+                    <button onClick={() => addSub(node.id)}
+                      className="w-full flex items-center gap-1.5 pl-6 py-1.5 text-[11px] font-medium text-navy/70 hover:text-navy hover:bg-cream/60 border-t border-sage/30 transition">
+                      <Plus size={12} /> Ajouter une sous-catégorie
+                    </button>
                   </div>
                 )}
 
-                {/* Insertion d'une catégorie / total juste après cette ligne */}
-                <InsertDivider onCat={() => addCatAt(idx + 1)} onTotal={() => addTotalAt(idx + 1)} />
+                {/* Insertion d'une catégorie / total après cette ligne */}
+                <InsertDivider onCat={() => addCatAt(idx + 1)} onTotal={() => addTotalAt(idx + 1)}
+                  nodeDrop={dragging === 'node'} before={isBefore(`ins:${idx + 1}`)}
+                  {...(dragging === 'node' ? { onDragOver: overRow('insert', `ins:${idx + 1}`), onDrop: dropRow('insert', plan.nodes[idx + 1]?.id ?? null) } : {})} />
               </div>
             );
           })}
+        </div>
+
+        {/* Ajouts persistants en bas */}
+        <div className="flex items-center gap-2 px-3 py-2.5 bg-cream/40 border-t border-sage/50">
+          <button onClick={() => addCatAt(plan.nodes.length)} className="inline-flex items-center gap-1.5 text-xs font-medium text-navy border border-sage rounded-lg px-2.5 py-1.5 hover:bg-cream transition"><Plus size={13} /> Catégorie</button>
+          <button onClick={() => addTotalAt(plan.nodes.length)} className="inline-flex items-center gap-1.5 text-xs font-medium text-navy border border-sage rounded-lg px-2.5 py-1.5 hover:bg-cream transition"><Plus size={13} /> Total</button>
         </div>
       </div>
 
       {/* Aide */}
       <p className="text-xs text-gray-custom">
-        Glissez un <strong>compte</strong> (puce jaune ou ligne) sur une rubrique ou sous-rubrique pour l'y ranger.
-        Survolez l'espace entre deux lignes pour <strong>insérer une catégorie</strong> où vous voulez, et utilisez
-        <strong> « sous-cat. »</strong> sur une rubrique pour une sous-catégorie. Un total « cumul » additionne depuis
-        le haut ; « section » depuis le total précédent. Pensez à <strong>enregistrer</strong>.
+        Glissez un <strong>compte</strong> sur une catégorie ou sous-catégorie ; une <strong>sous-catégorie</strong> vers
+        une autre catégorie ou pour la réordonner ; une <strong>catégorie / total</strong> pour changer l'ordre. Les
+        boutons <strong>+</strong> créent une catégorie ou sous-catégorie où vous voulez. Pensez à <strong>enregistrer</strong>.
       </p>
 
-      {/* Modale de reclassement */}
       {reclass && (
         <ReclassifyModal
           accounts={reclass.onlyUnassigned ? assignment.unassigned : accounts}
@@ -389,26 +430,21 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
         open={confirmReset}
         title="Réinitialiser ce mapping ?"
         message="La structure revient au modèle par défaut et tous vos reclassements sont perdus. Cette action ne prend effet qu'après enregistrement."
-        confirmLabel="Réinitialiser"
-        danger
-        onConfirm={resetPlan}
-        onCancel={() => setConfirmReset(false)}
+        confirmLabel="Réinitialiser" danger
+        onConfirm={resetPlan} onCancel={() => setConfirmReset(false)}
       />
     </div>
   );
 }
 
-/** Zone d'insertion discrète entre deux lignes : « + Catégorie » / « + Total » au survol. */
-function InsertDivider({ onCat, onTotal }) {
+/** Zone d'insertion entre deux lignes : « + Catégorie / + Total » au survol, et cible de dépôt pour réordonner. */
+function InsertDivider({ onCat, onTotal, nodeDrop, before, onDragOver, onDrop }) {
   return (
-    <div className="relative h-0 group/ins z-10">
-      <div className="absolute left-0 right-0 -top-3 h-6 flex items-center justify-center gap-1 opacity-0 group-hover/ins:opacity-100 transition pointer-events-none">
-        <button onClick={onCat} className="pointer-events-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-navy text-white text-[11px] font-medium shadow hover:brightness-110 transition">
-          <Plus size={11} /> Catégorie
-        </button>
-        <button onClick={onTotal} className="pointer-events-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-sage text-navy text-[11px] font-medium shadow-sm hover:bg-cream transition">
-          <Plus size={11} /> Total
-        </button>
+    <div className={cls('relative group/ins', nodeDrop ? 'h-2' : 'h-0')} onDragOver={onDragOver} onDrop={onDrop}>
+      {before && <div className="absolute left-0 right-0 top-0 h-0.5 bg-navy z-20" />}
+      <div className="absolute left-0 right-0 -top-3 h-6 flex items-center justify-center gap-1 opacity-0 group-hover/ins:opacity-100 transition pointer-events-none z-10">
+        <button onClick={onCat} className="pointer-events-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-navy text-white text-[11px] font-medium shadow hover:brightness-110 transition"><Plus size={11} /> Catégorie</button>
+        <button onClick={onTotal} className="pointer-events-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-sage text-navy text-[11px] font-medium shadow-sm hover:bg-cream transition"><Plus size={11} /> Total</button>
       </div>
     </div>
   );
@@ -444,8 +480,7 @@ function ReclassifyModal({ accounts, targets, resolve, onApply, onClose, preset 
             const key = a.originalNumber || a.number;
             return (
               <label key={key} className="flex items-center gap-2.5 px-4 py-2 text-sm cursor-pointer hover:bg-cream transition">
-                <input type="checkbox" checked={!!sel[key]} onChange={(e) => setSel((s) => ({ ...s, [key]: e.target.checked }))}
-                  className="accent-[var(--navy)]" />
+                <input type="checkbox" checked={!!sel[key]} onChange={(e) => setSel((s) => ({ ...s, [key]: e.target.checked }))} className="accent-[var(--navy)]" />
                 <span className="tabular-nums text-xs text-gray-custom w-20 shrink-0">{key}</span>
                 <span className="text-navy truncate flex-1">{a.label}</span>
                 <span className="text-[11px] text-gray-custom shrink-0 max-w-[180px] truncate">{resolve(a)}</span>
