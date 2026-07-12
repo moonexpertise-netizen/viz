@@ -103,19 +103,19 @@ function cellContent(c, vals, sign) {
   if (c.kind === 'varpct') return signedPct(vals.variationPct, sign);
   if (c.kind === 'pct') {
     const v = vals[c.key];
-    return <span className={cls('tabular-nums text-xs', v == null ? 'text-gray-custom/60' : 'text-gray-custom')}>{v == null ? '—' : fmtPct(v)}</span>;
+    return <span className={cls('tabular-nums text-xs', v == null ? 'text-gray-custom/60' : 'text-gray-custom')}>{v == null ? '·' : fmtPct(v)}</span>;
   }
   const val = (vals[c.key] || 0) * sign;
-  return <span className={cls('tabular-nums', val < 0 && 'text-accent-red', val === 0 && 'text-gray-custom/60')}>{val === 0 ? '—' : fmt(val)}</span>;
+  return <span className={cls('tabular-nums', val < 0 && 'text-accent-red', val === 0 && 'text-gray-custom/60')}>{val === 0 ? '·' : fmt(val)}</span>;
 }
 
 function signedMoney(variation, sign) {
-  if (variation == null) return <span className="text-gray-custom/60">—</span>;
+  if (variation == null) return <span className="text-gray-custom/60">·</span>;
   const v = variation * sign;
   return <span className={cls('tabular-nums text-xs', v > 0 && 'text-accent-green', v < 0 && 'text-accent-red', v === 0 && 'text-gray-custom')}>{v > 0 ? '+' : ''}{fmt(v)}</span>;
 }
 function signedPct(pct, sign) {
-  if (pct == null) return <span className="text-gray-custom/60">—</span>;
+  if (pct == null) return <span className="text-gray-custom/60">·</span>;
   const v = pct * sign;
   return <span className={cls('tabular-nums text-xs', v > 0 && 'text-accent-green', v < 0 && 'text-accent-red', v === 0 && 'text-gray-custom')}>{v > 0 ? '+' : ''}{fmtPct(v)}</span>;
 }

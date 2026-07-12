@@ -607,7 +607,7 @@ function SyncPanel({ fiscalYears, synced, syncing, loading, open, onToggle, sele
           {fiscalYears.map((f, i) => {
             const fl = fyFlags(fiscalYears, i);
             const suffix = fl.enCours ? ' · en cours' : !fl.cloture ? ' · non clôturé' : '';
-            return <option key={f.id} value={f.id}>{f.label}{suffix}{synced[f.id] ? '' : ' — à synchroniser'}</option>;
+            return <option key={f.id} value={f.id}>{f.label}{suffix}{synced[f.id] ? '' : ' · à synchroniser'}</option>;
           })}
         </select>
         <span className="text-xs text-gray-custom">· {syncedList.length}/{fiscalYears.length} synchronisé{syncedList.length > 1 ? 's' : ''}</span>
@@ -703,7 +703,7 @@ function Home({ companiesCount }) {
       <div>
         <h2 className="text-2xl font-display text-navy">Bienvenue sur MoonViz</h2>
         <p className="text-gray-custom mt-2 max-w-md mx-auto">
-          Analyse financière de vos dossiers Pennylane — bilan, compte de résultat, SIG, ratios et vision périodique.
+          Analyse financière de vos dossiers Pennylane : bilan, compte de résultat, SIG, ratios et vision périodique.
         </p>
       </div>
       <p className="text-sm text-gray-custom">
@@ -716,7 +716,7 @@ function Home({ companiesCount }) {
 function describe(err) {
   const data = err.response?.data;
   if (data?.code === 'NO_TOKEN') return "Le token Pennylane (PENNYLANE_FIRM_TOKEN) n'est pas configuré côté serveur.";
-  if (err.response?.status === 401) return 'Session expirée — reconnectez-vous.';
+  if (err.response?.status === 401) return 'Session expirée, reconnectez-vous.';
   if (err.response?.status === 403) return 'Accès refusé par Pennylane (vérifiez les scopes du token).';
   return data?.error || err.message || 'Erreur inconnue';
 }

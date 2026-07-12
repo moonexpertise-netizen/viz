@@ -42,7 +42,7 @@ export function categoricalColors() {
 
 // € compact pour axes / labels (1 234 k, 2,3 M…)
 export const fmtCompact = (n) => {
-  if (n === null || n === undefined || Number.isNaN(n)) return '—';
+  if (n === null || n === undefined || Number.isNaN(n)) return '·';
   const a = Math.abs(n);
   if (a >= 1e6) return `${(n / 1e6).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} M€`;
   if (a >= 1e3) return `${Math.round(n / 1e3).toLocaleString('fr-FR')} k€`;

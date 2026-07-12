@@ -34,7 +34,7 @@ const saveCache = (rows) => { try { localStorage.setItem(CACHE_KEY, JSON.stringi
  * SAIN : aucun des signaux ci-dessus.
  */
 function health(r) {
-  if (!r || r.empty || r.error) return { rank: 4, key: 'na', label: '—', color: 'bg-slate-300', reasons: [] };
+  if (!r || r.empty || r.error) return { rank: 4, key: 'na', label: '·', color: 'bg-slate-300', reasons: [] };
   const ca = r.ca || 0;
   const ebitda = r.ebitda || 0;
   const resultat = r.resultat || 0;
@@ -296,7 +296,7 @@ export default function PortfolioDashboard({ companies, onOpenCompany }) {
                     </a>
                   </td>
                   {pending ? (
-                    <td colSpan={dataCols.length} className="px-2.5 py-2 text-gray-custom/60">{progress.running ? 'chargement…' : '—'}</td>
+                    <td colSpan={dataCols.length} className="px-2.5 py-2 text-gray-custom/60">{progress.running ? 'chargement…' : '·'}</td>
                   ) : r.error || r.empty ? (
                     <td colSpan={dataCols.length} className="px-2.5 py-2 text-gray-custom">{r.error ? <span className="inline-flex items-center gap-1 text-accent-red"><AlertTriangle size={13} /> {r.error}</span> : 'aucun exercice'}</td>
                   ) : (
@@ -350,14 +350,14 @@ function ColumnsMenu({ cols, hidden, onToggle, onReset }) {
 
 function Money({ v, signed, danger }) {
   const neg = v < 0;
-  return <td className={cls('px-2.5 py-2 text-right tabular-nums whitespace-nowrap', danger || (signed && neg) ? 'text-accent-red' : 'text-navy')}>{v == null ? '—' : fmt(v)}</td>;
+  return <td className={cls('px-2.5 py-2 text-right tabular-nums whitespace-nowrap', danger || (signed && neg) ? 'text-accent-red' : 'text-navy')}>{v == null ? '·' : fmt(v)}</td>;
 }
 function Ratio({ v, danger, warn }) {
-  return <td className={cls('px-2.5 py-2 text-right tabular-nums whitespace-nowrap', danger ? 'text-accent-red font-medium' : warn ? 'text-amber-600' : 'text-navy')}>{v == null ? '—' : `${fmtNum(v, 1)}×`}</td>;
+  return <td className={cls('px-2.5 py-2 text-right tabular-nums whitespace-nowrap', danger ? 'text-accent-red font-medium' : warn ? 'text-amber-600' : 'text-navy')}>{v == null ? '·' : `${fmtNum(v, 1)}×`}</td>;
 }
 function Cashburn({ v }) {
   // v > 0 = consommation de trésorerie (burn) ; v < 0 = trésorerie générée
-  if (v == null) return <td className="px-2.5 py-2 text-right text-gray-custom/60 whitespace-nowrap">—</td>;
+  if (v == null) return <td className="px-2.5 py-2 text-right text-gray-custom/60 whitespace-nowrap">·</td>;
   const burning = v > 0;
   return (
     <td className={cls('px-2.5 py-2 text-right tabular-nums whitespace-nowrap', burning ? 'text-accent-red' : 'text-accent-green')}

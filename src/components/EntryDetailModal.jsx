@@ -180,7 +180,7 @@ export default function EntryDetailModal({ balanceId, clientId, accountNumber, a
               <h2 className="font-display text-lg font-semibold text-white">
                 {accountNumber && accountNumber.includes(',') ? `${accountNumber.split(',').length} comptes` : `Compte ${accountNumber}`}
               </h2>
-              <p className="text-sm text-sage">{accountLabel?.toUpperCase()} — {periodLabel}</p>
+              <p className="text-sm text-sage">{accountLabel?.toUpperCase()} · {periodLabel}</p>
             </div>
             <button
               onClick={onClose}
@@ -251,7 +251,7 @@ export default function EntryDetailModal({ balanceId, clientId, accountNumber, a
                           {e.label || e.invoiceNumber || 'Pièce'}
                           <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                         </a>
-                      ) : (e.label || '—')}
+                      ) : (e.label || '·')}
                     </td>
                     <td className={`py-1.5 px-2 text-right font-mono tabular-nums ${e.debit > 0 ? '' : 'text-gray-300'}`}>
                       {fmtAmt(e.debit)}

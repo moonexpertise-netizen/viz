@@ -14,13 +14,13 @@ import { formulaToRPN, evalRPN, formulaHasOperand, newId } from '../lib/mapping'
  *   onSave(indicator) / onClose() / onDelete(id)
  */
 const FORMATS = [
-  { k: 'pct', l: '%', hint: 'Pourcentage — le résultat de la formule est multiplié par 100 (ex. Marge ÷ CA).' },
+  { k: 'pct', l: '%', hint: 'Pourcentage : le résultat de la formule est multiplié par 100 (ex. Marge ÷ CA).' },
   { k: 'eur', l: '€', hint: 'Montant en euros (ex. somme ou différence de lignes).' },
   { k: 'ratio', l: 'Ratio', hint: 'Nombre brut (ex. un coefficient 1,4).' },
 ];
 
 const fmtPreview = (raw, format, decimals) => {
-  if (raw === null || raw === undefined || Number.isNaN(raw)) return '—';
+  if (raw === null || raw === undefined || Number.isNaN(raw)) return '·';
   if (format === 'pct') return `${(raw * 100).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
   if (format === 'ratio') { const d = decimals ?? 2; return raw.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d }); }
   return `${Math.round(raw).toLocaleString('fr-FR')} €`;
@@ -142,7 +142,7 @@ export default function IndicatorEditor({ initial, rowOptions = [], anchorOption
                   <span className="block text-[11px] text-gray-custom mb-1">Dénominateur (optionnel)</span>
                   <select value={den} onChange={(e) => setDen(e.target.value)}
                     className="w-full text-sm border border-sage rounded-lg px-3 py-2 text-navy focus:outline-none focus:ring-2 focus:ring-navy/30">
-                    <option value="">— aucun —</option>
+                    <option value="">Aucun</option>
                     {rowOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                   </select>
                 </div>

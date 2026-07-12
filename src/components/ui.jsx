@@ -15,7 +15,7 @@ export function Kpi({ label, value, sub, accent }) {
 
 /** Badge de variation N vs N-1 */
 export function Var({ value, pct }) {
-  if (value === null || value === undefined) return <span className="text-gray-custom">—</span>;
+  if (value === null || value === undefined) return <span className="text-gray-custom">·</span>;
   const up = value > 0;
   const down = value < 0;
   const sign = up ? '+' : '';
@@ -52,7 +52,7 @@ export function CompareTable({ rows, showPctCol, caption }) {
                 {r.negative ? `(${fmt(r.soldeN1)})` : fmt(r.soldeN1)}
               </td>
               <td className="text-right tabular-nums"><Var value={r.variation} pct={r.variationPct} /></td>
-              {showPctCol && <td className="text-right tabular-nums text-gray-custom">{r.pctCA != null ? fmtPct(r.pctCA) : '—'}</td>}
+              {showPctCol && <td className="text-right tabular-nums text-gray-custom">{r.pctCA != null ? fmtPct(r.pctCA) : '·'}</td>}
             </tr>
           ))}
         </tbody>

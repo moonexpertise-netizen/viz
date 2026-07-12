@@ -262,7 +262,7 @@ const exportInteractiveHTML = (title, tableHTML, filename, rawData) => {
   <div class="header">
     <div>
       <h1>${title}</h1>
-      <div class="subtitle">MOON Insight — Exporte le ${new Date().toLocaleDateString('fr-FR')}</div>
+      <div class="subtitle">MOON Insight · Exporte le ${new Date().toLocaleDateString('fr-FR')}</div>
     </div>
   </div>
   <div class="toolbar" id="toolbar">
@@ -475,7 +475,7 @@ const fmt = (n, decimals = '0') => {
 
 // Formatage d'une valeur d'indicateur calculé selon son format (%, €, ratio).
 const fmtIndicator = (raw, format, decimals) => {
-  if (raw === null || raw === undefined || Number.isNaN(raw)) return '—';
+  if (raw === null || raw === undefined || Number.isNaN(raw)) return '·';
   if (format === 'pct') return `${(raw * 100).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
   if (format === 'ratio') { const d = decimals ?? 2; return raw.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d }); }
   return fmt(raw, decimals === 2 ? '2' : '0');
@@ -1775,7 +1775,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
             const checked = selectedJournals.includes(j.code);
             const disabled = !canCustomJournals;
             return (
-              <label key={j.code} title={j.label + (disabled ? ' — resynchronisez l\'exercice pour modifier la sélection' : '')}
+              <label key={j.code} title={j.label + (disabled ? ' : resynchronisez l\'exercice pour modifier la sélection' : '')}
                 className={cls('inline-flex items-center gap-1.5 text-xs rounded-full border px-2.5 py-1.5 transition select-none',
                   checked ? 'border-navy/25 bg-white text-navy font-medium' : 'border-sage text-gray-custom',
                   disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-white')}>
@@ -1890,7 +1890,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                   rowElements.push(
                     <tr key={`${row.key}_${acc.number}`} className={`${accColors.row} transition border-b border-sage`}>
                       <td className={`py-1.5 px-3 pl-12 sticky left-0 ${accColors.sticky} z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap cursor-pointer`}
-                        onClick={() => setModal({ category: row.key, label: row.label + ' — ' + acc.label, account: acc.number })}
+                        onClick={() => setModal({ category: row.key, label: row.label + ' · ' + acc.label, account: acc.number })}
                       >
                         <span className="text-xs text-gray-400 mr-2">{paddedNum}</span>
                         <span className="text-sm">{acc.label}</span>
@@ -1900,7 +1900,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                         const fromTo = col.months.length === 1 ? { from: col.months[0], to: col.months[0] } : { from: col.months[0], to: col.months[col.months.length - 1] };
                         return (
                           <td key={col.key} className={`py-1.5 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] cursor-pointer hover:bg-cream ${val < 0 ? 'text-accent-red' : val === 0 ? 'text-gray-300' : ''}`}
-                            onClick={() => setModal({ category: row.key, label: row.label + ' — ' + acc.label, account: acc.number, month: fromTo.from })}
+                            onClick={() => setModal({ category: row.key, label: row.label + ' · ' + acc.label, account: acc.number, month: fromTo.from })}
                           >
                             {fmt(val, decimals)}
                           </td>
