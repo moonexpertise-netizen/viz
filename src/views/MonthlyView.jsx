@@ -1218,7 +1218,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                 const dragging = indDrag?.id === item.id;
                 return (
                   <tr key={`ind_${item.id}`} {...(onMoveIndicator ? indGrip(item) : {})}
-                    className={`bg-gold-soft border-y border-gold/40 group/ind touch-none ${onMoveIndicator ? 'cursor-grab active:cursor-grabbing' : ''} ${dragging ? 'opacity-50' : ''}`}>
+                    className={`mv-ind-row bg-gold-soft border-y border-gold/40 group/ind touch-none ${onMoveIndicator ? 'cursor-grab active:cursor-grabbing' : ''} ${dragging ? 'opacity-50' : ''}`}>
                     <td className="py-2 px-3 sticky left-0 z-10 bg-gold-soft shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
                       {onMoveIndicator
                         ? <GripVertical size={12} className="inline-block mr-1 text-gray-custom/50 group-hover/ind:text-gray-custom align-middle" />

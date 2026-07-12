@@ -445,8 +445,11 @@ h1, h2, h3, h4, h5, h6 {
    quel que soit l'ordre d'émission — on relève ainsi la hauteur de toutes les
    lignes sans toucher chaque cellule. Les lignes de tête (totaux, sous-totaux)
    gardent leur emphase via fond + graisse. */
-.mv-ptable td { padding-top: 0.5rem; padding-bottom: 0.5rem; line-height: 1.35; }
-.mv-ptable th { padding-top: 0.6rem; padding-bottom: 0.6rem; }
+.mv-ptable td { padding-top: 0.68rem; padding-bottom: 0.68rem; line-height: 1.4; font-size: 0.95rem; }
+.mv-ptable td span { font-size: inherit; } /* les libellés suivent la taille de la cellule */
+.mv-ptable th { padding-top: 0.72rem; padding-bottom: 0.72rem; font-size: 0.82rem; }
+/* Ligne d'indicateur : plus fine que les autres (spécificité 0,2,2 > 0,1,1). */
+.mv-ptable tr.mv-ind-row td { padding-top: 0.18rem; padding-bottom: 0.18rem; line-height: 1.2; }
 
 /* Champs de formulaire : suivent le thème (sinon blanc UA en mode sombre) */
 input:not([type="checkbox"]):not([type="radio"]), select, textarea {
