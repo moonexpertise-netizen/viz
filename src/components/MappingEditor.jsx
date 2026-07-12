@@ -319,6 +319,7 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
                     )}
                     {!editingCat && (
                       <div className="flex items-center gap-0.5 shrink-0">
+                        <button onClick={(e) => { e.stopPropagation(); addCatAt(idx + 1); }} title="Ajouter une catégorie après ce total" className="inline-flex items-center gap-1 text-[11px] font-medium text-white/90 border border-white/25 rounded-md px-1.5 py-0.5 hover:bg-white/15 opacity-0 group-hover:opacity-100 transition"><Plus size={11} /> cat.</button>
                         <IconBtn light icon={<ArrowRightLeft size={13} />} title={node.mode === 'section' ? 'Passer en cumul (depuis le début)' : 'Passer en section (depuis le total précédent)'} onClick={() => toggleMode(node.id)} />
                         <IconBtn light icon={<Pencil size={13} />} title="Renommer" onClick={() => setEditing({ id: node.id })} />
                         <IconBtn light icon={<Trash2 size={13} />} title="Supprimer" onClick={() => removeNode(node.id)} />
@@ -344,6 +345,7 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
                     )}
                     {!editingCat && (
                       <div className="flex items-center gap-0.5 shrink-0">
+                        <button onClick={(e) => { e.stopPropagation(); addCatAt(idx + 1); }} title="Ajouter une catégorie après celle-ci" className="inline-flex items-center gap-1 text-[11px] font-medium text-navy border border-sage rounded-md px-1.5 py-0.5 hover:bg-cream opacity-0 group-hover:opacity-100 transition"><Plus size={11} /> cat.</button>
                         <button onClick={(e) => { e.stopPropagation(); addSub(node.id); }} title="Ajouter une sous-catégorie" className="inline-flex items-center gap-1 text-[11px] font-medium text-navy border border-sage rounded-md px-1.5 py-0.5 hover:bg-cream opacity-0 group-hover:opacity-100 transition"><Plus size={11} /> sous-cat.</button>
                         <IconBtn icon={<Pencil size={13} />} title="Renommer" onClick={() => setEditing({ id: node.id })} />
                         <IconBtn danger icon={<Trash2 size={13} />} title="Supprimer" onClick={() => removeNode(node.id)} />
