@@ -49,8 +49,11 @@ export async function exportPeriodicXlsx({ title = 'Compte de résultat', tree =
   const cval = (months, ck) => { const v = agg(months)[ck]; return Number.isFinite(v) ? v : 0; };
   const modeOf = (id) => (plan?.nodes || []).find((n) => n.id === id)?.mode || 'cumul';
 
+  // Colonne A (masquée) = niveau hiérarchique ; colonne B = libellé (Poste) ; puis les mois.
+  const LABEL_COL = 2;
+  const LEVEL_OF = { total: 1, cat: 2, sub: 3, acct: 4, indicator: 1 };
   const nMonths = columns.length;
-  const firstDataCol = 2;                     // B
+  const firstDataCol = 3;                      // C
   const lastMonthCol = firstDataCol + nMonths - 1;
   const totalColIdx = firstDataCol + nMonths; // colonne Total
   const monthColLetters = columns.map((_, i) => colLetter(firstDataCol + i));
@@ -100,11 +103,13 @@ export async function exportPeriodicXlsx({ title = 'Compte de résultat', tree =
   const wb = new ExcelJS.Workbook();
   wb.creator = 'MoonViz';
   const ws = wb.addWorksheet(title.slice(0, 28) || 'Feuille');
-  ws.views = [{ state: 'frozen', xSplit: 1, ySplit: 1 }];
+  ws.views = [{ state: 'frozen', xSplit: LABEL_COL, ySplit: 1 }];
   ws.properties.outlineLevelRow = 2;
 
   // Largeurs
-  ws.getColumn(1).width = 42;
+  ws.getColumn(1).width = 8;         // Niveau (masqué)
+  ws.getColumn(1).hidden = true;
+  ws.getColumn(LABEL_COL).width = 42; // Poste
   for (let i = 0; i < nMonths; i++) ws.getColumn(firstDataCol + i).width = 12;
   ws.getColumn(totalColIdx).width = 13;
 
@@ -113,13 +118,14 @@ export async function exportPeriodicXlsx({ title = 'Compte de résultat', tree =
 
   // En-tête
   const head = ws.getRow(1);
-  head.getCell(1).value = 'Poste';
+  head.getCell(1).value = 'Niveau';
+  head.getCell(LABEL_COL).value = 'Poste';
   columns.forEach((c, i) => { head.getCell(firstDataCol + i).value = c.label; });
   head.getCell(totalColIdx).value = 'Total';
   head.eachCell((cell, col) => {
     cell.fill = fill(ARGB.navy);
     cell.font = { color: { argb: ARGB.white }, bold: true, size: 10 };
-    cell.alignment = { horizontal: col === 1 ? 'left' : 'right', vertical: 'middle' };
+    cell.alignment = { horizontal: col === LABEL_COL ? 'left' : 'right', vertical: 'middle' };
     cell.border = border;
   });
   head.height = 20;
@@ -137,8 +143,12 @@ export async function exportPeriodicXlsx({ title = 'Compte de résultat', tree =
   items.forEach((it, idx) => {
     const r = idx + 2;
     const xr = ws.getRow(r);
+    // Niveau hiérarchique (colonne A masquée) : 1=sous-total, 2=catégorie, 3=sous-cat, 4=compte.
+    const nvc = xr.getCell(1);
+    nvc.value = LEVEL_OF[it.kind] ?? '';
+    nvc.alignment = { horizontal: 'center' };
     // Libellé
-    const lc = xr.getCell(1);
+    const lc = xr.getCell(LABEL_COL);
     lc.value = it.label;
     lc.border = border;
     lc.alignment = { horizontal: 'left', indent: it.level, vertical: 'middle' };
