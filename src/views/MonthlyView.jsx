@@ -1293,7 +1293,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
 
                 return [
                   <tr key={key} data-anchor={item.id || item.key}
-                    className={`border-b border-sage ${hasContent ? 'cursor-pointer hover:bg-cream transition' : ''} ${indHi === (item.id || item.key) ? 'shadow-[inset_0_-3px_0_0_rgb(var(--gold-rgb))]' : ''}`}
+                    className={`border-b border-sage ${hasContent ? 'cursor-pointer hover:bg-cream transition' : ''} ${indHi === (item.id || item.key) ? 'mv-drop-anchor' : ''}`}
                     onClick={() => hasContent && toggle(key)}>
                     <td className="py-1.5 px-3 sticky left-0 z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
                       {hasContent && <span className={`inline-block w-5 text-center mr-1 text-gray-300 transition-transform duration-200 text-xs ${isExpanded ? 'rotate-90' : ''}`}>{'\u203A'}</span>}
@@ -1457,7 +1457,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                 const accs = getSubtotalAccounts(item);
                 return (
                   <tr key={item.key} data-anchor={item.id || item.key}
-                    className={`bg-cream border-y border-sage ${indHi === (item.id || item.key) ? 'shadow-[inset_0_-3px_0_0_rgb(var(--gold-rgb))]' : ''}`}>
+                    className={`bg-cream border-y border-sage ${indHi === (item.id || item.key) ? 'mv-drop-anchor' : ''}`}>
                     <td className="py-2 px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
                       {item.label}
                     </td>
@@ -2004,14 +2004,17 @@ export default function MonthlyView({ companyId, data, loading = false, mapping 
   // Period filter state
   const [fromMonth, setFromMonth] = useState(savedPrefs.fromMonth || '');
   const [toMonth, setToMonth] = useState(savedPrefs.toMonth || '');
+  // Sélection de périodes DISCONTINUES (mode multi) : liste de mois cochés.
+  const [multiMode, setMultiMode] = useState(savedPrefs.multiMode || false);
+  const [multiMonths, setMultiMonths] = useState(Array.isArray(savedPrefs.multiMonths) ? savedPrefs.multiMonths : []);
   // Journaux retenus pour la trésorerie (null = présélection : journaux de banque)
   const [cfJournals, setCfJournals] = useState(savedPrefs.cfJournals || null);
 
   // Sauvegarder les preferences a chaque changement
   useEffect(() => {
-    const prefs = { activeTab, plMode, decimals, granularity, fromMonth, toMonth, cfJournals };
+    const prefs = { activeTab, plMode, decimals, granularity, fromMonth, toMonth, multiMode, multiMonths, cfJournals };
     try { localStorage.setItem(storageKey, JSON.stringify(prefs)); } catch {}
-  }, [activeTab, plMode, decimals, granularity, fromMonth, toMonth, cfJournals, storageKey]);
+  }, [activeTab, plMode, decimals, granularity, fromMonth, toMonth, multiMode, multiMonths, cfJournals, storageKey]);
 
   const isClientMode = true;
 
@@ -2031,11 +2034,16 @@ export default function MonthlyView({ companyId, data, loading = false, mapping 
     }
   }, [allMonths]);
 
-  // Visible months based on filter
+  // Visible months based on filter. En mode multi : sous-ensemble discontinu coché.
   const visibleMonths = useMemo(() => {
+    if (multiMode) {
+      const set = new Set(multiMonths);
+      const sel = allMonths.filter(m => set.has(m));
+      return sel.length ? sel : allMonths;
+    }
     if (!fromMonth || !toMonth) return allMonths;
     return allMonths.filter(m => m >= fromMonth && m <= toMonth);
-  }, [allMonths, fromMonth, toMonth]);
+  }, [multiMode, multiMonths, allMonths, fromMonth, toMonth]);
 
   // Mapping personnalise (Affectation des comptes) — mode Standard du P&L
   const customPLData = useMemo(() => {
@@ -2363,6 +2371,53 @@ export default function MonthlyView({ companyId, data, loading = false, mapping 
         return (
           <div className="bg-white border-b border-sage px-3 sm:px-6 py-4">
             <div className="max-w-3xl mx-auto">
+              {/* Bascule Plage / Sélection multiple */}
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <div className="inline-flex items-center gap-0.5 bg-cream rounded-lg p-0.5">
+                  <button onClick={() => setMultiMode(false)}
+                    className={cls('px-2.5 py-1.5 text-xs rounded transition', !multiMode ? 'bg-navy text-white font-medium' : 'text-gray-custom hover:text-navy')}>Plage</button>
+                  <button onClick={() => { if (!multiMonths.length) setMultiMonths(visibleMonths); setMultiMode(true); }}
+                    className={cls('px-2.5 py-1.5 text-xs rounded transition', multiMode ? 'bg-navy text-white font-medium' : 'text-gray-custom hover:text-navy')}>Plusieurs périodes</button>
+                </div>
+                {multiMode && (
+                  <>
+                    <span className="text-xs text-gray-custom">{visibleMonths.length} mois</span>
+                    {data?.exercises?.length > 0 && data.exercises.map(ex => (
+                      <button key={ex.id} onClick={() => {
+                        const s = ex.period_start?.substring(0, 7); const e = ex.period_end?.substring(0, 7);
+                        if (!s || !e) return;
+                        setMultiMonths((prev) => { const set = new Set(prev); allMonths.filter(m => m >= s && m <= e).forEach(m => set.add(m)); return allMonths.filter(m => set.has(m)); });
+                      }} className="px-2 py-1 text-xs rounded-full border border-sage text-gray-custom hover:bg-cream transition">+ Exercice {ex.fiscal_year}</button>
+                    ))}
+                    <button onClick={() => setMultiMonths([])} className="text-xs text-gray-custom hover:text-navy underline ml-auto">Tout effacer</button>
+                  </>
+                )}
+              </div>
+
+              {multiMode ? (
+                (() => {
+                  const byYear = {};
+                  allMonths.forEach(m => { const y = m.split('-')[0]; (byYear[y] = byYear[y] || []).push(m); });
+                  const sel = new Set(multiMonths);
+                  const toggleM = (m) => setMultiMonths((prev) => { const s = new Set(prev); if (s.has(m)) s.delete(m); else s.add(m); return allMonths.filter(x => s.has(x)); });
+                  return (
+                    <div className="space-y-1.5 pb-1">
+                      {Object.entries(byYear).map(([y, ms]) => (
+                        <div key={y} className="flex flex-wrap items-center gap-1">
+                          <span className="text-xs font-semibold text-gray-custom w-10 shrink-0">{y}</span>
+                          {ms.map(m => {
+                            const on = sel.has(m);
+                            return <button key={m} onClick={() => toggleM(m)}
+                              className={cls('w-9 py-1 rounded-md text-xs border transition tabular-nums', on ? 'bg-navy text-white border-navy font-medium' : 'border-sage text-gray-custom hover:bg-cream')}>{m.split('-')[1]}</button>;
+                          })}
+                        </div>
+                      ))}
+                      <p className="text-[11px] text-gray-custom/80 pt-0.5">Cliquez les mois à comparer (ex. les 2 premiers de 2025 et les 3 premiers de 2026).</p>
+                    </div>
+                  );
+                })()
+              ) : (
+              <>
               {/* Exercise quick-select buttons */}
               {isClientMode && data?.exercises?.length > 0 && (
                 <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -2439,6 +2494,8 @@ export default function MonthlyView({ companyId, data, loading = false, mapping 
                   </div>
                 ))}
               </div>
+              </>
+              )}
             </div>
           </div>
         );

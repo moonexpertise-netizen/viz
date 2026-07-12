@@ -450,6 +450,8 @@ h1, h2, h3, h4, h5, h6 {
 .mv-ptable th { padding-top: 0.72rem; padding-bottom: 0.72rem; font-size: 0.82rem; }
 /* Ligne d'indicateur : plus fine, police plus petite, bien centrée (0,2,2 > 0,1,1). */
 .mv-ptable tr.mv-ind-row td { padding-top: 0.22rem; padding-bottom: 0.22rem; line-height: 1.25; font-size: 0.8rem; vertical-align: middle; }
+/* Cible de dépôt d'un indicateur : fond doré net + barre inférieure (l'indicateur ira juste sous cette ligne). */
+.mv-ptable tr.mv-drop-anchor td { background-color: rgb(var(--gold-rgb) / 0.16) !important; box-shadow: inset 0 -3px 0 0 rgb(var(--gold-rgb)); }
 
 /* Champs de formulaire : suivent le thème (sinon blanc UA en mode sombre) */
 input:not([type="checkbox"]):not([type="radio"]), select, textarea {
