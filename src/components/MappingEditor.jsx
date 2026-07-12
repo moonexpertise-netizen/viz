@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ChevronRight, GripVertical, Plus, RotateCcw, Save, Search, X,
   ArrowRightLeft, Trash2, Pencil, AlertTriangle, Check, Folder, FolderTree, Sigma,
@@ -412,9 +413,11 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
         vous voulez. Un simple clic déplie une rubrique. Pensez à <strong>enregistrer</strong>.
       </p>
 
-      {/* Fantôme suivant le curseur */}
-      {drag && ghost && (
-        <div className="fixed z-[100] pointer-events-none px-2.5 py-1 rounded-lg bg-navy text-white text-xs font-medium shadow-lg max-w-[240px] truncate" style={{ left: ghost.x + 14, top: ghost.y + 10 }}>{drag.label}</div>
+      {/* Fantôme suivant le curseur — porté dans <body> pour échapper à tout
+          ancêtre transformé (sinon `position: fixed` se décale). */}
+      {drag && ghost && createPortal(
+        <div className="fixed z-[100] pointer-events-none px-2.5 py-1 rounded-lg bg-navy text-white text-xs font-medium shadow-lg max-w-[240px] truncate" style={{ left: ghost.x + 14, top: ghost.y + 10 }}>{drag.label}</div>,
+        document.body,
       )}
 
       {reclass && (
