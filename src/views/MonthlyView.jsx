@@ -4,7 +4,7 @@ import { Plus, Pencil, Copy, GripVertical } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { getLinesForExercises } from '../lib/linesStore';
 import { buildPLTree, buildCashRows, formulaToRPN, evalRPN, plRowOptions, plAnchorOptions, newId } from '../lib/mapping';
-import { exportPeriodicXlsx } from '../lib/xlsxExport';
+import { exportPeriodicXlsx, exportCashflowXlsx } from '../lib/xlsxExport';
 import { buildCashflowFromLines, canRebuildCashflow } from '../lib/cashflowClient';
 import { cls } from '../lib/format';
 import EntryDetailModal from '../components/EntryDetailModal';
@@ -1827,37 +1827,16 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
     return { headers, rows: exportRows };
   };
 
-  const OPERATIONAL_KEYS = ['encaissementsClients', 'decaissementsFournisseurs', 'salairesCharges', 'dettesFiscales', 'autresOperationnels'];
-  const FINANCIAL_KEYS = ['emprunts', 'autresFinanciers'];
-
-  // Styles par section (mapping personnalisé) : vert / bleu / neutre en rotation
-  const SECTION_STYLES = [
-    { cat: 'bg-emerald-50/50 border-l-4 border-emerald-400 hover:bg-emerald-50', sub: { row: 'bg-emerald-100/80 font-semibold border-y border-emerald-200', sticky: 'bg-emerald-100' } },
-    { cat: 'bg-sky-50/50 border-l-4 border-sky-400 hover:bg-sky-50', sub: { row: 'bg-sky-100/80 font-semibold border-y border-sky-200', sticky: 'bg-sky-100' } },
-    { cat: 'bg-cream border-l-4 border-sage hover:bg-cream', sub: { row: 'bg-cream font-semibold border-y border-sage', sticky: 'bg-cream' } },
-  ];
-
+  // Style harmonisé avec le Compte de résultat : rubriques blanches, sous-totaux/
+  // totaux en crème gras, trésorerie d'ouverture/clôture en doré (repère clé),
+  // comptes en clair. Plus de vert/bleu par section.
   const getRowColor = (row) => {
-    if (row.isTotal) return { row: 'bg-navy text-white font-semibold', sticky: 'bg-navy', text: 'text-white' };
-    if (row.isTreso) return { row: 'bg-slate-100 italic border-y border-sage', sticky: 'bg-slate-100', text: '' };
-    // Lignes issues d'un mapping personnalisé : style par section
-    if (typeof row.section === 'number') {
-      const st = SECTION_STYLES[row.section % SECTION_STYLES.length];
-      if (row.isSubtotal) return { row: st.sub.row, sticky: st.sub.sticky, text: '' };
-      return { row: st.cat, sticky: 'bg-white', text: '' };
-    }
-    if (row.isSubtotal && row.key === 'fluxOperationnel') return { row: 'bg-emerald-100/80 font-semibold border-y border-emerald-200', sticky: 'bg-emerald-100', text: '' };
-    if (row.isSubtotal && row.key === 'fluxFinancier') return { row: 'bg-sky-100/80 font-semibold border-y border-sky-200', sticky: 'bg-sky-100', text: '' };
-    if (OPERATIONAL_KEYS.includes(row.key)) return { row: 'bg-emerald-50/50 border-l-4 border-emerald-400 hover:bg-emerald-50', sticky: 'bg-white', text: '' };
-    if (FINANCIAL_KEYS.includes(row.key)) return { row: 'bg-sky-50/50 border-l-4 border-sky-400 hover:bg-sky-50', sticky: 'bg-white', text: '' };
-    return { row: 'bg-cream border-l-4 border-sage hover:bg-cream', sticky: 'bg-white', text: '' };
+    if (row.isTreso) return { row: 'bg-gold-soft font-semibold border-y border-gold/30', sticky: 'bg-gold-soft', text: 'text-navy' };
+    if (row.isTotal || row.isSubtotal) return { row: 'bg-cream font-semibold border-y border-sage', sticky: 'bg-cream', text: 'text-navy' };
+    return { row: 'bg-white hover:bg-cream/60 transition', sticky: 'bg-white', text: 'text-navy' };
   };
 
-  const getAccountRowColor = (parentKey) => {
-    if (OPERATIONAL_KEYS.includes(parentKey)) return { row: 'bg-emerald-50/20 border-l-4 border-emerald-400 hover:bg-emerald-50/40', sticky: 'bg-white' };
-    if (FINANCIAL_KEYS.includes(parentKey)) return { row: 'bg-sky-50/20 border-l-4 border-sky-400 hover:bg-sky-50/40', sticky: 'bg-white' };
-    return { row: 'bg-cream border-l-4 border-sage hover:bg-cream', sticky: 'bg-white' };
-  };
+  const getAccountRowColor = () => ({ row: 'bg-white hover:bg-cream transition', sticky: 'bg-white' });
 
   const hasAccounts = (row) => row.accounts && row.accounts.length > 0;
   const isExpandable = (row) => !row.isTotal && !row.isSubtotal && !row.isTreso;
@@ -1904,6 +1883,9 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => { const d = buildCFExportData(); copyStyledTable(tableRef.current, d.headers, d.rows).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }} className={exportBtnClass}>
             {copied ? <><CheckIcon /> Copié</> : <><CopyIcon /> Copier</>}
+          </button>
+          <button onClick={() => { exportCashflowXlsx({ title: 'Trésorerie', rows, columns: columns || [], aggregateValues }); }} className={exportBtnClass}>
+            <DownloadIcon /> Excel
           </button>
           <button onClick={() => { const tbl = buildCFTableHTML(rows, columns || [], decimals, aggregateValues); exportInteractiveHTML('Tableau de Tresorerie', tbl, 'tresorerie.html', { allMonths: months, exercises }); }} className={exportBtnClass}>
             <DownloadIcon /> HTML
@@ -1966,18 +1948,12 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                   {cols.map((col) => {
                     const val = cellValue(row, col);
                     return (
-                      <td key={col.key} className={`py-1.5 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] ${
-                        row.isTotal ? (val >= 0 ? 'text-emerald-300' : 'text-red-300')
-                        : val < 0 ? 'text-accent-red' : val === 0 ? 'text-gray-300' : ''
-                      }`}>
+                      <td key={col.key} className={`py-1.5 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] ${(row.isTotal || row.isSubtotal || row.isTreso) ? 'font-semibold' : ''} ${val < 0 ? 'text-accent-red' : val === 0 ? 'text-gray-300' : ''}`}>
                         {fmt(val, decimals)}
                       </td>
                     );
                   })}
-                  <td className={`py-1.5 px-3 text-right tabular-nums font-semibold whitespace-nowrap min-w-[90px] ${
-                    row.isTotal ? (rowTotal >= 0 ? 'text-emerald-300' : 'text-red-300')
-                    : rowTotal < 0 ? 'text-accent-red' : rowTotal === 0 ? 'text-gray-300' : ''
-                  }`}>
+                  <td className={`py-1.5 px-3 text-right tabular-nums font-semibold whitespace-nowrap min-w-[90px] ${rowTotal < 0 ? 'text-accent-red' : rowTotal === 0 ? 'text-gray-300' : ''}`}>
                     {fmt(rowTotal, decimals)}
                   </td>
                 </tr>
