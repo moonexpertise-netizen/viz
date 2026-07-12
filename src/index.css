@@ -448,8 +448,8 @@ h1, h2, h3, h4, h5, h6 {
 .mv-ptable td { padding-top: 0.68rem; padding-bottom: 0.68rem; line-height: 1.4; font-size: 0.95rem; }
 .mv-ptable td span { font-size: inherit; } /* les libellés suivent la taille de la cellule */
 .mv-ptable th { padding-top: 0.72rem; padding-bottom: 0.72rem; font-size: 0.82rem; }
-/* Ligne d'indicateur : plus fine que les autres (spécificité 0,2,2 > 0,1,1). */
-.mv-ptable tr.mv-ind-row td { padding-top: 0.18rem; padding-bottom: 0.18rem; line-height: 1.2; }
+/* Ligne d'indicateur : plus fine, police plus petite, bien centrée (0,2,2 > 0,1,1). */
+.mv-ptable tr.mv-ind-row td { padding-top: 0.22rem; padding-bottom: 0.22rem; line-height: 1.25; font-size: 0.8rem; vertical-align: middle; }
 
 /* Champs de formulaire : suivent le thème (sinon blanc UA en mode sombre) */
 input:not([type="checkbox"]):not([type="radio"]), select, textarea {

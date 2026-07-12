@@ -1223,7 +1223,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       {onMoveIndicator
                         ? <GripVertical size={12} className="inline-block mr-1 text-gray-custom/50 group-hover/ind:text-gray-custom align-middle" />
                         : <span className="inline-block w-5 mr-1" />}
-                      <span className="text-sm italic font-medium text-navy">{item.label}</span>
+                      <span className="font-medium text-navy align-middle">{item.label}</span>
                       {onDuplicateIndicator && (
                         <button onClick={() => onDuplicateIndicator(item.id)} title="Dupliquer l'indicateur"
                           className="ml-2 p-0.5 rounded text-gray-custom hover:text-navy opacity-0 group-hover/ind:opacity-100 transition align-middle">
@@ -1240,12 +1240,12 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                     {cols.map((col) => {
                       const raw = evalRPN(rpn, colResolver(col));
                       return (
-                        <td key={col.key} className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] italic font-medium bg-gold-soft ${tint(raw)}`}>
+                        <td key={col.key} className={`py-2 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] font-medium bg-gold-soft ${tint(raw)}`}>
                           {fmtIndicator(raw, item.format, item.decimals)}
                         </td>
                       );
                     })}
-                    <td className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] italic font-semibold bg-gold-soft ${tint(totalRaw)}`}>
+                    <td className={`py-2 px-3 text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-gold-soft ${tint(totalRaw)}`}>
                       {fmtIndicator(totalRaw, item.format, item.decimals)}
                     </td>
                   </tr>
