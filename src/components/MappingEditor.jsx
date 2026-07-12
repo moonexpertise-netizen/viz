@@ -4,6 +4,7 @@ import {
   ArrowRightLeft, Trash2, Pencil, CornerDownRight, AlertTriangle, Check,
 } from 'lucide-react';
 import { cls } from '../lib/format';
+import ConfirmDialog from './ConfirmDialog';
 import { newId, resolveAccount, DEFAULT_PL, DEFAULT_CASH } from '../lib/mapping';
 
 /**
@@ -25,6 +26,7 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
   const [reclass, setReclass] = useState(false);  // modale de reclassement
   const [dropTarget, setDropTarget] = useState(null); // clé du nœud survolé pendant un drag de compte
   const [dragging, setDragging] = useState(null); // 'account' | 'node' | null
+  const [confirmReset, setConfirmReset] = useState(false); // fenêtre de confirmation de réinitialisation
   const dragRef = useRef(null); // { kind:'node', id } | { kind:'account', number }
 
   const plan = work[tab];
@@ -98,8 +100,8 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
     for (const n of numbers) p.overrides[n] = targetKey;
   });
   const resetPlan = () => {
-    if (!window.confirm('Réinitialiser ce mapping au modèle par défaut ? (les reclassements seront perdus)')) return;
     update((p) => { const d = tab === 'pl' ? DEFAULT_PL() : DEFAULT_CASH(); p.nodes = d.nodes; p.overrides = {}; });
+    setConfirmReset(false);
   };
 
   const save = () => { onSave(work); setDirty(false); };
@@ -178,7 +180,7 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
         <button onClick={() => setReclass({})} className="inline-flex items-center gap-1.5 text-sm border border-sage rounded-lg px-3 py-2 text-navy hover:bg-cream transition">
           <ArrowRightLeft size={14} /> Affecter en masse
         </button>
-        <button onClick={resetPlan} className="inline-flex items-center gap-1.5 text-sm border border-sage rounded-lg px-3 py-2 text-gray-custom hover:text-navy hover:bg-cream transition">
+        <button onClick={() => setConfirmReset(true)} className="inline-flex items-center gap-1.5 text-sm border border-sage rounded-lg px-3 py-2 text-gray-custom hover:text-navy hover:bg-cream transition">
           <RotateCcw size={14} /> Réinitialiser
         </button>
         <button onClick={save} disabled={!dirty}
@@ -382,6 +384,16 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
           onClose={() => setReclass(false)}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmReset}
+        title="Réinitialiser ce mapping ?"
+        message="La structure revient au modèle par défaut et tous vos reclassements sont perdus. Cette action ne prend effet qu'après enregistrement."
+        confirmLabel="Réinitialiser"
+        danger
+        onConfirm={resetPlan}
+        onCancel={() => setConfirmReset(false)}
+      />
     </div>
   );
 }

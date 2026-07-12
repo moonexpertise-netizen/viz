@@ -6,6 +6,7 @@ import Combobox from '../components/Combobox';
 import CommandPalette from '../components/CommandPalette';
 import PortfolioDashboard from '../components/PortfolioDashboard';
 import ThemeMenu from '../components/ThemeMenu';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { Tip } from '../components/ChartBits';
 import { pennylaneCompanyUrl } from '../lib/pennylaneLink';
 import { applyTheme, getTheme, watchSystemTheme } from '../lib/theme';
@@ -66,6 +67,7 @@ export default function Workspace({ onLogout }) {
   const [syncErrors, setSyncErrors] = useState({}); // fyId -> message d'échec de synchro
   const [mapping, setMapping] = useState(null); // affectation des comptes du dossier (null = plan par défaut non enregistré)
   const [syncOpen, setSyncOpen] = useState(false); // panneau de synchro déplié ?
+  const [confirmRemove, setConfirmRemove] = useState(null); // exercice en attente de confirmation de suppression
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => { try { return localStorage.getItem('mv:sidebar') === '1'; } catch { return false; } });
   const [theme, setTheme] = useState(getTheme);
@@ -271,9 +273,9 @@ export default function Workspace({ onLogout }) {
   };
 
   // Supprime les données synchronisées d'un exercice : cache local + serveur + détail des écritures.
+  // La confirmation passe par une fenêtre interne (voir confirmRemove / ConfirmDialog).
   const doRemove = async (fy) => {
     if (!fy) return;
-    if (!window.confirm(`Supprimer les données synchronisées de « ${fy.label} » ?\n(cache local + serveur + détail des écritures)`)) return;
     removeEntry(companyId, fy.id);
     await removeLines(companyId, fy.id);
     setSynced((s) => { const n = { ...s }; delete n[fy.id]; return n; });
@@ -508,7 +510,7 @@ export default function Workspace({ onLogout }) {
                 selectedFyId={fyId}
                 onSelect={setFyId}
                 onSync={doSync}
-                onRemove={doRemove}
+                onRemove={(fy) => setConfirmRemove(fy)}
                 syncErrors={syncErrors}
               />
 
@@ -537,6 +539,16 @@ export default function Workspace({ onLogout }) {
       </div>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} groups={commandGroups} />
+
+      <ConfirmDialog
+        open={!!confirmRemove}
+        title="Supprimer les données de cet exercice ?"
+        message={confirmRemove ? `Exercice « ${confirmRemove.label} ».\nCache local, copie serveur et détail des écritures seront supprimés. Vous pourrez le resynchroniser depuis Pennylane à tout moment.` : ''}
+        confirmLabel="Supprimer"
+        danger
+        onConfirm={() => { const fy = confirmRemove; setConfirmRemove(null); doRemove(fy); }}
+        onCancel={() => setConfirmRemove(null)}
+      />
     </div>
   );
 }
