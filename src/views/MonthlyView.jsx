@@ -38,6 +38,65 @@ const copyToClipboard = (headers, rows) => {
   return navigator.clipboard.writeText(text);
 };
 
+/**
+ * Copie le tableau rendu AVEC sa mise en forme (couleurs, gras, alignements,
+ * bordeaux des négatifs…) : on clone le <table> à l'écran, on fige les styles
+ * calculés en inline (seuls styles compris par Excel), et on écrit du HTML dans
+ * le presse-papier. Repli texte tabulé si l'API riche n'est pas dispo.
+ */
+async function copyStyledTable(tableEl, headers = [], rows = []) {
+  const text = [headers.join('\t'), ...rows.map(r => r.map(c => String(c ?? '')).join('\t'))].join('\n');
+  let html = '';
+  if (tableEl) {
+    const clone = tableEl.cloneNode(true);
+    const oCells = tableEl.querySelectorAll('th,td');
+    const cCells = clone.querySelectorAll('th,td');
+    // Fond effectif : celui de la cellule, sinon celui de la ligne/entête (les
+    // en-têtes de mois portent le fond navy sur le <tr>, pas sur le <th>).
+    const effBg = (el) => {
+      let n = el;
+      while (n && n.tagName !== 'TABLE') {
+        const bg = getComputedStyle(n).backgroundColor;
+        if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg;
+        n = n.parentElement;
+      }
+      return '';
+    };
+    cCells.forEach((c, i) => {
+      const o = oCells[i];
+      let style = 'border:1px solid #e2e2e2;padding:4px 10px;white-space:nowrap;';
+      if (o) {
+        const cs = getComputedStyle(o);
+        for (const p of ['color', 'font-weight', 'font-style', 'text-align']) {
+          const v = cs.getPropertyValue(p);
+          if (v) style += `${p}:${v};`;
+        }
+        const bg = effBg(o);
+        if (bg) style += `background-color:${bg};`;
+      }
+      c.setAttribute('style', style);
+    });
+    // Enlève icônes, boutons et chevrons décoratifs.
+    clone.querySelectorAll('svg, button').forEach(el => el.remove());
+    clone.querySelectorAll('span').forEach(s => { const t = s.textContent.trim(); if (t === '' || t === '›') s.remove(); });
+    // Espace entre éléments accolés à marge droite (ex. numéro de compte « 706 » + libellé).
+    clone.querySelectorAll('td [class*="mr-"], th [class*="mr-"]').forEach(s => { s.insertAdjacentText('afterend', ' '); });
+    clone.querySelectorAll('[class]').forEach(el => el.removeAttribute('class'));
+    clone.querySelectorAll('[data-anchor]').forEach(el => el.removeAttribute('data-anchor'));
+    html = `<table style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:12px">${clone.innerHTML}</table>`;
+  }
+  try {
+    if (html && typeof window !== 'undefined' && window.ClipboardItem) {
+      await navigator.clipboard.write([new window.ClipboardItem({
+        'text/html': new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([text], { type: 'text/plain' }),
+      })]);
+      return;
+    }
+  } catch { /* repli ci-dessous */ }
+  await navigator.clipboard.writeText(text);
+}
+
 // Download as CSV (semicolon-separated for French Excel)
 const downloadCSV = (headers, rows, filename) => {
   const BOM = '\uFEFF';
@@ -928,6 +987,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
   const [modal, setModal] = useState(null);
   const [copied, setCopied] = useState(false);
   const [showEmpty, setShowEmpty] = useState(false);
+  const tableRef = useRef(null);
 
   // ── Glisser-déposer d'une ligne indicateur (repositionnement) ──
   const [indDrag, setIndDrag] = useState(null);   // indicateur en cours de glisser
@@ -1140,11 +1200,8 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
 
       <div className="flex flex-wrap items-center gap-2 justify-between mb-3">
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={() => { const d = buildPLExportData(); copyToClipboard(d.headers, d.rows).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }} className={exportBtnClass}>
-            {copied ? <><CheckIcon /> Copie</> : <><CopyIcon /> Copier</>}
-          </button>
-          <button onClick={() => { const d = buildPLExportData(); downloadCSV(d.headers, d.rows, 'pl_mensuel.csv'); }} className={exportBtnClass}>
-            <DownloadIcon /> CSV
+          <button onClick={() => { const d = buildPLExportData(); copyStyledTable(tableRef.current, d.headers, d.rows).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }} className={exportBtnClass}>
+            {copied ? <><CheckIcon /> Copié</> : <><CopyIcon /> Copier</>}
           </button>
           <button onClick={() => { const tbl = buildPLTableHTML(sigData, columns || [], decimals, aggregateValues); exportInteractiveHTML('Compte de Resultat (SIG)', tbl, 'pl_sig.html', { allMonths: months, exercises }); }} className={exportBtnClass}>
             <DownloadIcon /> HTML
@@ -1170,7 +1227,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="mv-ptable border-collapse text-sm">
+        <table ref={tableRef} className="mv-ptable border-collapse text-sm">
           <thead>
             <tr className="bg-navy text-white text-xs">
               <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-navy z-20 min-w-[160px] sm:min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
@@ -1724,6 +1781,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
   const [modal, setModal] = useState(null);
   const [copied, setCopied] = useState(false);
   const [showEmpty, setShowEmpty] = useState(false);
+  const tableRef = useRef(null);
 
   const toggle = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -1828,11 +1886,8 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
       )}
       <div className="flex flex-wrap items-center gap-2 justify-between mb-3">
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={() => { const d = buildCFExportData(); copyToClipboard(d.headers, d.rows).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }} className={exportBtnClass}>
-            {copied ? <><CheckIcon /> Copie</> : <><CopyIcon /> Copier</>}
-          </button>
-          <button onClick={() => { const d = buildCFExportData(); downloadCSV(d.headers, d.rows, 'cashflow_mensuel.csv'); }} className={exportBtnClass}>
-            <DownloadIcon /> CSV
+          <button onClick={() => { const d = buildCFExportData(); copyStyledTable(tableRef.current, d.headers, d.rows).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }} className={exportBtnClass}>
+            {copied ? <><CheckIcon /> Copié</> : <><CopyIcon /> Copier</>}
           </button>
           <button onClick={() => { const tbl = buildCFTableHTML(rows, columns || [], decimals, aggregateValues); exportInteractiveHTML('Tableau de Tresorerie', tbl, 'tresorerie.html', { allMonths: months, exercises }); }} className={exportBtnClass}>
             <DownloadIcon /> HTML
@@ -1853,7 +1908,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="mv-ptable border-collapse text-sm">
+        <table ref={tableRef} className="mv-ptable border-collapse text-sm">
           <thead>
             <tr className="bg-navy text-white text-xs">
               <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-navy z-20 min-w-[160px] sm:min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
