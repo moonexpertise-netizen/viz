@@ -8,7 +8,10 @@
  * journals) sont identiques à l'API cabinet → les moteurs/normaliseurs existants
  * fonctionnent tels quels.
  */
+import { makeRateLimiter, monthSlices, dateFilter } from './plimiter.js';
+
 const V2 = 'https://app.pennylane.com/api/external/v2';
+const moonLimiter = makeRateLimiter();
 
 function normalizeFiscalYear(fy) {
   const start = fy.start_date ?? fy.start ?? fy.from ?? null;
@@ -39,7 +42,8 @@ async function v2Fetch(path, { params, attempt = 0 } = {}) {
   if (params) for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
   }
-  const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token()}`, Accept: 'application/json' } });
+  const res = await moonLimiter.run(() => fetch(url.toString(), { headers: { Authorization: `Bearer ${token()}`, Accept: 'application/json' } }));
+  moonLimiter.observe(res);
   if (res.status === 429 || (res.status >= 500 && res.status < 600)) {
     if (attempt < 6) {
       const ra = parseFloat(res.headers.get('retry-after') || '');
@@ -76,10 +80,29 @@ async function v2FetchAll(path, { params = {}, limit = 1000, max = 100000 } = {}
   return out;
 }
 
-const dateFilter = (start, end) => JSON.stringify([
-  { field: 'date', operator: 'gteq', value: start },
-  { field: 'date', operator: 'lteq', value: end },
-]);
+/** Fan-out mensuel : chaque tranche a sa propre chaîne de curseurs, en parallèle
+ *  sous le rate limiter. Sonde une page pleine période d'abord (petits dossiers). */
+async function v2FetchAllByMonth(path, periodStart, periodEnd, { limit = 100 } = {}) {
+  const slices = monthSlices(periodStart, periodEnd);
+  if (slices.length <= 1 || slices.length > 24) {
+    return v2FetchAll(path, { params: { filter: dateFilter(periodStart, periodEnd) }, limit });
+  }
+
+  const first = await v2Fetch(path, { params: { filter: dateFilter(periodStart, periodEnd), limit } });
+  const firstItems = items(first);
+  if (!first || !first.has_more) return firstItems;
+  const parts = await Promise.all(slices.map(([a, b]) =>
+    v2FetchAll(path, { params: { filter: dateFilter(a, b) }, limit })));
+  const seen = new Set();
+  const out = [];
+  for (const it of parts.flat()) {
+    const id = it?.id ?? JSON.stringify(it);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(it);
+  }
+  return out;
+}
 
 export async function getFiscalYearsMoon() {
   const raw = await v2FetchAll('/fiscal_years', { limit: 100 });
@@ -91,11 +114,11 @@ export function getTrialBalanceMoon(periodStart, periodEnd, isAuxiliary = false)
 }
 
 export function getLedgerEntryLinesMoon(periodStart, periodEnd) {
-  return v2FetchAll('/ledger_entry_lines', { params: { filter: dateFilter(periodStart, periodEnd) }, limit: 100 });
+  return v2FetchAllByMonth('/ledger_entry_lines', periodStart, periodEnd);
 }
 
 export function getLedgerEntriesMoon(periodStart, periodEnd) {
-  return v2FetchAll('/ledger_entries', { params: { filter: dateFilter(periodStart, periodEnd) }, limit: 100 });
+  return v2FetchAllByMonth('/ledger_entries', periodStart, periodEnd);
 }
 
 export function getJournalsMoon() {

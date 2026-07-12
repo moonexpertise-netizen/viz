@@ -1,10 +1,12 @@
 import { requireAuth, sendError } from './_lib/auth.js';
-import { getLedgerEntryLines, getLedgerEntries, getJournals } from './_lib/pennylane.js';
-import { accountEntries, endOfMonth } from './_lib/entriesEngine.js';
+import { getJournals, getTrialBalance } from './_lib/pennylane.js';
+import { accountEntriesNorm, endOfMonth } from './_lib/entriesEngine.js';
+import { getNormalizedLines } from './_lib/ledgerCache.js';
 
 /**
  * GET /api/entries?company_id=..&account=..&from=YYYY-MM&to=YYYY-MM
  * Écritures détaillées d'un compte (ou liste de comptes) sur une période.
+ * Servies depuis le cache serveur incrémental quand il est valide.
  */
 export default async function handler(req, res) {
   if (!(await requireAuth(req, res))) return;
@@ -18,12 +20,9 @@ export default async function handler(req, res) {
   const pe = to ? endOfMonth(to) : '2999-12-31';
 
   try {
-    const [lines, entries, journals] = await Promise.all([
-      getLedgerEntryLines(cid, ps, pe),
-      getLedgerEntries(cid, ps, pe),
-      getJournals(cid),
-    ]);
-    res.status(200).json({ entries: accountEntries(lines, entries, journals, account) });
+    const journals = await getJournals(cid);
+    const { lines } = await getNormalizedLines(cid, ps, pe, journals, () => getTrialBalance(cid, ps, pe));
+    res.status(200).json({ entries: accountEntriesNorm(lines, account) });
   } catch (err) {
     sendError(res, err);
   }

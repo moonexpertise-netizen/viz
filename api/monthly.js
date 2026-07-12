@@ -1,8 +1,8 @@
 import { requireAuth, sendError } from './_lib/auth.js';
-import { getLedgerEntryLines, getJournals, getTrialBalance, getLedgerEntries, getFiscalYears } from './_lib/pennylane.js';
+import { getJournals, getTrialBalance, getFiscalYears } from './_lib/pennylane.js';
 import { getTrialBalanceWithAN, needsSimulatedAN, buildSyntheticAN, prevFyOf } from './_lib/anSimulation.js';
 import { linesToMonthly, calculateMonthlyPL, calculateMonthlyCashFlow, isCashAccount } from './_lib/monthlyEngine.js';
-import { allLines } from './_lib/entriesEngine.js';
+import { getNormalizedLines } from './_lib/ledgerCache.js';
 
 /**
  * GET /api/monthly?company_id=..&period_start=YYYY-MM-DD&period_end=YYYY-MM-DD
@@ -18,22 +18,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    const [lines, journals, tb, tbAux] = await Promise.all([
-      getLedgerEntryLines(cid, period_start, period_end),
+    const [journals, tb, tbAux, fys] = await Promise.all([
       getJournals(cid),
       getTrialBalance(cid, period_start, period_end),
       getTrialBalance(cid, period_start, period_end, true), // auxiliaire : noms clients/fournisseurs
+      getFiscalYears(cid).catch(() => []),
     ]);
 
-    // Pré-chargement du détail des écritures (drill-down instantané), stocké côté client en
-    // IndexedDB. Plafond élevé pour couvrir les gros dossiers ; au-delà (réponse > ~4 Mo),
-    // on omet et le drill-down repasse par l'API.
-    const LINE_LIMIT = 15000;
-    const entries = lines.length <= LINE_LIMIT ? await getLedgerEntries(cid, period_start, period_end) : [];
+    // Lignes normalisées (libellés/pièces des écritures fusionnés) : servies depuis
+    // le cache serveur incrémental — seuls les mois dont la balance a changé sont
+    // re-téléchargés de Pennylane (voir _lib/ledgerCache.js).
+    const { lines, cache } = await getNormalizedLines(cid, period_start, period_end, journals, tb);
 
-    // Map id journal -> code (pour exclure les a-nouveaux)
-    const journalCode = new Map();
-    for (const j of journals) journalCode.set(j.id, j.code || j.label || '');
+    // Plafond du détail pré-chargé côté client (IndexedDB) ; au-delà (réponse
+    // > ~4 Mo), on omet et le drill-down repasse par l'API.
+    const LINE_LIMIT = 15000;
 
     // Journaux retenus pour la trésorerie : sélection utilisateur, sinon présélection
     // « intelligente » = journaux de banque (type finances) + tout journal qui mouvemente
@@ -42,9 +41,8 @@ export default async function handler(req, res) {
     const financeCodes = journals.filter((j) => j.type === 'finances').map((j) => String(j.code || '').toUpperCase()).filter(Boolean);
     const touchingCodes = new Set();
     for (const ln of lines) {
-      const num = String(ln.ledger_account?.number ?? '');
-      if (isCashAccount(num)) {
-        const code = String(journalCode.get(ln.journal?.id) || '').toUpperCase();
+      if (isCashAccount(ln.account)) {
+        const code = String(ln.journalCode || '').toUpperCase();
         if (code && code !== 'AN') touchingCodes.add(code);
       }
     }
@@ -59,7 +57,7 @@ export default async function handler(req, res) {
       if (num && it.label) labelMap[num] = String(it.label).toUpperCase();
     }
 
-    const { monthlyData, cashFlowEntries, accounts, initialTresorerie } = linesToMonthly(lines, journalCode, labelMap, cashJournalCodes);
+    const { monthlyData, cashFlowEntries, accounts, initialTresorerie } = linesToMonthly(lines, new Map(), labelMap, cashJournalCodes);
     const pl = calculateMonthlyPL(monthlyData, accounts);
 
     // À-nouveaux simulés : si l'exercice précédent n'est pas clôturé, la trésorerie
@@ -68,7 +66,6 @@ export default async function handler(req, res) {
     let openingAdjust = 0;
     let anSimulated = false;
     try {
-      const fys = await getFiscalYears(cid);
       const fy = fys.find((f) => f.start === period_start && f.end === period_end);
       if (fy && needsSimulatedAN(fy, fys)) {
         const prev = prevFyOf(fy, fys);
@@ -104,9 +101,10 @@ export default async function handler(req, res) {
       accountMonthly: pl.accountMonthly,
       cashflow,
       // Détail pré-chargé seulement pour les dossiers <= LINE_LIMIT lignes
-      lines: lines.length <= LINE_LIMIT ? allLines(lines, entries, journals) : undefined,
+      lines: lines.length <= LINE_LIMIT ? lines : undefined,
       detailPreloaded: lines.length <= LINE_LIMIT,
       linesCount: lines.length,
+      cache,
     });
   } catch (err) {
     sendError(res, err);

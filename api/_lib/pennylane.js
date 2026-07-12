@@ -17,6 +17,7 @@ import {
   MOON_ID, moonEnabled, moonCompany,
   getFiscalYearsMoon, getTrialBalanceMoon, getLedgerEntryLinesMoon, getLedgerEntriesMoon, getJournalsMoon,
 } from './pennylaneMoon.js';
+import { makeRateLimiter, monthSlices, dateFilter } from './plimiter.js';
 
 const BASE = 'https://app.pennylane.com/api/external/firm/v1';
 const isMoon = (id) => String(id) === MOON_ID;
@@ -34,8 +35,11 @@ function getToken() {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+const firmLimiter = makeRateLimiter();
+
 /**
- * Appel bas niveau a l'API Pennylane, avec retry/backoff sur 429 (rate limit) et 5xx.
+ * Appel bas niveau a l'API Pennylane, via l'ordonnanceur, avec retry/backoff
+ * sur 429 (garde-fou) et 5xx.
  */
 async function plFetch(path, { params, attempt = 0 } = {}) {
   const token = getToken();
@@ -46,12 +50,13 @@ async function plFetch(path, { params, attempt = 0 } = {}) {
     }
   }
 
-  const res = await fetch(url.toString(), {
+  const res = await firmLimiter.run(() => fetch(url.toString(), {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/json',
     },
-  });
+  }));
+  firmLimiter.observe(res);
 
   if (res.status === 429 || (res.status >= 500 && res.status < 600)) {
     if (attempt < 6) {
@@ -122,6 +127,38 @@ async function plFetchAll(path, { params = {}, max = 100000 } = {}) {
   return out;
 }
 
+/**
+ * Récupère toutes les pages d'un endpoint à curseur en découpant la période par
+ * mois, chaque tranche ayant sa propre chaîne de curseurs — elles avancent en
+ * parallèle sous le contrôle du rate limiter (le séquentiel pur laissait la
+ * fenêtre de quota à moitié vide). Sonde d'abord une page pleine période :
+ * si tout tient dedans, pas de fan-out. Dédoublonnage par id par sécurité.
+ */
+async function plFetchAllByMonth(path, periodStart, periodEnd, { limit = 100 } = {}) {
+  const slices = monthSlices(periodStart, periodEnd);
+  // Période d'un seul mois (pas de fan-out utile) ou non bornée (ex 1900→2999,
+  // le fan-out exploserait) : pagination classique.
+  if (slices.length <= 1 || slices.length > 24) {
+    return plFetchAll(path, { params: { filter: dateFilter(periodStart, periodEnd), limit } });
+  }
+
+  const first = await plFetch(path, { params: { filter: dateFilter(periodStart, periodEnd), limit } });
+  const firstItems = extractItems(first);
+  if (!first || !first.has_more) return firstItems;
+
+  const parts = await Promise.all(slices.map(([a, b]) =>
+    plFetchAll(path, { params: { filter: dateFilter(a, b), limit } })));
+  const seen = new Set();
+  const out = [];
+  for (const it of parts.flat()) {
+    const id = it?.id ?? JSON.stringify(it);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(it);
+  }
+  return out;
+}
+
 // ── API haut niveau ──────────────────────────────────────────────
 
 export async function listCompanies() {
@@ -148,13 +185,7 @@ export async function getTrialBalance(companyId, periodStart, periodEnd, isAuxil
 export async function getLedgerEntries(companyId, periodStart, periodEnd) {
   if (isMoon(companyId)) return getLedgerEntriesMoon(periodStart, periodEnd);
   // ledger_entries plafonne la pagination a 100 ; filtrage par date via `filter`
-  const filter = JSON.stringify([
-    { field: 'date', operator: 'gteq', value: periodStart },
-    { field: 'date', operator: 'lteq', value: periodEnd },
-  ]);
-  return plFetchAll(`/companies/${companyId}/ledger_entries`, {
-    params: { filter, limit: 100 },
-  });
+  return plFetchAllByMonth(`/companies/${companyId}/ledger_entries`, periodStart, periodEnd);
 }
 
 /** Lignes d'ecritures (debit/credit par compte) — base du P&L mensuel et du cashflow.
@@ -162,13 +193,7 @@ export async function getLedgerEntries(companyId, periodStart, periodEnd) {
  *  les params period_start/period_end etant ignores sur cet endpoint. */
 export async function getLedgerEntryLines(companyId, periodStart, periodEnd) {
   if (isMoon(companyId)) return getLedgerEntryLinesMoon(periodStart, periodEnd);
-  const filter = JSON.stringify([
-    { field: 'date', operator: 'gteq', value: periodStart },
-    { field: 'date', operator: 'lteq', value: periodEnd },
-  ]);
-  return plFetchAll(`/companies/${companyId}/ledger_entry_lines`, {
-    params: { filter, limit: 100 },
-  });
+  return plFetchAllByMonth(`/companies/${companyId}/ledger_entry_lines`, periodStart, periodEnd);
 }
 
 /** Journaux (pour recuperer le code, ex 'AN' = a-nouveaux). */

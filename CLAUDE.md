@@ -28,13 +28,19 @@ Outil d'analyse financière pour le cabinet **MOON Expertise**. Il récupère le
 1. **`api/companies.js`** → liste des sociétés (Firm API) + ajoute **MOON EXPERTISE** si `PENNYLANE_MOON_TOKEN` présent.
 2. **`api/fiscal-years.js`** → exercices d'une société (statuts Pennylane : `closed` / `frozen` / `open`).
 3. **`api/report.js`** → `getTrialBalance` (N et N-1) → `buildAccounts` (`api/_lib/normalize.js`) → `generateFullReport` (`api/_lib/accountingEngine.js`) = { bilan, pl, sig, ratios, accounts }.
-4. **`api/monthly.js`** → `getLedgerEntryLines` + journaux + balances → `monthlyEngine.js` = P&L mensuel + cashflow + détail des écritures.
+4. **`api/monthly.js`** → journaux + balances + **`ledgerCache.getNormalizedLines`** (cache KV incrémental, cf. § Performance) → `monthlyEngine.js` = P&L mensuel + cashflow + détail des écritures.
 5. **`api/dashboard-row.js`** → indicateurs de santé par société (exercice en cours).
 6. **`api/store.js`** → stockage serveur des exercices synchronisés (Vercel KV).
 
 ### Deux clients Pennylane
 - **`api/_lib/pennylane.js`** — API **Firm** (cabinet) : `https://app.pennylane.com/api/external/firm/v1`, endpoints `/companies/{id}/…`, pagination page **ET** cursor, retry/backoff sur 429/5xx. C'est le **routeur central** : si `companyId === 'moon'`, il délègue au client v2.
 - **`api/_lib/pennylaneMoon.js`** — API **individuelle v2** (`/api/external/v2`, sans préfixe société), pour le seul dossier **MOON EXPERTISE** (token dédié). Pagination **cursor/limit uniquement** (`per_page` interdit en v2). Formats de réponse identiques à l'API Firm → les moteurs marchent tels quels.
+
+### Performance de synchro (mesuré en conditions réelles, ne pas « simplifier »)
+- **Contraintes API Pennylane** : `limit` max **100** sur `ledger_entry_lines`/`ledger_entries` (400 au-delà) ; rate limit **25 req/fenêtre ~10 s par token**, MAIS réparti sur plusieurs backends → une **concurrence élevée (12) + retry court sur 429** donne ~20 req/s effectifs, là où un budget-gating strict plafonne à 2,5 req/s (testé : le gating est PIRE). Pas de filtre `updated_at` (champs autorisés : id, date, journal_id, ledger_account_id) ni d'endpoint d'export en masse.
+- **`api/_lib/plimiter.js`** : sémaphore de concurrence partagé (1 par token) + `monthSlices`/`dateFilter`. Les lignes/écritures sont téléchargées par **tranches mensuelles en parallèle** (chaque tranche = sa chaîne de curseurs ; sonde 1 page pleine période d'abord ; garde-fous : 1 seul mois ou > 24 mois → pagination classique).
+- **`api/_lib/ledgerCache.js`** : cache serveur **incrémental** (Vercel KV, gzip+base64, TTL 120 j) des lignes **normalisées** (`allLines` : libellés/pièces des écritures fusionnés) par tranche mensuelle. Validation par **empreintes de balance** (`tbDigest`) : balance complète inchangée → tout du cache (0 appel lignes) ; sinon balances mensuelles (légères, parallèles) → seuls les mois modifiés sont re-téléchargés. Toute modif comptable change les totaux débits/crédits d'un compte du mois → détectée. Limite assumée : une modif de libellé seul n'invalide pas l'empreinte. Clés `mvled:v1:*`.
+- **Consommateurs** : `monthly.js`, `entries.js`, `cashflow-entries.js` passent par `getNormalizedLines` ; `linesToMonthly` et `accountEntriesNorm`/`cashflowEntriesNorm` consomment les lignes normalisées (`{account, journalCode, entryId}` à plat — `linesToMonthly` accepte aussi les lignes brutes). Ordres de grandeur : 1re synchro d'un dossier ~2 200 lignes ≈ 12 s, resynchro inchangée ≈ 2 s, 1 mois modifié ≈ 2-3 s ; le cache est partagé entre utilisateurs/appareils.
 
 ### Moteur comptable (`api/_lib/`)
 - `normalize.js` : trial_balance → comptes `{accountNumber, accountLabel, soldeN, soldeN1, accountClass}`. **Les libellés de comptes sont mis en MAJUSCULES** ici et dans `monthly.js` (labelMap).

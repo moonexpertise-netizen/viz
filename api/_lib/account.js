@@ -56,6 +56,7 @@ export async function tooManyAttempts(key, max = 8, windowSec = 600) {
 // ── Helpers KV génériques (stockage serveur des exercices synchronisés) ──
 export const kvGet = (key) => kvCmd(['GET', key]);
 export const kvSet = (key, val) => kvCmd(['SET', key, val]);
+export const kvSetEx = (key, val, seconds) => kvCmd(['SET', key, val, 'EX', String(seconds)]);
 export const kvDel = (key) => kvCmd(['DEL', key]);
 export const kvSAdd = (key, member) => kvCmd(['SADD', key, String(member)]);
 export const kvSRem = (key, member) => kvCmd(['SREM', key, String(member)]);

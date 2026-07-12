@@ -36,15 +36,17 @@ export function linesToMonthly(lines, journalCode = new Map(), labelMap = {}, ca
   const isCash = isCashAccount;
 
   for (const ln of lines) {
-    const number = String(ln.ledger_account?.number ?? '').trim();
+    // Deux formes acceptées : ligne Pennylane brute, ou ligne normalisée du
+    // cache serveur ({ account, journalCode, entryId } à plat).
+    const number = String(ln.account ?? ln.ledger_account?.number ?? '').trim();
     if (!number || !/^\d/.test(number)) continue;
     const debit = toNum(ln.debit);
     const credit = toNum(ln.credit);
     const date = String(ln.date ?? '');
     const month = date.slice(0, 7); // YYYY-MM
-    const jcode = journalCode.get(ln.journal?.id) || '';
+    const jcode = ln.journalCode !== undefined ? String(ln.journalCode || '') : (journalCode.get(ln.journal?.id) || '');
     const isAN = AN_CODES.has(jcode.toUpperCase());
-    const entryId = ln.ledger_entry?.id ?? ln.id;
+    const entryId = ln.entryId ?? ln.ledger_entry?.id ?? ln.id;
 
     if (!accountsSet[number]) {
       accountsSet[number] = { number, label: labelMap[number] || ln.label || '', cls: number.charAt(0) };

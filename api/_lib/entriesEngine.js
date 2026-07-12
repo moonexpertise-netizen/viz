@@ -95,7 +95,76 @@ export function allLines(lines, entries, journals) {
       entryId: l.ledger_entry?.id ?? l.id, // regroupement par écriture côté client
       pieceUrl: e.pieceUrl || '',
       pieceRef: e.piece || '',
+      ...(e.invoice ? { invoice: e.invoice } : {}),
     });
+  }
+  return out;
+}
+
+/**
+ * Écritures détaillées d'un compte, depuis les lignes NORMALISÉES (cache serveur).
+ * Même sortie qu'accountEntries.
+ */
+export function accountEntriesNorm(normLines, accountArg) {
+  const set = String(accountArg || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const matches = (num) => set.some((a) => num === a || num.startsWith(a));
+  return (normLines || [])
+    .filter((l) => matches(String(l.account || '')))
+    .map((l) => ({
+      date: frDate(l.date),
+      label: l.label || '',
+      debit: toNum(l.debit),
+      credit: toNum(l.credit),
+      journalCode: l.journalCode || '',
+      pieceRef: l.pieceRef || '',
+      pieceUrl: l.pieceUrl || '',
+      invoiceNumber: l.invoice || '',
+    }));
+}
+
+/**
+ * Mouvements de trésorerie d'une catégorie, depuis les lignes NORMALISÉES.
+ * Même logique et même sortie que cashflowEntries.
+ */
+export function cashflowEntriesNorm(normLines, category, account, journalCodes = null) {
+  const jset = journalCodes && journalCodes.length ? new Set(journalCodes.map((c) => String(c).toUpperCase())) : null;
+
+  const groups = {};
+  for (const l of normLines || []) {
+    const jcode = String(l.journalCode || '').toUpperCase();
+    if (AN_CODES.has(jcode)) continue;
+    if (jset && !jset.has(jcode)) continue;
+    const id = l.entryId ?? l.id;
+    (groups[id] = groups[id] || []).push(l);
+  }
+
+  const out = [];
+  for (const gls of Object.values(groups)) {
+    const bank = gls.filter((l) => isCash(String(l.account || '')));
+    if (!bank.length) continue;
+    const nonBank = gls.filter((l) => !isCash(String(l.account || '')));
+    const counterNum = String(nonBank[0]?.account || '');
+    if (account) {
+      const hit = nonBank.some((l) => {
+        const n = String(l.account || '');
+        return n === account || n.startsWith(account);
+      });
+      if (!hit) continue;
+    } else if (category) {
+      const cat = counterNum ? CATEGORY_OF(counterNum) : 'autresFlux';
+      if (cat !== category) continue;
+    }
+    for (const b of bank) {
+      const amount = Math.round((toNum(b.debit) - toNum(b.credit)) * 100) / 100;
+      if (amount === 0) continue;
+      out.push({
+        date: frDate(b.date),
+        label: b.label || '',
+        counterpart: counterNum,
+        amount,
+        journalCode: b.journalCode || '',
+      });
+    }
   }
   return out;
 }
