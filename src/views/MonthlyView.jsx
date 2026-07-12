@@ -4,6 +4,7 @@ import { Plus, Pencil, Copy, GripVertical } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { getLinesForExercises } from '../lib/linesStore';
 import { buildPLTree, buildCashRows, formulaToRPN, evalRPN, plRowOptions, plAnchorOptions, newId } from '../lib/mapping';
+import { exportPeriodicXlsx } from '../lib/xlsxExport';
 import { buildCashflowFromLines, canRebuildCashflow } from '../lib/cashflowClient';
 import { cls } from '../lib/format';
 import EntryDetailModal from '../components/EntryDetailModal';
@@ -982,7 +983,7 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
 }
 
 // P&L Tab
-function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId, decimals = 0, customTree = null, exercises = [], cachedLines = null, onAddIndicator = null, onEditIndicator = null, onMoveIndicator = null, onDuplicateIndicator = null }) {
+function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId, decimals = 0, customTree = null, exercises = [], cachedLines = null, onAddIndicator = null, onEditIndicator = null, onMoveIndicator = null, onDuplicateIndicator = null, plan = null }) {
   const [expanded, setExpanded] = useState({});
   const [modal, setModal] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -1203,6 +1204,11 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
           <button onClick={() => { const d = buildPLExportData(); copyStyledTable(tableRef.current, d.headers, d.rows).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }} className={exportBtnClass}>
             {copied ? <><CheckIcon /> Copié</> : <><CopyIcon /> Copier</>}
           </button>
+          {customTree && (
+            <button onClick={() => { exportPeriodicXlsx({ title: 'Compte de résultat', tree: customTree.tree, rowsById: customTree.rowsById, columns: columns || [], aggregateValues, plan }); }} className={exportBtnClass}>
+              <DownloadIcon /> Excel
+            </button>
+          )}
           <button onClick={() => { const tbl = buildPLTableHTML(sigData, columns || [], decimals, aggregateValues); exportInteractiveHTML('Compte de Resultat (SIG)', tbl, 'pl_sig.html', { allMonths: months, exercises }); }} className={exportBtnClass}>
             <DownloadIcon /> HTML
           </button>
@@ -2562,7 +2568,7 @@ export default function MonthlyView({ companyId, data, loading = false, mapping 
           {activeTab === 'pl' && hasMonthly && (
             <PLTab monthly={monthly} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} customTree={customPLData} exercises={data?.exercises || []} cachedLines={cachedLines}
               onAddIndicator={canIndicators ? () => setIndicatorEdit('new') : null} onEditIndicator={canIndicators ? (ind) => setIndicatorEdit(ind) : null}
-              onMoveIndicator={canIndicators ? moveIndicator : null} onDuplicateIndicator={canIndicators ? duplicateIndicator : null} />
+              onMoveIndicator={canIndicators ? moveIndicator : null} onDuplicateIndicator={canIndicators ? duplicateIndicator : null} plan={mapping?.pl} />
           )}
           {activeTab === 'cashflow' && hasCashflow && (
             <CashFlowTab cashflow={effectiveCashflow} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} exercises={data?.exercises || []}
