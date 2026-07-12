@@ -19,7 +19,8 @@ const ARGB = {
   cream: 'FFF6F1E9',
   ink: 'FF1B1B1F',
   gray: 'FF6B7280',
-  neg: 'FF5C1717',
+  neg: 'FF5C1717',       // négatifs sur fond clair : bordeaux
+  negOnDark: 'FFF3A5A5', // négatifs sur fond navy (totaux) : rouge clair, lisible
   grid: 'FFE2E2E2',
 };
 
@@ -136,7 +137,9 @@ export async function exportPeriodicXlsx({ title = 'Compte de résultat', tree =
     cell.alignment = { horizontal: 'right' };
     cell.border = border;
     if (opts.fill) cell.fill = fill(opts.fill);
-    cell.font = { size: opts.size || 10, bold: !!opts.bold, italic: !!opts.italic, color: { argb: isNeg ? ARGB.neg : (opts.color || ARGB.ink) } };
+    const onDark = opts.fill === ARGB.navy || opts.fill === ARGB.navySoft;
+    const negColor = onDark ? ARGB.negOnDark : ARGB.neg;
+    cell.font = { size: opts.size || 10, bold: !!opts.bold, italic: !!opts.italic, color: { argb: isNeg ? negColor : (opts.color || ARGB.ink) } };
   };
   const monthSumFormula = (r) => (nMonths ? { formula: `SUM(${colLetter(firstDataCol)}${r}:${colLetter(lastMonthCol)}${r})` } : 0);
 

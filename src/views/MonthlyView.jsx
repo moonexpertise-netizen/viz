@@ -988,6 +988,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
   const [modal, setModal] = useState(null);
   const [copied, setCopied] = useState(false);
   const [showEmpty, setShowEmpty] = useState(false);
+  const [expandLevel, setExpandLevel] = useState(0);
   const tableRef = useRef(null);
 
   // ── Glisser-déposer d'une ligne indicateur (repositionnement) ──
@@ -1116,17 +1117,26 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
     return [...new Set(refs.flatMap(ref => collectAccounts(ref)))].join(',');
   };
 
-  const expandAll = () => {
-    const allKeys = {};
-    sigData.forEach(item => {
-      if (item.type === 'line' && item.accounts?.length > 0) {
-        allKeys[`sig_${item.key}`] = true;
+  // Dépliage PROGRESSIF : chaque clic descend d'un niveau
+  //   niv. 1 = sous-catégories visibles, niv. 2 = tous les comptes (mode Standard).
+  const maxExpandLevel = customTree ? ((customTree.tree || []).some(it => it.type === 'group' && (it.subs || []).some(s => (s.accounts || []).length)) ? 2 : 1) : 1;
+  const buildExpandedForLevel = (lvl) => {
+    const m = {};
+    if (customTree) {
+      for (const item of customTree.tree || []) {
+        if (item.type !== 'group') continue;
+        const gkey = `sig_${item.id || item.key}`;
+        const hasContent = (item.accounts || []).length > 0 || (item.subs || []).some(s => (s.accounts || []).length);
+        if (lvl >= 1 && hasContent) m[gkey] = true;
+        if (lvl >= 2) for (const sub of item.subs || []) if ((sub.accounts || []).length) m[`${gkey}_sub_${sub.id}`] = true;
       }
-    });
-    setExpanded(allKeys);
+    } else {
+      if (lvl >= 1) sigData.forEach(item => { if (item.type === 'line' && item.accounts?.length > 0) m[`sig_${item.key}`] = true; });
+    }
+    return m;
   };
-
-  const collapseAll = () => setExpanded({});
+  const expandAll = () => { const next = Math.min(expandLevel + 1, maxExpandLevel); setExpandLevel(next); setExpanded(buildExpandedForLevel(next)); };
+  const collapseAll = () => { setExpandLevel(0); setExpanded({}); };
 
   // Coherence check: find P&L accounts not matched by any SIG line
   const unmatchedAccounts = useMemo(() => {
@@ -1222,9 +1232,9 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
           <button onClick={() => setShowEmpty(!showEmpty)} className="px-2.5 py-2 text-xs text-gray-custom hover:text-gold flex items-center gap-1">
             {showEmpty ? 'Masquer lignes vides' : 'Afficher lignes vides'}
           </button>
-          <button onClick={expandAll} className="px-2.5 py-2 text-xs text-gray-custom hover:text-gold flex items-center gap-1">
+          <button onClick={expandAll} title="Un clic = un niveau de plus" className="px-2.5 py-2 text-xs text-gray-custom hover:text-gold flex items-center gap-1">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            Tout deplier
+            {customTree && maxExpandLevel > 1 ? `Déplier (${expandLevel}/${maxExpandLevel})` : 'Tout déplier'}
           </button>
           <button onClick={collapseAll} className="px-2.5 py-2 text-xs text-gray-custom hover:text-gold flex items-center gap-1">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
