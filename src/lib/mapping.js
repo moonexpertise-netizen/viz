@@ -164,6 +164,93 @@ export const DEFAULT_CASH = () => ({
 
 export const defaultMapping = () => ({ version: 1, updatedAt: new Date().toISOString(), pl: DEFAULT_PL(), cash: DEFAULT_CASH() });
 
+/* ── Indicateurs calculés (lignes de ratio / formule personnalisées) ──
+ * Un indicateur ajoute une ligne calculée sous une rubrique (ex. « Marge brute
+ * en % du CA »). Il est stocké dans plan.indicators.
+ *   indicator = { id, label, format:'eur'|'pct'|'ratio', decimals?, after, positiveIsGood?, formula:[token] }
+ *   after   : id de la ligne (rubrique/total) après laquelle insérer, ou 'end'
+ *   token   : { t:'ref', id }        référence à une ligne (id = 'catId' | 'catId/subId' | 'totalId')
+ *           | { t:'const', v:Number } constante
+ *           | { t:'op', v:'+|-|*|/' } opérateur
+ *           | { t:'lp' } | { t:'rp' } parenthèses
+ * Le format 'pct' multiplie le résultat de la formule par 100 (une formule
+ * A / B affiche donc A/B en pourcentage). */
+
+const OP_PREC = { '+': 1, '-': 1, '*': 2, '/': 2 };
+
+/** Formule infixe → notation polonaise inverse (shunting-yard). */
+export function formulaToRPN(formula) {
+  const out = []; const ops = [];
+  for (const tk of formula || []) {
+    if (tk.t === 'ref' || tk.t === 'const') out.push(tk);
+    else if (tk.t === 'op') {
+      while (ops.length) {
+        const top = ops[ops.length - 1];
+        if (top.t === 'op' && OP_PREC[top.v] >= OP_PREC[tk.v]) out.push(ops.pop());
+        else break;
+      }
+      ops.push(tk);
+    } else if (tk.t === 'lp') ops.push(tk);
+    else if (tk.t === 'rp') {
+      while (ops.length && ops[ops.length - 1].t !== 'lp') out.push(ops.pop());
+      if (ops.length) ops.pop();
+    }
+  }
+  while (ops.length) { const o = ops.pop(); if (o.t !== 'lp') out.push(o); }
+  return out;
+}
+
+/**
+ * Évalue une formule (RPN) pour une colonne donnée.
+ * @param rpn      sortie de formulaToRPN
+ * @param valueOf  (id) => nombre (valeur de la ligne référencée pour cette colonne)
+ * @returns nombre, ou null si formule invalide / division par zéro
+ */
+export function evalRPN(rpn, valueOf) {
+  const st = [];
+  for (const tk of rpn) {
+    if (tk.t === 'ref') st.push(Number(valueOf(tk.id)) || 0);
+    else if (tk.t === 'const') st.push(Number(tk.v) || 0);
+    else if (tk.t === 'op') {
+      const b = st.pop(); const a = st.pop();
+      if (a === undefined || b === undefined) return null;
+      let r;
+      if (tk.v === '+') r = a + b;
+      else if (tk.v === '-') r = a - b;
+      else if (tk.v === '*') r = a * b;
+      else { if (b === 0) return null; r = a / b; }
+      st.push(r);
+    }
+  }
+  return st.length ? st[st.length - 1] : null;
+}
+
+/** La formule contient-elle au moins un opérande ? (sinon rien à afficher) */
+export function formulaHasOperand(formula) {
+  return (formula || []).some((t) => t.t === 'ref' || t.t === 'const');
+}
+
+/**
+ * Options de lignes référençables d'un plan P&L (pour l'éditeur d'indicateurs) :
+ * rubriques, sous-rubriques et totaux, dans l'ordre d'affichage.
+ */
+export function plRowOptions(plan) {
+  const opts = [];
+  for (const node of plan?.nodes || []) {
+    if (node.kind === 'total') { opts.push({ id: node.id, label: node.label, kind: 'total' }); continue; }
+    opts.push({ id: node.id, label: node.label, kind: 'cat' });
+    for (const sub of node.subs || []) opts.push({ id: `${node.id}/${sub.id}`, label: `${node.label} › ${sub.label}`, kind: 'sub' });
+  }
+  return opts;
+}
+
+/** Positions d'insertion possibles (rubriques + totaux, pas les sous-rubriques). */
+export function plAnchorOptions(plan) {
+  const opts = (plan?.nodes || []).map((n) => ({ id: n.id, label: n.label, kind: n.kind }));
+  opts.push({ id: 'end', label: 'Fin du tableau', kind: 'end' });
+  return opts;
+}
+
 /* ── Affectation d'un compte à un nœud ───────────────────────────── */
 
 /** Renvoie { catId, subId|null } ou null si non affecté. */
@@ -259,9 +346,40 @@ export function buildPLTree(plan, accountMonthly, months) {
     tree.push({ type: 'group', key: node.id, id: node.id, label: node.label, months: catMonths, accounts: direct, subs: subItems });
   }
 
+  // Table des valeurs mensuelles par ligne (pour les indicateurs calculés) :
+  // rubrique/total par id, sous-rubrique par 'catId/subId'.
+  const rowsById = {};
+  for (const item of tree) {
+    if (item.id) rowsById[item.id] = item.months;
+    for (const sub of item.subs || []) rowsById[`${item.id}/${sub.id}`] = sub.months;
+  }
+
+  // Insertion des indicateurs calculés après leur ligne d'ancrage.
+  const withIndicators = insertIndicators(tree, plan.indicators);
+
   // Comptes non affectés : groupe visible avant le dernier total (inclus dans les totaux cumulés en amont ? non —
   // on les EXCLUT des totaux pour rester fidèle au plan ; le bandeau invite à les affecter).
-  return { tree, unassigned };
+  return { tree: withIndicators, unassigned, rowsById };
+}
+
+/** Insère les items d'indicateur dans l'arbre, après leur ligne d'ancrage (`after`). */
+function insertIndicators(tree, indicators) {
+  if (!indicators || !indicators.length) return tree;
+  const byAnchor = {};
+  const atEnd = [];
+  for (const ind of indicators) {
+    const item = { type: 'indicator', ...ind };
+    if (ind.after && ind.after !== 'end' && tree.some((t) => t.id === ind.after)) {
+      (byAnchor[ind.after] = byAnchor[ind.after] || []).push(item);
+    } else atEnd.push(item);
+  }
+  const out = [];
+  for (const node of tree) {
+    out.push(node);
+    if (node.id && byAnchor[node.id]) out.push(...byAnchor[node.id]);
+  }
+  out.push(...atEnd);
+  return out;
 }
 
 /* ── Construction des lignes cash (mapping personnalisé) ─────────── */

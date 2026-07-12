@@ -24,6 +24,7 @@
   --accent-blue: #2563eb;
   --accent-gold: #a88962;
   --gold: #a88962;
+  --gold-rgb: 168 137 98;
   --gold-soft: #ecdfca;
   --gold-dark: #6e5a3f;
   --chart-grid: #ececf0;
@@ -60,6 +61,7 @@
   --accent-blue: #60a5fa;
   --accent-gold: #d3b88a;
   --gold: #d3b88a;
+  --gold-rgb: 211 184 138;
   --gold-soft: #3a2f1d;
   --gold-dark: #e6cda0;
   --chart-grid: #2e2e2e;
@@ -96,6 +98,7 @@
   --accent-blue: #7ba3f7;
   --accent-gold: #d3b88a;
   --gold: #d3b88a;
+  --gold-rgb: 211 184 138;
   --gold-soft: #2a2540;
   --gold-dark: #e6cda0;
   --chart-grid: #1a2547;
@@ -381,6 +384,7 @@ h1, h2, h3, h4, h5, h6 {
 .auth-screen {
   --sidebar-fg: #e9eaec;
   --gold: #a88962;
+  --gold-rgb: 168 137 98;
   background-color: #01071B !important;
 }
 
@@ -435,6 +439,14 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.7);
 }
 
+
+/* Tableaux de la Vision périodique : lignes plus aérées et lisibles (façon
+   Finthesis). La spécificité (0,1,1) l'emporte sur les utilitaires py-* (0,1,0)
+   quel que soit l'ordre d'émission — on relève ainsi la hauteur de toutes les
+   lignes sans toucher chaque cellule. Les lignes de tête (totaux, sous-totaux)
+   gardent leur emphase via fond + graisse. */
+.mv-ptable td { padding-top: 0.5rem; padding-bottom: 0.5rem; line-height: 1.35; }
+.mv-ptable th { padding-top: 0.6rem; padding-bottom: 0.6rem; }
 
 /* Champs de formulaire : suivent le thème (sinon blanc UA en mode sombre) */
 input:not([type="checkbox"]):not([type="radio"]), select, textarea {

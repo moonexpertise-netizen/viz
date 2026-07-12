@@ -65,6 +65,7 @@ export default function Workspace({ onLogout }) {
   const [error, setError] = useState('');
   const [syncErrors, setSyncErrors] = useState({}); // fyId -> message d'échec de synchro
   const [mapping, setMapping] = useState(null); // affectation des comptes du dossier (null = plan par défaut non enregistré)
+  const [syncOpen, setSyncOpen] = useState(false); // panneau de synchro déplié ?
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => { try { return localStorage.getItem('mv:sidebar') === '1'; } catch { return false; } });
   const [theme, setTheme] = useState(getTheme);
@@ -215,6 +216,13 @@ export default function Workspace({ onLogout }) {
   const selectedFy = useMemo(() => fiscalYears.find((f) => String(f.id) === String(fyId)), [fiscalYears, fyId]);
   const active = synced[fyId] || null;
   const anySynced = Object.keys(synced).length > 0;
+  // Panneau de synchro : replié par défaut, déplié quand rien n'est synchronisé
+  // (pour inviter à synchroniser), et TOUJOURS replié en Vision périodique /
+  // Affectation pour laisser les tableaux en quasi pleine page.
+  useEffect(() => { setSyncOpen(false); }, [companyId]);
+  useEffect(() => { if (!anySynced) setSyncOpen(true); }, [anySynced]);
+  useEffect(() => { if (tab === 'periodic' || tab === 'mapping') setSyncOpen(false); }, [tab]);
+  const fullWidthTab = tab === 'periodic' || tab === 'mapping';
 
   const prevFyOf = (fy) => {
     const idx = fiscalYears.findIndex((f) => String(f.id) === String(fy.id));
@@ -479,22 +487,24 @@ export default function Workspace({ onLogout }) {
 
           {companyId && (
             <>
-              {/* En-tête société */}
-              <div className="mb-5">
-                <h2 className="text-xl sm:text-2xl font-display text-navy leading-tight break-words">{company?.name}</h2>
-                <p className="text-sm text-gray-custom mt-0.5">
-                  {company?.registrationNumber ? `SIREN ${company.registrationNumber} · ` : ''}
-                  {fiscalYears.length} exercice{fiscalYears.length > 1 ? 's' : ''}
-                </p>
+              {/* En-tête société — compacté sur les onglets pleine largeur */}
+              <div className={cls(fullWidthTab ? 'mb-2' : 'mb-5')}>
+                <h2 className={cls('font-display text-navy leading-tight break-words', fullWidthTab ? 'text-lg' : 'text-xl sm:text-2xl')}>{company?.name}</h2>
+                {!fullWidthTab && (
+                  <p className="text-sm text-gray-custom mt-0.5">
+                    {company?.registrationNumber ? `SIREN ${company.registrationNumber} · ` : ''}
+                    {fiscalYears.length} exercice{fiscalYears.length > 1 ? 's' : ''}
+                  </p>
+                )}
               </div>
 
               <SyncPanel
-                key={companyId}
                 fiscalYears={fiscalYears}
                 synced={synced}
                 syncing={syncing}
                 loading={loading.fy}
-                anySynced={anySynced}
+                open={syncOpen}
+                onToggle={() => setSyncOpen((o) => !o)}
                 selectedFyId={fyId}
                 onSelect={setFyId}
                 onSync={doSync}
@@ -503,10 +513,10 @@ export default function Workspace({ onLogout }) {
               />
 
               {anySynced ? (
-                <div key={tab} className="mt-6 animate-view">
+                <div key={tab} className={cls('animate-view', fullWidthTab ? 'mt-3' : 'mt-6')}>
                   <Suspense fallback={<ViewSkeleton />}>
                     {tab === 'periodic'
-                      ? <div className="-mx-3 sm:-mx-5 md:-mx-6"><MonthlyView companyId={companyId} data={mergedMonthly} mapping={effectiveMapping} /></div>
+                      ? <div className="-mx-3 sm:-mx-5 md:-mx-6"><MonthlyView companyId={companyId} data={mergedMonthly} mapping={effectiveMapping} onSaveMapping={saveMapping} /></div>
                       : tab === 'mapping'
                         ? <MappingEditor key={companyId} mapping={mapping || defaultMapping()} accountsPL={accountsPL} accountsCash={accountsCash} onSave={saveMapping} />
                         : active?.report?.report
@@ -582,8 +592,7 @@ function PerExerciseTab({ tab, report, meta }) {
   );
 }
 
-function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedFyId, onSelect, onSync, onRemove, syncErrors = {} }) {
-  const [open, setOpen] = useState(!anySynced);
+function SyncPanel({ fiscalYears, synced, syncing, loading, open, onToggle, selectedFyId, onSelect, onSync, onRemove, syncErrors = {} }) {
   if (loading) return <div className="card-moon p-3 text-sm text-gray-custom">Chargement des exercices…</div>;
   if (!fiscalYears.length) return null;
   const syncedList = fiscalYears.filter((f) => synced[f.id]);
@@ -603,7 +612,7 @@ function SyncPanel({ fiscalYears, synced, syncing, loading, anySynced, selectedF
         </select>
         <span className="text-xs text-gray-custom">· {syncedList.length}/{fiscalYears.length} synchronisé{syncedList.length > 1 ? 's' : ''}</span>
         <div className="flex-1" />
-        <button onClick={() => setOpen((o) => !o)}
+        <button onClick={onToggle}
           className="inline-flex items-center gap-1.5 text-sm text-navy hover:bg-cream rounded-lg px-2.5 py-1.5 transition">
           <RefreshCw size={14} /> Synchronisation
           <ChevronDown size={15} className={cls('transition-transform', open && 'rotate-180')} />

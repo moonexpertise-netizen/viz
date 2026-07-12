@@ -1,10 +1,12 @@
 import { useEffect, useState, useMemo } from 'react';
+import { Plus, Pencil } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { getLinesForExercises } from '../lib/linesStore';
-import { buildPLTree, buildCashRows } from '../lib/mapping';
+import { buildPLTree, buildCashRows, formulaToRPN, evalRPN, plRowOptions, plAnchorOptions } from '../lib/mapping';
 import { buildCashflowFromLines, canRebuildCashflow } from '../lib/cashflowClient';
 import { cls } from '../lib/format';
 import EntryDetailModal from '../components/EntryDetailModal';
+import IndicatorEditor from '../components/IndicatorEditor';
 
 // Range slider thumb styles (can't do with Tailwind)
 const sliderThumbCSS = `
@@ -471,6 +473,14 @@ const fmt = (n, decimals = '0') => {
   return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d }).format(d > 0 ? n : Math.round(n));
 };
 
+// Formatage d'une valeur d'indicateur calculé selon son format (%, €, ratio).
+const fmtIndicator = (raw, format, decimals) => {
+  if (raw === null || raw === undefined || Number.isNaN(raw)) return '—';
+  if (format === 'pct') return `${(raw * 100).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
+  if (format === 'ratio') { const d = decimals ?? 2; return raw.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  return fmt(raw, decimals === 2 ? '2' : '0');
+};
+
 const fmtMonth = (m) => {
   const [y, mo] = m.split('-');
   return `${mo}/${y}`;
@@ -667,8 +677,8 @@ function CategoryRow({ cat, months, expanded, onToggle, onClickMonth, onClickTot
   return (
     <tr className="bg-cream border-l-4 border-l-navy/40 cursor-pointer hover:bg-cream transition" onClick={onToggle}>
       <td className="py-1.5 px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
-        <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}>
-          {cat.accounts.length > 0 ? '\u25B6' : ''}
+        <span className={`inline-block w-5 text-center mr-1 text-gray-300 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}>
+          {cat.accounts.length > 0 ? '\u203A' : ''}
         </span>
         {cat.label}
       </td>
@@ -765,8 +775,8 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
     elements.push(
       <tr key={key} className="bg-cream border-l-4 border-l-navy/40 cursor-pointer hover:bg-cream transition" onClick={() => toggle(key)}>
         <td className="py-1.5 px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: `${12 + depth * 16}px` }}>
-          <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
-            {(node.children || []).length > 0 ? '\u25B6' : ''}
+          <span className={`inline-block w-5 text-center mr-1 text-gray-300 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
+            {(node.children || []).length > 0 ? '\u203A' : ''}
           </span>
           {node.label}
         </td>
@@ -808,8 +818,8 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
     elements.push(
       <tr key={key} className="bg-cream border-l-4 border-sage cursor-pointer hover:bg-cream transition" onClick={() => toggle(key)}>
         <td className="py-1.5 px-3 font-medium text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: `${12 + depth * 16}px` }}>
-          <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
-            {groupAccounts.length > 0 ? '\u25B6' : ''}
+          <span className={`inline-block w-5 text-center mr-1 text-gray-300 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
+            {groupAccounts.length > 0 ? '\u203A' : ''}
           </span>
           {node.label}
         </td>
@@ -912,7 +922,7 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
 }
 
 // P&L Tab
-function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId, decimals = 0, customTree = null, exercises = [], cachedLines = null }) {
+function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId, decimals = 0, customTree = null, exercises = [], cachedLines = null, onAddIndicator = null, onEditIndicator = null }) {
   const [expanded, setExpanded] = useState({});
   const [modal, setModal] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -1122,6 +1132,11 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {customTree && onAddIndicator && (
+            <button onClick={onAddIndicator} className="px-2.5 py-2 text-xs font-medium text-navy border border-gold/50 bg-gold/10 rounded-lg hover:bg-gold/20 flex items-center gap-1 transition">
+              <Plus size={13} /> Indicateur
+            </button>
+          )}
           <button onClick={() => setShowEmpty(!showEmpty)} className="px-2.5 py-2 text-xs text-gray-custom hover:text-gold flex items-center gap-1">
             {showEmpty ? 'Masquer lignes vides' : 'Afficher lignes vides'}
           </button>
@@ -1136,7 +1151,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="border-collapse text-sm">
+        <table className="mv-ptable border-collapse text-sm">
           <thead>
             <tr className="bg-navy text-white text-xs">
               <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-navy z-20 min-w-[160px] sm:min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
@@ -1163,6 +1178,49 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
               if (!showEmpty && (item.type === 'line' || item.type === 'group')) {
                 const isEmpty = cols.every(c => (aggItem?.[c.key] || 0) === 0);
                 if (isEmpty) return null;
+              }
+
+              // Indicateur calculé (ligne de ratio / formule) — style « ligne jaune »
+              if (item.type === 'indicator') {
+                const rows = customTree?.rowsById || {};
+                const rpn = formulaToRPN(item.formula);
+                const colResolver = (col) => (id) => {
+                  const mm = rows[id] || {};
+                  const agg = aggregateValues ? aggregateValues(mm) : mm;
+                  return agg?.[col.key] || 0;
+                };
+                const totalResolver = (id) => {
+                  const mm = rows[id] || {};
+                  const agg = aggregateValues ? aggregateValues(mm) : mm;
+                  return cols.reduce((s, c) => s + (agg?.[c.key] || 0), 0);
+                };
+                const totalRaw = evalRPN(rpn, totalResolver);
+                const tint = (raw) => (raw !== null && raw < 0 ? 'text-accent-red' : 'text-navy');
+                return (
+                  <tr key={`ind_${item.id}`} className="bg-gold-soft border-y border-gold/40 group/ind">
+                    <td className="py-2 px-3 sticky left-0 z-10 bg-gold-soft shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
+                      <span className="inline-block w-5 mr-1" />
+                      <span className="text-sm italic font-medium text-navy">{item.label}</span>
+                      {onEditIndicator && (
+                        <button onClick={() => onEditIndicator(item)} title="Modifier l'indicateur"
+                          className="ml-2 p-0.5 rounded text-gray-custom hover:text-navy opacity-0 group-hover/ind:opacity-100 transition align-middle">
+                          <Pencil size={12} />
+                        </button>
+                      )}
+                    </td>
+                    {cols.map((col) => {
+                      const raw = evalRPN(rpn, colResolver(col));
+                      return (
+                        <td key={col.key} className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] italic font-medium bg-gold-soft ${tint(raw)}`}>
+                          {fmtIndicator(raw, item.format, item.decimals)}
+                        </td>
+                      );
+                    })}
+                    <td className={`py-2 px-3 text-right text-sm tabular-nums whitespace-nowrap min-w-[90px] italic font-semibold bg-gold-soft ${tint(totalRaw)}`}>
+                      {fmtIndicator(totalRaw, item.format, item.decimals)}
+                    </td>
+                  </tr>
+                );
               }
 
               // Group row (custom template) — catégorie avec sous-catégories imbriquées
@@ -1208,7 +1266,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                   <tr key={key} className={`border-b border-sage ${hasContent ? 'cursor-pointer hover:bg-cream transition' : ''}`}
                     onClick={() => hasContent && toggle(key)}>
                     <td className="py-1.5 px-3 sticky left-0 z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
-                      {hasContent && <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 text-xs ${isExpanded ? 'rotate-90' : ''}`}>{'\u25B6'}</span>}
+                      {hasContent && <span className={`inline-block w-5 text-center mr-1 text-gray-300 transition-transform duration-200 text-xs ${isExpanded ? 'rotate-90' : ''}`}>{'\u203A'}</span>}
                       {!hasContent && <span className="inline-block w-5 mr-1" />}
                       <span className="text-sm text-navy">{item.label}</span>
                     </td>
@@ -1239,7 +1297,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                       <tr key={subKey} className={`border-b border-sage/60 bg-cream/60 ${subAccsAll.length ? 'cursor-pointer hover:bg-cream transition' : ''}`}
                         onClick={() => subAccsAll.length && toggle(subKey)}>
                         <td className="py-1 px-3 pl-8 sticky left-0 z-10 bg-cream/60 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
-                          {subAccsAll.length > 0 && <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 text-xs ${subExpanded ? 'rotate-90' : ''}`}>{'\u25B6'}</span>}
+                          {subAccsAll.length > 0 && <span className={`inline-block w-5 text-center mr-1 text-gray-300 transition-transform duration-200 text-xs ${subExpanded ? 'rotate-90' : ''}`}>{'\u203A'}</span>}
                           {subAccsAll.length === 0 && <span className="inline-block w-5 mr-1" />}
                           <span className="text-xs font-medium text-navy">{sub.label}</span>
                         </td>
@@ -1278,7 +1336,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                   <tr key={key} className="bg-cream border-y border-sage cursor-pointer hover:bg-cream transition" onClick={() => hasAccounts && toggle(key)}>
                     <td className="py-2 px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
                       {hasAccounts && (
-                        <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 text-xs ${isExpanded ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+                        <span className={`inline-block w-5 text-center mr-1 text-gray-300 transition-transform duration-200 text-xs ${isExpanded ? 'rotate-90' : ''}`}>{'\u203A'}</span>
                       )}
                       {item.label}
                     </td>
@@ -1403,7 +1461,7 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                 >
                   <td className="py-1.5 px-3 sticky left-0 z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
                     {hasAccounts && (
-                      <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 text-xs ${isExpanded ? 'rotate-90' : ''}`}>{'\u25B6'}</span>
+                      <span className={`inline-block w-5 text-center mr-1 text-gray-300 transition-transform duration-200 text-xs ${isExpanded ? 'rotate-90' : ''}`}>{'\u203A'}</span>
                     )}
                     {!hasAccounts && <span className="inline-block w-5 mr-1" />}
                     <span className="text-sm text-navy">{item.label}</span>
@@ -1758,7 +1816,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="border-collapse text-sm">
+        <table className="mv-ptable border-collapse text-sm">
           <thead>
             <tr className="bg-navy text-white text-xs">
               <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-navy z-20 min-w-[160px] sm:min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">
@@ -1791,8 +1849,8 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
                 <tr key={row.key} className={`${colors.row} ${expandable ? 'cursor-pointer' : ''}`} onClick={() => expandable && toggle(row.key)}>
                   <td className={`py-1.5 px-3 sticky left-0 z-10 whitespace-nowrap ${colors.sticky} ${colors.text} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)]`}>
                     {expandable && hasAccounts(row) && (
-                      <span className={`inline-block w-5 text-center mr-1 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
-                        {'\u25B6'}
+                      <span className={`inline-block w-5 text-center mr-1 text-gray-300 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
+                        {'\u203A'}
                       </span>
                     )}
                     {row.label}
@@ -1880,7 +1938,7 @@ function CashFlowTab({ cashflow, months, columns, aggregateValues, balanceId, cl
   );
 }
 
-export default function MonthlyView({ companyId, data, loading = false, mapping = null }) {
+export default function MonthlyView({ companyId, data, loading = false, mapping = null, onSaveMapping = null }) {
   const clientId = companyId;
   const balanceId = undefined;
   const error = null;
@@ -1947,6 +2005,31 @@ export default function MonthlyView({ companyId, data, loading = false, mapping 
     if (plMode !== 'standard' || !mapping?.pl || !monthly?.accountMonthly) return null;
     return buildPLTree(mapping.pl, normalizeAccounts(monthly.accountMonthly), visibleMonths);
   }, [plMode, mapping, monthly, visibleMonths]);
+
+  // ── Indicateurs calculés (lignes de ratio / formule) ──
+  const [indicatorEdit, setIndicatorEdit] = useState(null); // null | 'new' | indicateur
+  const canIndicators = plMode === 'standard' && !!mapping?.pl && !!onSaveMapping;
+  const indicatorRowOptions = useMemo(() => (mapping?.pl ? plRowOptions(mapping.pl) : []), [mapping]);
+  const indicatorAnchors = useMemo(() => (mapping?.pl ? plAnchorOptions(mapping.pl) : []), [mapping]);
+  // Total (période affichée) d'une ligne, pour l'aperçu de l'éditeur.
+  const indicatorTotalOf = useMemo(() => {
+    const rows = customPLData?.rowsById || {};
+    return (id) => Object.values(rows[id] || {}).reduce((s, v) => s + (v || 0), 0);
+  }, [customPLData]);
+
+  const saveIndicator = (ind) => {
+    if (!onSaveMapping || !mapping?.pl) return;
+    const list = mapping.pl.indicators || [];
+    const nextList = list.some((x) => x.id === ind.id) ? list.map((x) => (x.id === ind.id ? ind : x)) : [...list, ind];
+    onSaveMapping({ ...mapping, pl: { ...mapping.pl, indicators: nextList } });
+    setIndicatorEdit(null);
+  };
+  const deleteIndicator = (id) => {
+    if (!onSaveMapping || !mapping?.pl) return;
+    const nextList = (mapping.pl.indicators || []).filter((x) => x.id !== id);
+    onSaveMapping({ ...mapping, pl: { ...mapping.pl, indicators: nextList } });
+    setIndicatorEdit(null);
+  };
 
   // ── Sélection des journaux de trésorerie (façon Finthesis) ──
   const journalsAll = useMemo(() => {
@@ -2313,7 +2396,8 @@ export default function MonthlyView({ companyId, data, loading = false, mapping 
       <main className="max-w-full mx-auto px-3 sm:px-6 py-4 sm:py-6">
         <div className="card-moon p-3 sm:p-5">
           {activeTab === 'pl' && hasMonthly && (
-            <PLTab monthly={monthly} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} customTree={customPLData} exercises={data?.exercises || []} cachedLines={cachedLines} />
+            <PLTab monthly={monthly} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} customTree={customPLData} exercises={data?.exercises || []} cachedLines={cachedLines}
+              onAddIndicator={canIndicators ? () => setIndicatorEdit('new') : null} onEditIndicator={canIndicators ? (ind) => setIndicatorEdit(ind) : null} />
           )}
           {activeTab === 'cashflow' && hasCashflow && (
             <CashFlowTab cashflow={effectiveCashflow} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} exercises={data?.exercises || []}
@@ -2321,6 +2405,18 @@ export default function MonthlyView({ companyId, data, loading = false, mapping 
           )}
         </div>
       </main>
+
+      {indicatorEdit && (
+        <IndicatorEditor
+          initial={indicatorEdit === 'new' ? null : indicatorEdit}
+          rowOptions={indicatorRowOptions}
+          anchorOptions={indicatorAnchors}
+          valueOfTotal={indicatorTotalOf}
+          onSave={saveIndicator}
+          onDelete={deleteIndicator}
+          onClose={() => setIndicatorEdit(null)}
+        />
+      )}
     </div>
   );
 }

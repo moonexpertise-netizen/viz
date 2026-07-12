@@ -42,8 +42,8 @@ function RatioCard({ rkey, r }) {
       <div className="flex items-center justify-between text-xs mt-2.5">
         <span className="text-gray-custom">N-1 : <span className="tabular-nums text-navy">{fmtNum(r.ratioN1)}{meta.suffix}</span></span>
         {Number.isFinite(delta) && delta !== 0 && (
-          <span className={cls('font-semibold', improving ? 'badge-up' : 'badge-down')}>
-            {delta > 0 ? '▲' : '▼'} {fmtNum(Math.abs(delta))}{meta.suffix}
+          <span className={cls('font-medium', improving ? 'badge-up' : 'badge-down')}>
+            <span className="text-[9px] align-middle">{delta > 0 ? '▲' : '▼'}</span> {fmtNum(Math.abs(delta))}{meta.suffix}
           </span>
         )}
       </div>

@@ -39,7 +39,7 @@ export function StatCard({ label, value, accent, deltaPct, sub }) {
       <p className={cls('text-xl sm:text-2xl font-bold mt-1.5 tabular-nums break-words',
         accent === 'neg' ? 'text-accent-red' : accent === 'pos' ? 'text-accent-green' : 'text-navy')}>{value}</p>
       <div className="flex items-center gap-2 mt-1.5 min-h-[18px]">
-        {hasDelta && <span className={cls('text-xs font-semibold', up ? 'badge-up' : 'badge-down')}>{up ? '▲' : '▼'} {fmtPct(Math.abs(deltaPct))}</span>}
+        {hasDelta && <span className={cls('text-xs font-medium', up ? 'badge-up' : 'badge-down')}><span className="text-[9px] align-middle">{up ? '▲' : '▼'}</span> {fmtPct(Math.abs(deltaPct))}</span>}
         {sub && <span className="text-xs text-gray-custom truncate">{sub}</span>}
       </div>
     </div>

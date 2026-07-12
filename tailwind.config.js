@@ -9,6 +9,7 @@ export default {
         navy: 'rgb(var(--navy-rgb) / <alpha-value>)',
         sage: 'rgb(var(--sage-rgb) / <alpha-value>)',
         cream: 'rgb(var(--cream-rgb) / <alpha-value>)',
+        gold: 'rgb(var(--gold-rgb) / <alpha-value>)',
       },
     },
   },
