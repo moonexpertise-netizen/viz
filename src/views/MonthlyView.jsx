@@ -1,8 +1,9 @@
-import { useEffect, useState, useMemo } from 'react';
-import { Plus, Pencil } from 'lucide-react';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { Plus, Pencil, Copy, GripVertical } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { getLinesForExercises } from '../lib/linesStore';
-import { buildPLTree, buildCashRows, formulaToRPN, evalRPN, plRowOptions, plAnchorOptions } from '../lib/mapping';
+import { buildPLTree, buildCashRows, formulaToRPN, evalRPN, plRowOptions, plAnchorOptions, newId } from '../lib/mapping';
 import { buildCashflowFromLines, canRebuildCashflow } from '../lib/cashflowClient';
 import { cls } from '../lib/format';
 import EntryDetailModal from '../components/EntryDetailModal';
@@ -922,11 +923,29 @@ function renderCustomTreeNodes(node, months, decimals, accountMonthly, expanded,
 }
 
 // P&L Tab
-function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId, decimals = 0, customTree = null, exercises = [], cachedLines = null, onAddIndicator = null, onEditIndicator = null }) {
+function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId, decimals = 0, customTree = null, exercises = [], cachedLines = null, onAddIndicator = null, onEditIndicator = null, onMoveIndicator = null, onDuplicateIndicator = null }) {
   const [expanded, setExpanded] = useState({});
   const [modal, setModal] = useState(null);
   const [copied, setCopied] = useState(false);
   const [showEmpty, setShowEmpty] = useState(false);
+
+  // ── Glisser-déposer d'une ligne indicateur (repositionnement) ──
+  const [indDrag, setIndDrag] = useState(null);   // indicateur en cours de glisser
+  const [indGhost, setIndGhost] = useState(null); // { x, y }
+  const [indHi, setIndHi] = useState(null);        // id de la rubrique/total ciblée
+  const indPd = useRef(null); const indItem = useRef(null); const indDrop = useRef(null);
+  const indLast = useRef({ x: 0, y: 0 }); const indVel = useRef(0); const indRaf = useRef(0);
+  const indStopScroll = () => { if (indRaf.current) cancelAnimationFrame(indRaf.current); indRaf.current = 0; indVel.current = 0; };
+  const indUpdateDrop = (x, y) => { const el = document.elementFromPoint(x, y); const row = el && el.closest('[data-anchor]'); const id = row?.getAttribute('data-anchor') || null; indDrop.current = id; setIndHi(id); };
+  const indTick = () => { if (!indItem.current || !indVel.current) { indRaf.current = 0; return; } window.scrollBy(0, indVel.current); indUpdateDrop(indLast.current.x, indLast.current.y); indRaf.current = requestAnimationFrame(indTick); };
+  const indAutoScroll = (y) => { const EDGE = 100, MAX = 22, h = window.innerHeight; let v = 0; if (y < EDGE) v = -Math.ceil(((EDGE - y) / EDGE) * MAX); else if (y > h - EDGE) v = Math.ceil(((y - (h - EDGE)) / EDGE) * MAX); indVel.current = v; if (v && !indRaf.current) indRaf.current = requestAnimationFrame(indTick); };
+  const indClear = () => { indStopScroll(); indPd.current = null; indItem.current = null; indDrop.current = null; setIndDrag(null); setIndGhost(null); setIndHi(null); };
+  const indGrip = (indicator) => ({
+    onPointerDown: (e) => { if (e.button !== 0) return; if (e.target.closest('button')) return; e.preventDefault(); indPd.current = { x: e.clientX, y: e.clientY, active: false, pid: e.pointerId }; try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* noop */ } },
+    onPointerMove: (e) => { const s = indPd.current; if (!s) return; if (!s.active) { if (Math.abs(e.clientX - s.x) + Math.abs(e.clientY - s.y) < 6) return; s.active = true; indItem.current = indicator; setIndDrag(indicator); } indLast.current = { x: e.clientX, y: e.clientY }; setIndGhost({ x: e.clientX, y: e.clientY }); indUpdateDrop(e.clientX, e.clientY); indAutoScroll(e.clientY); },
+    onPointerUp: (e) => { const s = indPd.current; try { e.currentTarget.releasePointerCapture(s?.pid); } catch { /* noop */ } if (s && s.active && indDrop.current && onMoveIndicator) onMoveIndicator(indicator.id, indDrop.current); indClear(); },
+    onPointerCancel: indClear,
+  });
 
   const accountMonthly = normalizeAccounts(monthly.accountMonthly || {});
 
@@ -1196,14 +1215,24 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                 };
                 const totalRaw = evalRPN(rpn, totalResolver);
                 const tint = (raw) => (raw !== null && raw < 0 ? 'text-accent-red' : 'text-navy');
+                const dragging = indDrag?.id === item.id;
                 return (
-                  <tr key={`ind_${item.id}`} className="bg-gold-soft border-y border-gold/40 group/ind">
+                  <tr key={`ind_${item.id}`} {...(onMoveIndicator ? indGrip(item) : {})}
+                    className={`bg-gold-soft border-y border-gold/40 group/ind touch-none ${onMoveIndicator ? 'cursor-grab active:cursor-grabbing' : ''} ${dragging ? 'opacity-50' : ''}`}>
                     <td className="py-2 px-3 sticky left-0 z-10 bg-gold-soft shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
-                      <span className="inline-block w-5 mr-1" />
+                      {onMoveIndicator
+                        ? <GripVertical size={12} className="inline-block mr-1 text-gray-custom/50 group-hover/ind:text-gray-custom align-middle" />
+                        : <span className="inline-block w-5 mr-1" />}
                       <span className="text-sm italic font-medium text-navy">{item.label}</span>
+                      {onDuplicateIndicator && (
+                        <button onClick={() => onDuplicateIndicator(item.id)} title="Dupliquer l'indicateur"
+                          className="ml-2 p-0.5 rounded text-gray-custom hover:text-navy opacity-0 group-hover/ind:opacity-100 transition align-middle">
+                          <Copy size={12} />
+                        </button>
+                      )}
                       {onEditIndicator && (
                         <button onClick={() => onEditIndicator(item)} title="Modifier l'indicateur"
-                          className="ml-2 p-0.5 rounded text-gray-custom hover:text-navy opacity-0 group-hover/ind:opacity-100 transition align-middle">
+                          className="ml-1 p-0.5 rounded text-gray-custom hover:text-navy opacity-0 group-hover/ind:opacity-100 transition align-middle">
                           <Pencil size={12} />
                         </button>
                       )}
@@ -1263,7 +1292,8 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
                 };
 
                 return [
-                  <tr key={key} className={`border-b border-sage ${hasContent ? 'cursor-pointer hover:bg-cream transition' : ''}`}
+                  <tr key={key} data-anchor={item.id || item.key}
+                    className={`border-b border-sage ${hasContent ? 'cursor-pointer hover:bg-cream transition' : ''} ${indHi === (item.id || item.key) ? 'shadow-[inset_0_-3px_0_0_rgb(var(--gold-rgb))]' : ''}`}
                     onClick={() => hasContent && toggle(key)}>
                     <td className="py-1.5 px-3 sticky left-0 z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
                       {hasContent && <span className={`inline-block w-5 text-center mr-1 text-gray-300 transition-transform duration-200 text-xs ${isExpanded ? 'rotate-90' : ''}`}>{'\u203A'}</span>}
@@ -1426,7 +1456,8 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
               if (item.type === 'subtotal') {
                 const accs = getSubtotalAccounts(item);
                 return (
-                  <tr key={item.key} className="bg-cream border-y border-sage">
+                  <tr key={item.key} data-anchor={item.id || item.key}
+                    className={`bg-cream border-y border-sage ${indHi === (item.id || item.key) ? 'shadow-[inset_0_-3px_0_0_rgb(var(--gold-rgb))]' : ''}`}>
                     <td className="py-2 px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
                       {item.label}
                     </td>
@@ -1561,6 +1592,12 @@ function PLTab({ monthly, months, columns, aggregateValues, balanceId, clientId,
           cachedLines={cachedLines}
           onClose={() => setModal(null)}
         />
+      )}
+
+      {/* Fantôme de glisser d'un indicateur (porté dans body pour échapper aux transforms) */}
+      {indDrag && indGhost && createPortal(
+        <div className="fixed z-[100] pointer-events-none px-2.5 py-1 rounded-lg bg-navy text-white text-xs font-medium shadow-lg max-w-[240px] truncate" style={{ left: indGhost.x + 14, top: indGhost.y + 10 }}>{indDrag.label}</div>,
+        document.body,
       )}
     </>
   );
@@ -2030,6 +2067,21 @@ export default function MonthlyView({ companyId, data, loading = false, mapping 
     onSaveMapping({ ...mapping, pl: { ...mapping.pl, indicators: nextList } });
     setIndicatorEdit(null);
   };
+  // Repositionner un indicateur : il s'insère juste après la rubrique/total `afterId`.
+  const moveIndicator = (id, afterId) => {
+    if (!onSaveMapping || !mapping?.pl) return;
+    const list = (mapping.pl.indicators || []).map((x) => (x.id === id ? { ...x, after: afterId } : x));
+    onSaveMapping({ ...mapping, pl: { ...mapping.pl, indicators: list } });
+  };
+  // Dupliquer un indicateur (copie placée juste après l'original).
+  const duplicateIndicator = (id) => {
+    if (!onSaveMapping || !mapping?.pl) return;
+    const list = mapping.pl.indicators || [];
+    const idx = list.findIndex((x) => x.id === id); if (idx < 0) return;
+    const copy = { ...list[idx], id: newId(), label: `${list[idx].label} (copie)` };
+    const nextList = [...list.slice(0, idx + 1), copy, ...list.slice(idx + 1)];
+    onSaveMapping({ ...mapping, pl: { ...mapping.pl, indicators: nextList } });
+  };
 
   // ── Sélection des journaux de trésorerie (façon Finthesis) ──
   const journalsAll = useMemo(() => {
@@ -2397,7 +2449,8 @@ export default function MonthlyView({ companyId, data, loading = false, mapping 
         <div className="card-moon p-3 sm:p-5">
           {activeTab === 'pl' && hasMonthly && (
             <PLTab monthly={monthly} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} customTree={customPLData} exercises={data?.exercises || []} cachedLines={cachedLines}
-              onAddIndicator={canIndicators ? () => setIndicatorEdit('new') : null} onEditIndicator={canIndicators ? (ind) => setIndicatorEdit(ind) : null} />
+              onAddIndicator={canIndicators ? () => setIndicatorEdit('new') : null} onEditIndicator={canIndicators ? (ind) => setIndicatorEdit(ind) : null}
+              onMoveIndicator={canIndicators ? moveIndicator : null} onDuplicateIndicator={canIndicators ? duplicateIndicator : null} />
           )}
           {activeTab === 'cashflow' && hasCashflow && (
             <CashFlowTab cashflow={effectiveCashflow} months={visibleMonths} columns={displayColumns} aggregateValues={aggregateValues} balanceId={effectiveBalanceId} clientId={isClientMode ? clientId : undefined} decimals={decimals} exercises={data?.exercises || []}
