@@ -37,6 +37,9 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
   const pd = useRef(null);        // saisie en attente { item, x, y, active, pid }
   const dragItem = useRef(null);  // item actif (accès stable dans les handlers)
   const dropRef = useRef(null);   // commande de dépôt calculée [action, a, b]
+  const lastPt = useRef({ x: 0, y: 0 }); // dernière position pointeur (pour l'auto-scroll)
+  const scrollVel = useRef(0);    // vitesse d'auto-scroll (px/frame)
+  const rafRef = useRef(0);       // id d'animation de l'auto-scroll
 
   const plan = work[tab];
   const accounts = tab === 'pl' ? accountsPL : accountsCash;
@@ -172,7 +175,25 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
     else if (action === 'moveNode') { moveNodeBefore(item.id, a); }
   };
 
-  const clearDrag = () => { pd.current = null; dragItem.current = null; dropRef.current = null; setDrag(null); setGhost(null); setHi(null); setLine(null); };
+  // Auto-scroll : la page remonte/descend quand le pointeur approche d'un bord
+  // pendant un glisser, même curseur immobile (boucle d'animation dédiée).
+  const stopAutoScroll = () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); rafRef.current = 0; scrollVel.current = 0; };
+  const autoScrollTick = () => {
+    if (!dragItem.current || !scrollVel.current) { rafRef.current = 0; return; }
+    window.scrollBy(0, scrollVel.current);
+    updateDrop(lastPt.current.x, lastPt.current.y); // recalcule la cible sous le pointeur
+    rafRef.current = requestAnimationFrame(autoScrollTick);
+  };
+  const updateAutoScroll = (y) => {
+    const EDGE = 100, MAX = 22, h = window.innerHeight;
+    let v = 0;
+    if (y < EDGE) v = -Math.ceil(((EDGE - y) / EDGE) * MAX);
+    else if (y > h - EDGE) v = Math.ceil(((y - (h - EDGE)) / EDGE) * MAX);
+    scrollVel.current = v;
+    if (v && !rafRef.current) rafRef.current = requestAnimationFrame(autoScrollTick);
+  };
+
+  const clearDrag = () => { stopAutoScroll(); pd.current = null; dragItem.current = null; dropRef.current = null; setDrag(null); setGhost(null); setHi(null); setLine(null); };
 
   /* Handlers pointeur d'une ligne saisissable */
   const grip = (item) => ({
@@ -189,8 +210,10 @@ export default function MappingEditor({ mapping, accountsPL = [], accountsCash =
         if (Math.abs(e.clientX - s.x) + Math.abs(e.clientY - s.y) < 6) return;
         s.active = true; dragItem.current = item; setDrag(item);
       }
+      lastPt.current = { x: e.clientX, y: e.clientY };
       setGhost({ x: e.clientX, y: e.clientY });
       updateDrop(e.clientX, e.clientY);
+      updateAutoScroll(e.clientY);
     },
     onPointerUp: (e) => {
       const s = pd.current;
