@@ -39,52 +39,69 @@ const copyToClipboard = (headers, rows) => {
   return navigator.clipboard.writeText(text);
 };
 
+const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// Fond effectif d'une cellule (sinon celui de la ligne/entête : le navy est sur le <tr>).
+const effBg = (el) => {
+  let n = el;
+  while (n && n.tagName !== 'TABLE') {
+    const bg = getComputedStyle(n).backgroundColor;
+    if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg;
+    n = n.parentElement;
+  }
+  return '';
+};
+
+// Texte affiché d'une cellule, sans icônes/chevrons, avec l'espace numéro↔libellé.
+const cellDisplayText = (cell) => {
+  const c = cell.cloneNode(true);
+  c.querySelectorAll('svg,button').forEach((e) => e.remove());
+  c.querySelectorAll('span').forEach((s) => { const t = s.textContent.trim(); if (t === '' || t === '›') s.remove(); });
+  c.querySelectorAll('[class*="mr-"]').forEach((s) => s.insertAdjacentText('afterend', ' '));
+  return c.textContent.replace(/\s+/g, ' ').trim();
+};
+
+// Détecte un nombre (fr) et renvoie sa valeur brute (virgule décimale, sans
+// séparateur de milliers) + le format Excel — pour de VRAIS nombres au collage.
+const excelNum = (t) => {
+  const m = (t || '').trim().match(/^([\u2212-]?)\s*(\d[\d\s]*(?:,\d+)?)\s*\u20ac?$/);
+  if (!m) return null;
+  const body = m[2].replace(/\s/g, ''); // enlève les séparateurs de milliers
+  const fr = (m[1] ? '-' : '') + body;
+  return { fr, fmt: body.includes(',') ? '\\#\\,\\#\\#0.00' : '\\#\\,\\#\\#0' };
+};
+
 /**
  * Copie le tableau rendu AVEC sa mise en forme (couleurs, gras, alignements,
- * bordeaux des négatifs…) : on clone le <table> à l'écran, on fige les styles
- * calculés en inline (seuls styles compris par Excel), et on écrit du HTML dans
- * le presse-papier. Repli texte tabulé si l'API riche n'est pas dispo.
+ * négatifs…) ET de vrais nombres (format Excel `mso-number-format`), en
+ * construisant le HTML à la main (le parseur CSS du navigateur supprimerait
+ * `mso-number-format` s'il passait par le DOM). Repli texte tabulé sinon.
  */
 async function copyStyledTable(tableEl, headers = [], rows = []) {
   const text = [headers.join('\t'), ...rows.map(r => r.map(c => String(c ?? '')).join('\t'))].join('\n');
   let html = '';
   if (tableEl) {
-    const clone = tableEl.cloneNode(true);
-    const oCells = tableEl.querySelectorAll('th,td');
-    const cCells = clone.querySelectorAll('th,td');
-    // Fond effectif : celui de la cellule, sinon celui de la ligne/entête (les
-    // en-têtes de mois portent le fond navy sur le <tr>, pas sur le <th>).
-    const effBg = (el) => {
-      let n = el;
-      while (n && n.tagName !== 'TABLE') {
-        const bg = getComputedStyle(n).backgroundColor;
-        if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg;
-        n = n.parentElement;
-      }
-      return '';
-    };
-    cCells.forEach((c, i) => {
-      const o = oCells[i];
-      let style = 'border:1px solid #e2e2e2;padding:4px 10px;white-space:nowrap;';
-      if (o) {
-        const cs = getComputedStyle(o);
-        for (const p of ['color', 'font-weight', 'font-style', 'text-align']) {
-          const v = cs.getPropertyValue(p);
-          if (v) style += `${p}:${v};`;
+    const trHtml = [];
+    for (const tr of tableEl.querySelectorAll('tr')) {
+      const cellsHtml = [];
+      for (const cell of tr.querySelectorAll('th,td')) {
+        const cs = getComputedStyle(cell);
+        let style = 'border:1px solid #e2e2e2;padding:4px 10px;white-space:nowrap;';
+        for (const p of ['color', 'font-weight', 'font-style', 'text-align']) { const v = cs.getPropertyValue(p); if (v) style += `${p}:${v};`; }
+        const bg = effBg(cell); if (bg) style += `background-color:${bg};`;
+        const disp = cellDisplayText(cell);
+        const num = cell.tagName === 'TD' ? excelNum(disp) : null;
+        const tag = cell.tagName.toLowerCase();
+        if (num) {
+          style += `mso-number-format:'${num.fmt}';`;
+          cellsHtml.push(`<${tag} style="${style}">${escHtml(num.fr)}</${tag}>`);
+        } else {
+          cellsHtml.push(`<${tag} style="${style}">${escHtml(disp)}</${tag}>`);
         }
-        const bg = effBg(o);
-        if (bg) style += `background-color:${bg};`;
       }
-      c.setAttribute('style', style);
-    });
-    // Enlève icônes, boutons et chevrons décoratifs.
-    clone.querySelectorAll('svg, button').forEach(el => el.remove());
-    clone.querySelectorAll('span').forEach(s => { const t = s.textContent.trim(); if (t === '' || t === '›') s.remove(); });
-    // Espace entre éléments accolés à marge droite (ex. numéro de compte « 706 » + libellé).
-    clone.querySelectorAll('td [class*="mr-"], th [class*="mr-"]').forEach(s => { s.insertAdjacentText('afterend', ' '); });
-    clone.querySelectorAll('[class]').forEach(el => el.removeAttribute('class'));
-    clone.querySelectorAll('[data-anchor]').forEach(el => el.removeAttribute('data-anchor'));
-    html = `<table style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:12px">${clone.innerHTML}</table>`;
+      trHtml.push(`<tr>${cellsHtml.join('')}</tr>`);
+    }
+    html = `<table style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:12px"><tbody>${trHtml.join('')}</tbody></table>`;
   }
   try {
     if (html && typeof window !== 'undefined' && window.ClipboardItem) {

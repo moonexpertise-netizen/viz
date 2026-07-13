@@ -1,32 +1,55 @@
 import { useEffect, useState, useMemo } from 'react';
 import { dataAPI } from '../services/api';
+import { exportEntriesXlsx } from '../lib/xlsxExport';
 
-// Copy table data to clipboard as tab-separated text
-const copyToClipboard = (headers, rows) => {
-  const headerLine = headers.join('\t');
-  const dataLines = rows.map(r => r.join('\t'));
-  const text = [headerLine, ...dataLines].join('\n');
-  return navigator.clipboard.writeText(text);
-};
+const escHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// Nombre fran\u00E7ais brut (virgule d\u00E9cimale, sans s\u00E9parateur de milliers) : Excel le
+// lit comme un VRAI nombre gr\u00E2ce \u00E0 mso-number-format.
+const frNum = (n) => (n == null || n === '' ? '' : Number(n).toFixed(2).replace('.', ','));
+const MSO2 = "\\#\\,\\#\\#0.00"; // format \u00AB 1 234,56 \u00BB
 
-// Download as CSV (semicolon-separated for French Excel)
-const downloadCSV = (headers, rows, filename) => {
-  const BOM = '\uFEFF';
-  const sep = ';';
-  const headerLine = headers.join(sep);
-  const dataLines = rows.map(r => r.map(cell => {
-    const s = String(cell ?? '');
-    return s.includes(sep) || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-  }).join(sep));
-  const csv = BOM + [headerLine, ...dataLines].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-};
+/**
+ * Copie le d\u00E9tail des \u00E9critures AVEC mise en forme et de VRAIS nombres pour Excel.
+ * On construit le HTML \u00E0 la main (le DOM supprimerait mso-number-format) et on
+ * ajoute un repli texte tabul\u00E9 (chiffres bruts) pour les cibles sans HTML.
+ */
+async function copyEntriesStyled(entries, totals) {
+  const NAVY = '#01071b', CREAM = '#f6f1e9', GRAY = '#6b7280', INK = '#1b1b1f', NEG = '#5c1717', GRID = '#e2e2e2';
+  const th = (t, align) => `<th style="background:${NAVY};color:#fff;font-weight:bold;border:1px solid ${GRID};padding:4px 8px;text-align:${align}">${escHtml(t)}</th>`;
+  const num = (n, bold) => {
+    const neg = Number(n) < 0;
+    const col = neg ? NEG : INK;
+    const inner = n === '' || n == null ? '' : frNum(n);
+    return `<td style="border:1px solid ${GRID};padding:4px 8px;text-align:right;color:${col};${bold ? 'font-weight:bold;' : ''}mso-number-format:'${MSO2}'">${inner}</td>`;
+  };
+  const txt = (t, align, color) => `<td style="border:1px solid ${GRID};padding:4px 8px;text-align:${align || 'left'};color:${color || INK}">${escHtml(t)}</td>`;
+
+  const rowsHtml = entries.map((e, i) => {
+    const bg = i % 2 === 1 ? CREAM : '#ffffff';
+    return `<tr style="background:${bg}">${txt(e.date || '', 'left', GRAY)}${txt(e.label || '', 'left')}${num(e.debit || '')}${num(e.credit || '')}${num(e.solde, true)}${txt(e.journalCode || '', 'center', GRAY)}</tr>`;
+  }).join('');
+  const totalRow = `<tr style="background:${NAVY};color:#fff"><td style="border:1px solid ${GRID};padding:4px 8px;font-weight:bold;color:#fff">Total</td><td style="border:1px solid ${GRID}"></td>` +
+    `<td style="border:1px solid ${GRID};padding:4px 8px;text-align:right;font-weight:bold;color:#fff;mso-number-format:'${MSO2}'">${frNum(totals.debit)}</td>` +
+    `<td style="border:1px solid ${GRID};padding:4px 8px;text-align:right;font-weight:bold;color:#fff;mso-number-format:'${MSO2}'">${frNum(totals.credit)}</td>` +
+    `<td style="border:1px solid ${GRID};padding:4px 8px;text-align:right;font-weight:bold;color:#fff;mso-number-format:'${MSO2}'">${frNum(totals.solde)}</td>` +
+    `<td style="border:1px solid ${GRID}"></td></tr>`;
+  const html = `<table style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:12px"><thead><tr>${th('Date', 'left')}${th('Libell\u00E9', 'left')}${th('D\u00E9bit', 'right')}${th('Cr\u00E9dit', 'right')}${th('Solde', 'right')}${th('Journal', 'center')}</tr></thead><tbody>${rowsHtml}${totalRow}</tbody></table>`;
+
+  // Repli texte : chiffres bruts (TSV, virgule d\u00E9cimale) qu'Excel parse aussi.
+  const lines = [['Date', 'Libell\u00E9', 'D\u00E9bit', 'Cr\u00E9dit', 'Solde', 'Journal'].join('\t')];
+  entries.forEach((e) => lines.push([e.date || '', e.label || '', frNum(e.debit || ''), frNum(e.credit || ''), frNum(e.solde), e.journalCode || ''].join('\t')));
+  lines.push(['Total', '', frNum(totals.debit), frNum(totals.credit), frNum(totals.solde), ''].join('\t'));
+  const text = lines.join('\n');
+
+  try {
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([html], { type: 'text/html' }),
+      'text/plain': new Blob([text], { type: 'text/plain' }),
+    })]);
+  } catch {
+    await navigator.clipboard.writeText(text);
+  }
+}
 
 const fmtAmt = (n) => {
   if (!n) return '-';
@@ -281,18 +304,20 @@ export default function EntryDetailModal({ balanceId, clientId, accountNumber, a
             {filteredAndSorted.length > 0 && (
               <div className="flex items-center gap-2">
                 <button onClick={() => {
-                  const headers = ['Date', 'Libelle', 'Debit', 'Credit', 'Solde', 'Journal'];
-                  const rows = entriesWithSolde.map(e => [e.date || '', e.label || '', e.debit || 0, e.credit || 0, e.solde || 0, e.journalCode || '']);
-                  copyToClipboard(headers, rows).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+                  copyEntriesStyled(entriesWithSolde, { debit: totalDebit, credit: totalCredit, solde: totalDebit - totalCredit })
+                    .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
                 }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 bg-white border border-sage rounded-lg hover:bg-cream transition shadow-sm focus:outline-none focus:ring-2 focus:ring-navy">
                   {copied ? <><svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Copie</> : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg> Copier</>}
                 </button>
                 <button onClick={() => {
-                  const headers = ['Date', 'Libelle', 'Debit', 'Credit', 'Solde', 'Journal'];
-                  const rows = entriesWithSolde.map(e => [e.date || '', e.label || '', e.debit || 0, e.credit || 0, e.solde || 0, e.journalCode || '']);
-                  downloadCSV(headers, rows, `ecritures_${accountNumber}.csv`);
+                  exportEntriesXlsx({
+                    title: accountNumber && accountNumber.includes(',') ? 'Écritures' : `Compte ${accountNumber}`,
+                    accountLabel: accountLabel || '',
+                    periodLabel,
+                    entries: entriesWithSolde,
+                  });
                 }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 bg-white border border-sage rounded-lg hover:bg-cream transition shadow-sm focus:outline-none focus:ring-2 focus:ring-navy">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> CSV
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> Excel
                 </button>
               </div>
             )}

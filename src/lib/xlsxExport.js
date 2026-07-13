@@ -316,6 +316,108 @@ export async function exportCashflowXlsx({ title = 'Trésorerie', rows = [], col
   await downloadWorkbook(wb, title);
 }
 
+/**
+ * Export Excel du détail des écritures (drill-down d'un compte).
+ * Table plate : Date · Libellé · Débit · Crédit · Solde · Journal, avec des
+ * VRAIS nombres (2 décimales), le solde cumulé en formule, dates réelles, et une
+ * ligne de totaux. Mise en forme cohérente avec le reste (en-tête navy, etc.).
+ * @param {Object} p  title, accountLabel, periodLabel, entries [{date,label,debit,credit,solde,journalCode}]
+ */
+export async function exportEntriesXlsx({ title = 'Écritures', accountLabel = '', periodLabel = '', entries = [] }) {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'MoonViz';
+  const ws = wb.addWorksheet('Écritures');
+  ws.views = [{ state: 'frozen', ySplit: 1 }];
+  const NUM2 = '#,##0.00';
+  ws.getColumn(1).width = 12;  // Date
+  ws.getColumn(2).width = 52;  // Libellé
+  ws.getColumn(3).width = 14;  // Débit
+  ws.getColumn(4).width = 14;  // Crédit
+  ws.getColumn(5).width = 15;  // Solde
+  ws.getColumn(6).width = 11;  // Journal
+
+  // En-tête
+  const head = ws.getRow(1);
+  ['Date', 'Libellé', 'Débit', 'Crédit', 'Solde', 'Journal'].forEach((h, i) => {
+    const cell = head.getCell(i + 1);
+    cell.value = h;
+    cell.fill = fillOf(ARGB.navy);
+    cell.font = { color: { argb: ARGB.white }, bold: true, size: 10 };
+    cell.alignment = { horizontal: i >= 2 && i <= 4 ? 'right' : i === 5 ? 'center' : 'left', vertical: 'middle' };
+    cell.border = BORDER;
+  });
+  head.height = 20;
+
+  // Convertit « JJ/MM/AAAA » en Date réelle (sinon renvoie la chaîne telle quelle).
+  const toDate = (s) => {
+    const m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    return m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : (s || '');
+  };
+
+  let totDebit = 0, totCredit = 0;
+  entries.forEach((e, i) => {
+    const r = ws.getRow(i + 2);
+    const zebra = i % 2 === 1 ? ARGB.cream : ARGB.white;
+    totDebit += e.debit || 0; totCredit += e.credit || 0;
+
+    const dc = r.getCell(1);
+    dc.value = toDate(e.date);
+    if (dc.value instanceof Date) dc.numFmt = 'dd/mm/yyyy';
+    dc.font = { size: 10, color: { argb: ARGB.gray } };
+    dc.alignment = { horizontal: 'left' };
+    dc.fill = fillOf(zebra); dc.border = BORDER;
+
+    const lc = r.getCell(2);
+    lc.value = e.label || '';
+    lc.font = { size: 10, color: { argb: ARGB.ink } };
+    lc.alignment = { horizontal: 'left', wrapText: false };
+    lc.fill = fillOf(zebra); lc.border = BORDER;
+
+    // Débit / Crédit : vrais nombres, cellule vide si zéro (comme le « - » du site).
+    const dbc = r.getCell(3);
+    if (e.debit) dbc.value = e.debit;
+    styleNum(dbc, false, { fmt: NUM2, fill: zebra });
+    const crc = r.getCell(4);
+    if (e.credit) crc.value = e.credit;
+    styleNum(crc, false, { fmt: NUM2, fill: zebra });
+
+    // Solde cumulé : formule vivante (solde précédent + débit − crédit).
+    const sc = r.getCell(5);
+    sc.value = i === 0 ? { formula: `C2-D2` } : { formula: `E${i + 1}+C${i + 2}-D${i + 2}` };
+    styleNum(sc, (e.solde || 0) < 0, { fmt: NUM2, fill: zebra, bold: true });
+
+    const jc = r.getCell(6);
+    jc.value = e.journalCode || '';
+    jc.font = { size: 9, color: { argb: ARGB.gray } };
+    jc.alignment = { horizontal: 'center' };
+    jc.fill = fillOf(zebra); jc.border = BORDER;
+  });
+
+  // Ligne de totaux
+  const n = entries.length;
+  const tr = ws.getRow(n + 2);
+  const tl = tr.getCell(1);
+  tl.value = 'Total';
+  tl.font = { bold: true, size: 10, color: { argb: ARGB.white } };
+  tl.fill = fillOf(ARGB.navy); tl.border = BORDER; tl.alignment = { horizontal: 'left' };
+  const emptyLabel = tr.getCell(2);
+  emptyLabel.fill = fillOf(ARGB.navy); emptyLabel.border = BORDER;
+  const td = tr.getCell(3);
+  td.value = n ? { formula: `SUM(C2:C${n + 1})` } : 0;
+  styleNum(td, false, { fmt: NUM2, fill: ARGB.navy, bold: true, color: ARGB.white });
+  const tc = tr.getCell(4);
+  tc.value = n ? { formula: `SUM(D2:D${n + 1})` } : 0;
+  styleNum(tc, false, { fmt: NUM2, fill: ARGB.navy, bold: true, color: ARGB.white });
+  const ts = tr.getCell(5);
+  ts.value = n ? { formula: `C${n + 2}-D${n + 2}` } : 0;
+  styleNum(ts, (totDebit - totCredit) < 0, { fmt: NUM2, fill: ARGB.navy, bold: true, color: ARGB.white });
+  const tj = tr.getCell(6);
+  tj.fill = fillOf(ARGB.navy); tj.border = BORDER;
+
+  const fname = [title, accountLabel, periodLabel].filter(Boolean).join(' ');
+  await downloadWorkbook(wb, fname);
+}
+
 /** Traduit les tokens d'un indicateur en formule Excel pour une colonne donnée.
  *  Format % : on affiche un ratio (mb/ca) que le format de cellule met en %. */
 function excelFormulaFromTokens(formula, colL, nodeRow, format) {
