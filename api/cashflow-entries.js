@@ -1,4 +1,4 @@
-import { requireAuth, sendError } from './_lib/auth.js';
+import { requireAuth, requireCompanyId, sendError } from './_lib/auth.js';
 import { getJournals, getTrialBalance } from './_lib/pennylane.js';
 import { cashflowEntriesNorm, endOfMonth } from './_lib/entriesEngine.js';
 import { getNormalizedLines } from './_lib/ledgerCache.js';
@@ -16,6 +16,7 @@ export default async function handler(req, res) {
     res.status(400).json({ error: 'company_id et category requis' });
     return;
   }
+  if (!requireCompanyId(res, cid)) return;
   const ps = from ? `${from}-01` : '1900-01-01';
   const pe = to ? endOfMonth(to) : '2999-12-31';
 

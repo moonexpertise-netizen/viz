@@ -1,4 +1,4 @@
-import { requireAuth, sendError } from './_lib/auth.js';
+import { requireAuth, requireCompanyId, sendError } from './_lib/auth.js';
 import { getJournals, getTrialBalance, getFiscalYears } from './_lib/pennylane.js';
 import { getTrialBalanceWithAN, needsSimulatedAN, buildSyntheticAN, prevFyOf } from './_lib/anSimulation.js';
 import { linesToMonthly, calculateMonthlyPL, calculateMonthlyCashFlow, isCashAccount } from './_lib/monthlyEngine.js';
@@ -16,6 +16,7 @@ export default async function handler(req, res) {
     res.status(400).json({ error: 'company_id, period_start et period_end requis' });
     return;
   }
+  if (!requireCompanyId(res, cid)) return;
 
   try {
     const [journals, tb, tbAux, fys] = await Promise.all([

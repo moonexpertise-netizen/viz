@@ -1,4 +1,4 @@
-import { requireAuth } from './_lib/auth.js';
+import { requireAuth, validCompanyId, validFyId } from './_lib/auth.js';
 import { kvEnabled, kvGet, kvSet, kvDel, kvSAdd, kvSRem, kvSMembers } from './_lib/account.js';
 
 /**
@@ -23,6 +23,9 @@ export default async function handler(req, res) {
   const company = String(req.query.company_id || req.query.companyId || '');
   const kind = String(req.query.kind || (typeof req.body === 'object' && req.body?.kind) || '');
 
+  // Les identifiants servent de clés KV : on refuse tout format inattendu.
+  if (company && !validCompanyId(company)) { res.status(400).json({ error: 'Identifiant de société invalide.' }); return; }
+
   // ── Mapping personnalisé (affectation des comptes) ──
   if (kind === 'mapping') {
     try {
@@ -35,6 +38,7 @@ export default async function handler(req, res) {
       if (req.method === 'POST') {
         const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
         if (!body.company_id || !body.mapping) { res.status(400).json({ error: 'company_id et mapping requis' }); return; }
+        if (!validCompanyId(String(body.company_id))) { res.status(400).json({ error: 'Identifiant de société invalide.' }); return; }
         await kvSet(mapKey(body.company_id), JSON.stringify(body.mapping));
         res.status(200).json({ ok: true });
         return;
@@ -69,6 +73,7 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? safeParse(req.body) : (req.body || {});
       const { company_id, fy_id, entry } = body;
       if (!company_id || !fy_id || !entry) { res.status(400).json({ error: 'company_id, fy_id, entry requis' }); return; }
+      if (!validCompanyId(String(company_id)) || !validFyId(String(fy_id))) { res.status(400).json({ error: 'Identifiant invalide.' }); return; }
       await kvSet(entryKey(company_id, fy_id), JSON.stringify(entry));
       await kvSAdd(idxKey(company_id), fy_id);
       res.status(200).json({ ok: true });
@@ -77,6 +82,7 @@ export default async function handler(req, res) {
     if (req.method === 'DELETE') {
       const fy = String(req.query.fy_id || req.query.fyId || '');
       if (!company || !fy) { res.status(400).json({ error: 'company_id et fy_id requis' }); return; }
+      if (!validFyId(fy)) { res.status(400).json({ error: 'Identifiant d\'exercice invalide.' }); return; }
       await kvDel(entryKey(company, fy));
       await kvSRem(idxKey(company), fy);
       res.status(200).json({ ok: true });

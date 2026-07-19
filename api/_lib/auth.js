@@ -146,6 +146,27 @@ export async function requireAuth(req, res) {
 }
 
 /**
+ * Validation des identifiants venant du client avant usage dans une URL Pennylane
+ * ou une clé KV. Défense en profondeur : bloque path-traversal / injection
+ * (« / », « . », « % », « ? », « # », espaces...). Le token Pennylane étant
+ * limité au cabinet, il n'y a pas de fuite inter-cabinet, mais on refuse net
+ * toute valeur non conforme au format attendu.
+ *   - société : id numérique Pennylane ou l'id spécial « moon »
+ *   - exercice : id numérique ou « <debut>_<fin> » (ex 2024-01-01_2024-12-31)
+ *   - date : AAAA-MM ou AAAA-MM-JJ
+ */
+export const validCompanyId = (v) => typeof v === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(v);
+export const validFyId = (v) => typeof v === 'string' && /^[A-Za-z0-9_:.-]{1,64}$/.test(v);
+export const validDate = (v) => typeof v === 'string' && /^\d{4}-\d{2}(-\d{2})?$/.test(v);
+
+/** Garde d'identifiant société : répond 400 et renvoie false si invalide. */
+export function requireCompanyId(res, cid) {
+  if (validCompanyId(String(cid ?? ''))) return true;
+  res.status(400).json({ error: 'Identifiant de société invalide.' });
+  return false;
+}
+
+/**
  * Reponse d'erreur SANS fuite technique : message metier generique au client,
  * detail complet dans les logs serveur (Vercel).
  */

@@ -1,4 +1,4 @@
-import { requireAuth, sendError } from './_lib/auth.js';
+import { requireAuth, requireCompanyId, sendError } from './_lib/auth.js';
 import { getFiscalYears, getTrialBalance } from './_lib/pennylane.js';
 import { buildAccounts } from './_lib/normalize.js';
 import { generateFullReport, computeDisponibilites } from './_lib/accountingEngine.js';
@@ -12,6 +12,7 @@ export default async function handler(req, res) {
   if (!(await requireAuth(req, res))) return;
   const cid = req.query.company_id || req.query.companyId;
   if (!cid) { res.status(400).json({ error: 'company_id requis' }); return; }
+  if (!requireCompanyId(res, cid)) return;
 
   try {
     const fys = await getFiscalYears(cid);
