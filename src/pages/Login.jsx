@@ -11,6 +11,7 @@ export default function Login({ onSuccess, sso = {} }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPwd, setShowPwd] = useState(false); // accès de secours par mot de passe (si SSO actif)
   const domain = sso.domain || DOMAIN;
 
   const mail = () => email.trim().toLowerCase();
@@ -109,11 +110,13 @@ export default function Login({ onSuccess, sso = {} }) {
                 </svg>
                 Se connecter avec Microsoft
               </button>
-              <div className="flex items-center gap-3">
-                <span className="h-px flex-1 bg-white/[0.10]" />
-                <span className="text-xs text-sage">ou par e-mail</span>
-                <span className="h-px flex-1 bg-white/[0.10]" />
-              </div>
+              {showPwd && (
+                <div className="flex items-center gap-3">
+                  <span className="h-px flex-1 bg-white/[0.10]" />
+                  <span className="text-xs text-sage">accès de secours</span>
+                  <span className="h-px flex-1 bg-white/[0.10]" />
+                </div>
+              )}
             </>
           )}
           {step === 'code' ? (
@@ -140,7 +143,7 @@ export default function Login({ onSuccess, sso = {} }) {
                 </button>
               </div>
             </form>
-          ) : (
+          ) : (!sso.enabled || showPwd) ? (
             <form onSubmit={submit} className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-sage mb-1.5">Adresse e-mail</label>
@@ -173,6 +176,13 @@ export default function Login({ onSuccess, sso = {} }) {
                 )}
               </div>
             </form>
+          ) : (
+            <div className="text-center pt-1 pb-0.5">
+              <button type="button" onClick={() => setShowPwd(true)}
+                className="text-xs text-sage/70 hover:text-white underline underline-offset-2 transition">
+                Problème avec Microsoft ? Accès par mot de passe
+              </button>
+            </div>
           )}
 
           <p className="text-xs text-sage opacity-70 text-center">
