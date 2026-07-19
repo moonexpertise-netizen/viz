@@ -97,6 +97,25 @@ export default function Login({ onSuccess, sso = {} }) {
 
         {/* Carte */}
         <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 space-y-4">
+          {step === 'login' && sso.enabled && (
+            <>
+              <button type="button" onClick={() => { window.location.href = '/api/sso'; }}
+                className="w-full flex items-center justify-center gap-2.5 rounded-xl bg-white text-navy font-semibold px-4 py-3 hover:bg-white/90 transition">
+                <svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true">
+                  <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+                  <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+                  <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+                  <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+                </svg>
+                Se connecter avec Microsoft
+              </button>
+              <div className="flex items-center gap-3">
+                <span className="h-px flex-1 bg-white/[0.10]" />
+                <span className="text-xs text-sage">ou par e-mail</span>
+                <span className="h-px flex-1 bg-white/[0.10]" />
+              </div>
+            </>
+          )}
           {step === 'code' ? (
             <form onSubmit={submitCode} className="space-y-3">
               <p className="text-sm text-sage">
