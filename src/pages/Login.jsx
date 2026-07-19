@@ -11,7 +11,11 @@ export default function Login({ onSuccess, sso = {} }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPwd, setShowPwd] = useState(false); // accès de secours par mot de passe (si SSO actif)
+  // Accès de secours par mot de passe : invisible en usage normal quand le SSO
+  // est actif. Ne s'affiche que via l'URL secrète ...?secours (anti-verrouillage
+  // total si Microsoft tombe). Sans SSO, le formulaire reste le mode nominal.
+  const rescue = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('secours');
+  const [showPwd] = useState(!sso.enabled || rescue);
   const domain = sso.domain || DOMAIN;
 
   const mail = () => email.trim().toLowerCase();
@@ -168,7 +172,7 @@ export default function Login({ onSuccess, sso = {} }) {
                 <button type="button" onClick={forgot} className="text-xs text-sage hover:text-white underline underline-offset-2 transition">
                   Mot de passe oublié ?
                 </button>
-                {sso.accountsEnabled && (
+                {sso.accountsEnabled && !sso.enabled && (
                   <button type="button" onClick={signup} disabled={loading}
                     className="text-xs text-sage hover:text-white underline underline-offset-2 transition disabled:opacity-60">
                     Demander l'accès
@@ -176,14 +180,7 @@ export default function Login({ onSuccess, sso = {} }) {
                 )}
               </div>
             </form>
-          ) : (
-            <div className="text-center pt-1 pb-0.5">
-              <button type="button" onClick={() => setShowPwd(true)}
-                className="text-xs text-sage/70 hover:text-white underline underline-offset-2 transition">
-                Problème avec Microsoft ? Accès par mot de passe
-              </button>
-            </div>
-          )}
+          ) : null}
 
           <p className="text-xs text-sage opacity-70 text-center">
             Accès réservé aux comptes <strong className="text-sage">@{domain}</strong>.
