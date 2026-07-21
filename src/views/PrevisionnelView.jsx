@@ -131,27 +131,25 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
     applyLines(next);
   };
 
-  // ── Timeline combinée réel + prévi (le slider sélectionne la plage visible) ──
-  const budgetYear = (fy?.end || fy?.period_end || fy?.start || '').slice(0, 4);
-  const fullTimeline = useMemo(() => {
-    const rset = new Set(realMonths);
-    const real = realMonths.map((m) => ({ key: `r:${m}`, month: m, kind: 'real', seg: m.slice(0, 4) }));
-    const budAll = months.map((m) => ({ key: `b:${m}`, month: m, kind: 'budget', seg: `Budget ${budgetYear}` }));
-    const bud = monthsDouble ? budAll : budAll.filter((c) => !rset.has(c.month));
-    return [...real, ...bud];
-  }, [realMonths, months, monthsDouble, budgetYear]);
-  const [fromKey, setFromKey] = useState(null);
-  const [toKey, setToKey] = useState(null);
-  useEffect(() => {
-    const keys = fullTimeline.map((c) => c.key);
-    const firstBud = fullTimeline.find((c) => c.kind === 'budget')?.key;
-    const lastBud = [...fullTimeline].reverse().find((c) => c.kind === 'budget')?.key;
-    setFromKey((k) => (k && keys.includes(k) ? k : (firstBud || keys[0])));
-    setToKey((k) => (k && keys.includes(k) ? k : (lastBud || keys[keys.length - 1])));
-  }, [fullTimeline]);
-  const fromIdx = Math.max(0, fullTimeline.findIndex((c) => c.key === fromKey));
-  const toIdx = Math.max(fromIdx, fullTimeline.findIndex((c) => c.key === toKey));
-  const columns = fullTimeline.slice(fromIdx, toIdx + 1);
+  // ── Sélection indépendante des mois : une plage pour le réel, une pour le prévi ──
+  const [showReal, setShowReal] = useState(false);
+  const [realRange, setRealRange] = useState([0, 0]);
+  const [budRange, setBudRange] = useState([0, 0]);
+  useEffect(() => { setRealRange(([f, t]) => { const n = realMonths.length; return n ? [Math.min(f, n - 1), n - 1 >= t && t > 0 ? t : n - 1] : [0, 0]; }); /* eslint-disable-next-line */ }, [realMonths.length]);
+  useEffect(() => { setBudRange([0, Math.max(0, months.length - 1)]); }, [months.length]);
+  const clamp = (r, n) => [Math.max(0, Math.min(r[0], n - 1)), Math.max(0, Math.min(r[1], n - 1))];
+  const columns = useMemo(() => {
+    const [rf, rt] = clamp(realRange, realMonths.length);
+    const realShown = showReal && realMonths.length ? realMonths.slice(rf, rt + 1) : [];
+    const rset = new Set(realShown);
+    const [bf, bt] = clamp(budRange, months.length);
+    let budShown = months.slice(bf, bt + 1);
+    if (!monthsDouble) budShown = budShown.filter((m) => !rset.has(m));
+    return [
+      ...realShown.map((m) => ({ key: `r:${m}`, month: m, kind: 'real' })),
+      ...budShown.map((m) => ({ key: `b:${m}`, month: m, kind: 'budget' })),
+    ];
+  }, [showReal, realRange, budRange, realMonths, months, monthsDouble]);
   const realCount = columns.filter((c) => c.kind === 'real').length;
   const budgetCount = columns.length - realCount;
 
@@ -304,11 +302,6 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
             {fiscalYears.map((f) => <option key={f.id} value={f.id}>{f.label || f.year || f.id}</option>)}
           </select>
         </div>
-        {realMonths.length > 0 && (
-          <label className="inline-flex items-center gap-1.5 text-xs text-gray-custom cursor-pointer" title="Afficher les mois réels ET les mois prévi qui se recoupent (sinon le réel remplace le prévi)">
-            <input type="checkbox" checked={monthsDouble} onChange={(e) => setMonthsDouble(e.target.checked)} className="rounded border-sage" /> Mois en double
-          </label>
-        )}
         <button onClick={toggleAll} className="inline-flex items-center gap-1.5 text-xs font-medium border border-sage rounded-lg px-2.5 py-1.5 text-navy hover:bg-cream transition">
           <ChevronsDownUp size={13} /> {allExpanded ? 'Tout replier' : 'Tout déplier'}
         </button>
@@ -319,22 +312,37 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
         <span className="inline-flex items-center gap-1 text-xs text-gray-custom">{savedAt ? <><Check size={13} className="text-green-600" /> Enregistré</> : 'Enregistrement auto'}</span>
       </div>
 
-      {/* Sélecteur de plage de mois (timeline réel + prévi), façon Vision périodique */}
-      {fullTimeline.length > 1 && (
-        <TimelineSlider timeline={fullTimeline} fromIdx={fromIdx} toIdx={toIdx} onChange={(f, t) => { setFromKey(fullTimeline[f].key); setToKey(fullTimeline[t].key); }} />
-      )}
+      {/* Sélecteurs de mois : un pour le prévi (doré), un pour le réel (navy) */}
+      <div className="bg-white border border-sage rounded-xl px-3 sm:px-5 py-3 mb-3 space-y-2">
+        {months.length > 1 && (
+          <MonthRangeSlider label="Mois du prévisionnel" accent="gold" months={months} range={clamp(budRange, months.length)} onChange={(f, t) => setBudRange([f, t])} />
+        )}
+        <div className="flex items-center gap-3 flex-wrap pt-1 border-t border-sage/60">
+          <label className="inline-flex items-center gap-1.5 text-xs font-medium text-navy cursor-pointer">
+            <input type="checkbox" checked={showReal} disabled={!realMonths.length} onChange={(e) => setShowReal(e.target.checked)} className="rounded border-sage" /> Comparer au réel
+          </label>
+          {showReal && realMonths.length > 0 && (
+            <label className="inline-flex items-center gap-1.5 text-xs text-gray-custom cursor-pointer" title="Afficher aussi les mois réels et prévi qui se recoupent (sinon le réel remplace le prévi)">
+              <input type="checkbox" checked={monthsDouble} onChange={(e) => setMonthsDouble(e.target.checked)} className="rounded border-sage" /> Mois en double
+            </label>
+          )}
+        </div>
+        {showReal && realMonths.length > 1 && (
+          <MonthRangeSlider label="Mois du réel" accent="navy" months={realMonths} range={clamp(realRange, realMonths.length)} onChange={(f, t) => setRealRange([f, t])} />
+        )}
+      </div>
 
       <div className="overflow-x-auto border border-sage rounded-xl bg-white">
         <table className="mv-ptable w-full border-collapse">
           <thead>
-            <tr className="bg-navy text-white">
-              <th rowSpan={2} className="text-left px-3 sticky left-0 bg-navy z-20 font-semibold" style={{ minWidth: 240 }}>Poste</th>
-              {realCount > 0 && <th colSpan={realCount} className="text-center border-l border-white/20 font-semibold text-sage/80">Réel</th>}
-              {budgetCount > 0 && <th colSpan={budgetCount} className="text-center border-l border-gold/40 font-semibold text-gold">◆ Prévisionnel</th>}
-              <th rowSpan={2} className="text-right px-3 border-l border-white/20 font-semibold text-gold" style={{ minWidth: 92 }}>Total prévi</th>
+            <tr className="text-white">
+              <th rowSpan={2} className="text-left px-3 sticky left-0 bg-navy z-20 font-semibold text-white" style={{ minWidth: 240 }}>Poste</th>
+              {realCount > 0 && <th colSpan={realCount} className="text-center bg-navy border-l border-white/25 font-semibold text-white">Réel</th>}
+              {budgetCount > 0 && <th colSpan={budgetCount} className="text-center bg-gold border-l border-white/40 font-semibold text-white">Prévisionnel</th>}
+              <th rowSpan={2} className="text-right px-3 bg-gold border-l border-white/40 font-semibold text-white" style={{ minWidth: 92 }}>Total prévi</th>
             </tr>
-            <tr className="bg-navy text-white">
-              {columns.map((c) => <th key={c.key} className={`text-right whitespace-nowrap font-semibold ${c.kind === 'real' ? 'text-sage/70' : 'text-gold border-b-2 border-gold/50'}`} style={{ minWidth: 90 }}>{monthLabel(c.month)}</th>)}
+            <tr className="text-white">
+              {columns.map((c) => <th key={c.key} className={`text-right whitespace-nowrap font-semibold text-white ${c.kind === 'real' ? 'bg-navy' : 'bg-gold'}`} style={{ minWidth: 90 }}>{monthLabel(c.month)}</th>)}
             </tr>
           </thead>
           <tbody>{rows}</tbody>
@@ -417,13 +425,17 @@ function HelperPopover({ label, months, current, hasPrev, onSpread, onGrowth, on
   );
 }
 
-/** Slider de plage de mois sur la timeline combinée réel + prévi (2 curseurs +
- *  segments d'années réelles et segment doré « Budget AAAA »). */
-function TimelineSlider({ timeline, fromIdx, toIdx, onChange }) {
-  const N = timeline.length;
+/** Slider de plage de mois générique (accent doré pour le prévi, navy pour le réel).
+ *  `months` = liste 'YYYY-MM' ; `range` = [fromIdx, toIdx] ; segments par année. */
+function MonthRangeSlider({ label, accent = 'gold', months, range, onChange }) {
+  const N = months.length;
+  const [fromIdx, toIdx] = range;
   const pctOf = (i) => (N > 1 ? (i / (N - 1)) * 100 : 0);
   const idxAt = (clientX, rect) => Math.round(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * (N - 1));
-  const lbl = (i) => { const c = timeline[i]; const [y, m] = c.month.split('-'); return `${m}/${y.slice(2)}${c.kind === 'budget' ? ' · prévi' : ''}`; };
+  const lbl = (i) => { const [y, m] = months[i].split('-'); return `${m}/${y.slice(2)}`; };
+  const barCls = accent === 'gold' ? 'bg-gold' : 'bg-navy';
+  const ringCls = accent === 'gold' ? 'focus:ring-gold' : 'focus:ring-navy';
+  const segColor = accent === 'gold' ? 'text-gold border-gold' : 'text-navy border-navy';
   const startDrag = (which) => (e) => {
     e.preventDefault(); e.stopPropagation();
     const rect = e.currentTarget.parentElement.getBoundingClientRect();
@@ -432,39 +444,43 @@ function TimelineSlider({ timeline, fromIdx, toIdx, onChange }) {
     document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
   };
   const segments = [];
-  timeline.forEach((c, i) => { const last = segments[segments.length - 1]; if (!last || last.seg !== c.seg) segments.push({ seg: c.seg, kind: c.kind, start: i, end: i }); else last.end = i; });
+  months.forEach((m, i) => { const y = m.slice(0, 4); const last = segments[segments.length - 1]; if (!last || last.seg !== y) segments.push({ seg: y, start: i, end: i }); else last.end = i; });
 
   return (
-    <div className="bg-white border border-sage rounded-xl px-3 sm:px-6 py-4 mb-3">
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-1">
-          <select value={fromIdx} onChange={(e) => onChange(Math.min(+e.target.value, toIdx), toIdx)} className="text-xs font-medium text-gray-custom bg-cream px-2.5 py-2 rounded border border-sage cursor-pointer focus:outline-none focus:ring-1 focus:ring-gold">
-            {timeline.map((c, i) => <option key={c.key} value={i}>{lbl(i)}</option>)}
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className={`text-[11px] font-semibold ${accent === 'gold' ? 'text-gold' : 'text-navy'}`}>{label}</span>
+        <div className="flex items-center gap-1">
+          <select value={fromIdx} onChange={(e) => onChange(Math.min(+e.target.value, toIdx), toIdx)} className={`text-xs font-medium text-gray-custom bg-cream px-2 py-1 rounded border border-sage cursor-pointer focus:outline-none focus:ring-1 ${ringCls}`}>
+            {months.map((m, i) => <option key={m} value={i}>{lbl(i)}</option>)}
           </select>
-          <select value={toIdx} onChange={(e) => onChange(fromIdx, Math.max(+e.target.value, fromIdx))} className="text-xs font-medium text-gray-custom bg-cream px-2.5 py-2 rounded border border-sage cursor-pointer focus:outline-none focus:ring-1 focus:ring-gold">
-            {timeline.map((c, i) => <option key={c.key} value={i}>{lbl(i)}</option>)}
+          <span className="text-xs text-gray-custom">→</span>
+          <select value={toIdx} onChange={(e) => onChange(fromIdx, Math.max(+e.target.value, fromIdx))} className={`text-xs font-medium text-gray-custom bg-cream px-2 py-1 rounded border border-sage cursor-pointer focus:outline-none focus:ring-1 ${ringCls}`}>
+            {months.map((m, i) => <option key={m} value={i}>{lbl(i)}</option>)}
           </select>
         </div>
-        <div className="relative py-4 select-none">
-          <div className="relative h-2 rounded-full bg-sage cursor-pointer"
-            onPointerDown={(e) => { if (e.target !== e.currentTarget) return; const rect = e.currentTarget.getBoundingClientRect(); const i = idxAt(e.clientX, rect); if (Math.abs(i - fromIdx) <= Math.abs(i - toIdx)) onChange(Math.min(i, toIdx), toIdx); else onChange(fromIdx, Math.max(i, fromIdx)); }}>
-            <div className="absolute h-full bg-gold rounded-full pointer-events-none" style={{ left: `${pctOf(fromIdx)}%`, right: `${100 - pctOf(toIdx)}%` }} />
-            {[['from', fromIdx], ['to', toIdx]].map(([which, idx]) => (
-              <button key={which} type="button" onPointerDown={startDrag(which)} title={lbl(idx)}
-                className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white border-2 border-navy shadow-md cursor-grab active:cursor-grabbing touch-none hover:scale-110 transition-transform" style={{ left: `${pctOf(idx)}%` }} />
-            ))}
-          </div>
+      </div>
+      <div className="relative py-3 select-none">
+        <div className="relative h-2 rounded-full bg-sage cursor-pointer"
+          onPointerDown={(e) => { if (e.target !== e.currentTarget) return; const rect = e.currentTarget.getBoundingClientRect(); const i = idxAt(e.clientX, rect); if (Math.abs(i - fromIdx) <= Math.abs(i - toIdx)) onChange(Math.min(i, toIdx), toIdx); else onChange(fromIdx, Math.max(i, fromIdx)); }}>
+          <div className={`absolute h-full ${barCls} rounded-full pointer-events-none`} style={{ left: `${pctOf(fromIdx)}%`, right: `${100 - pctOf(toIdx)}%` }} />
+          {[['from', fromIdx], ['to', toIdx]].map(([which, idx]) => (
+            <button key={which} type="button" onPointerDown={startDrag(which)} title={lbl(idx)}
+              className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white border-2 border-navy shadow-md cursor-grab active:cursor-grabbing touch-none hover:scale-110 transition-transform" style={{ left: `${pctOf(idx)}%` }} />
+          ))}
         </div>
-        <div className="relative h-5 mt-1">
+      </div>
+      {segments.length > 1 && (
+        <div className="relative h-4">
           {segments.map((s) => (
             <div key={s.seg} className="absolute top-0 flex items-center justify-center" style={{ left: `${pctOf(s.start)}%`, width: `${Math.max(pctOf(s.end) - pctOf(s.start), 0.1)}%` }}>
-              <div className={`w-full border-t relative ${s.kind === 'budget' ? 'border-gold' : 'border-sage'}`}>
-                <span className={`absolute -top-0.5 left-1/2 -translate-x-1/2 bg-white px-2 text-xs whitespace-nowrap ${s.kind === 'budget' ? 'text-gold font-medium' : 'text-gray-400'}`}>{s.seg}</span>
+              <div className={`w-full border-t relative ${segColor}`}>
+                <span className={`absolute -top-0.5 left-1/2 -translate-x-1/2 bg-white px-2 text-xs whitespace-nowrap ${accent === 'gold' ? 'text-gold' : 'text-navy'}`}>{s.seg}</span>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }
