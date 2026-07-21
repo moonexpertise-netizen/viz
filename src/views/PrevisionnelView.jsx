@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Wand2, ArrowRight, Trash2, X, ClipboardPaste, CalendarRange, Check, ChevronsDownUp, Pencil, Plus } from 'lucide-react';
+import { Wand2, ArrowRight, Trash2, X, ClipboardPaste, CalendarRange, Check, ChevronsDownUp, Plus, ListTree } from 'lucide-react';
 import { buildPLTree } from '../lib/mapping';
 import EntryDetailModal from '../components/EntryDetailModal';
 import {
-  emptyBudget, monthsOfFy, buildBudgetTree, sumMonths, detailMonths,
+  emptyBudget, monthsOfFy, buildBudgetTree, sumMonths, nodeMonths,
   spreadAnnual, growthSeries, fillRight, parsePasted, newBudgetId, accountsToDetail,
 } from '../lib/budget';
 
@@ -107,58 +107,43 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
     for (const r of buildBudgetTree(plan || { nodes: [] }, lines, months)) if (r.type === 'cat' || r.type === 'leaf' || r.type === 'total') map[r.id] = r.months;
     return map;
   }, [plan, lines, months]);
-  const isAcctMode = (lineId) => !!(lines[lineId]?.detail?.some((d) => d.account));
-  const acctEntry = (lineId, num) => (lines[lineId]?.detail || []).find((d) => String(d.account) === String(num));
-  const acctBudget = (lineId, num) => { const d = acctEntry(lineId, num); return d ? detailMonths(d, months) : {}; };
+  const hasDetail = (lineId) => !!(lines[lineId]?.detail?.length);
+  const detailOf = (lineId) => lines[lineId]?.detail || [];
+  const nodeAtPath = (lineId, path) => { let arr = detailOf(lineId); let node = null; for (const id of path) { node = (arr || []).find((n) => n.id === id); if (!node) return null; arr = node.detail || []; } return node; };
 
-  // ── Écritures ──
+  // ── Saisie directe d'une feuille ──
   const setLeafCell = (lineId, mk, val) => { const cur = lines[lineId] || {}; applyLines({ ...lines, [lineId]: { ...cur, months: { ...(cur.months || {}), [mk]: val } } }); };
   const setLeafMonths = (lineId, m) => { const cur = lines[lineId] || {}; applyLines({ ...lines, [lineId]: { ...cur, months: m } }); };
-  const setAcctCell = (lineId, num, label, mk, val) => {
-    const cur = lines[lineId] || {}; const detail = [...(cur.detail || [])];
-    const i = detail.findIndex((d) => String(d.account) === String(num));
-    if (i < 0) detail.push({ id: newBudgetId(), account: String(num), label: `${num} ${label || ''}`.trim(), months: { [mk]: val } });
-    else detail[i] = { ...detail[i], months: { ...(detail[i].months || {}), [mk]: val } };
-    applyLines({ ...lines, [lineId]: { ...cur, months: {}, detail } });
-  };
-  const setAcctMonths = (lineId, num, label, m) => {
-    const cur = lines[lineId] || {}; const detail = [...(cur.detail || [])];
-    const i = detail.findIndex((d) => String(d.account) === String(num));
-    if (i < 0) detail.push({ id: newBudgetId(), account: String(num), label: `${num} ${label || ''}`.trim(), months: m });
-    else detail[i] = { ...detail[i], months: m };
-    applyLines({ ...lines, [lineId]: { ...cur, months: {}, detail } });
-  };
-  // Sous-lignes détaillées sous un compte (composantes nommées qui se somment)
-  const withAcct = (lineId, num, label, mutate) => {
-    const cur = lines[lineId] || {}; const detail = [...(cur.detail || [])];
-    const i = detail.findIndex((d) => String(d.account) === String(num));
-    const base = i < 0 ? { id: newBudgetId(), account: String(num), label: `${num} ${label || ''}`.trim(), months: {} } : { ...detail[i] };
-    const entry = mutate(base);
-    if (i < 0) detail.push(entry); else detail[i] = entry;
-    applyLines({ ...lines, [lineId]: { ...cur, months: {}, detail } });
-  };
-  const addAcctChild = (lineId, num, label) => withAcct(lineId, num, label, (e) => ({ ...e, children: [...(e.children || []), { id: newBudgetId(), label: '', months: {} }] }));
-  const setAcctChildLabel = (lineId, num, cid, v) => withAcct(lineId, num, '', (e) => ({ ...e, children: (e.children || []).map((c) => (c.id === cid ? { ...c, label: v } : c)) }));
-  const setAcctChildCell = (lineId, num, cid, mk, v) => withAcct(lineId, num, '', (e) => ({ ...e, children: (e.children || []).map((c) => (c.id === cid ? { ...c, months: { ...(c.months || {}), [mk]: v } } : c)) }));
-  const setAcctChildMonths = (lineId, num, cid, m) => withAcct(lineId, num, '', (e) => ({ ...e, children: (e.children || []).map((c) => (c.id === cid ? { ...c, months: m } : c)) }));
-  const removeAcctChild = (lineId, num, cid) => withAcct(lineId, num, '', (e) => { const children = (e.children || []).filter((c) => c.id !== cid); return { ...e, children: children.length ? children : undefined }; });
 
-  const enterAcctMode = (lineId) => {
+  // ── Détail RÉCURSIF (sous-lignes libres et/ou rattachées à un compte, profondeur illimitée) ──
+  // path = [ids...] du chemin jusqu'au nœud cible dans l'arbre lines[lineId].detail.
+  const updNode = (nodes, path, fn) => { const [h, ...r] = path; return nodes.map((n) => (n.id !== h ? n : (r.length ? { ...n, detail: updNode(n.detail || [], r, fn) } : fn(n)))); };
+  const addNode = (nodes, path, child) => { if (!path.length) return [...nodes, child]; const [h, ...r] = path; return nodes.map((n) => (n.id === h ? { ...n, detail: addNode(n.detail || [], r, child) } : n)); };
+  const rmNode = (nodes, path) => { const [h, ...r] = path; return r.length ? nodes.map((n) => (n.id === h ? { ...n, detail: rmNode(n.detail || [], r) } : n)) : nodes.filter((n) => n.id !== h); };
+  const applyDetail = (lineId, detail) => { const cur = lines[lineId] || {}; applyLines({ ...lines, [lineId]: { ...cur, months: cur.months || {}, detail: detail && detail.length ? detail : undefined } }); };
+  const addLine = (lineId, parentPath = []) => { applyDetail(lineId, addNode(detailOf(lineId), parentPath, { id: newBudgetId(), label: '', months: {} })); setExpanded((e) => ({ ...e, [`s_${lineId}`]: true })); };
+  const setNodeLabel = (lineId, path, v) => applyDetail(lineId, updNode(detailOf(lineId), path, (n) => ({ ...n, label: v })));
+  const setNodeCell = (lineId, path, mk, v) => applyDetail(lineId, updNode(detailOf(lineId), path, (n) => ({ ...n, months: { ...(n.months || {}), [mk]: v } })));
+  const setNodeMonths = (lineId, path, m) => applyDetail(lineId, updNode(detailOf(lineId), path, (n) => ({ ...n, months: m })));
+  const removeLine = (lineId, path) => applyDetail(lineId, rmNode(detailOf(lineId), path));
+  // Pré-remplit les sous-lignes avec les vrais comptes de la balance (réel N-1).
+  const detailFromBalance = (lineId) => {
     const accs = accountsByLine[lineId] || []; if (!accs.length) return;
     const prefill = {}; accs.forEach((a) => { prefill[a.number] = prevAcctAligned(a.number); });
-    applyLines({ ...lines, [lineId]: { months: {}, detail: accountsToDetail(accs, prefill) } });
+    const existing = detailOf(lineId);
+    const have = new Set(existing.filter((d) => d.account).map((d) => String(d.account)));
+    applyDetail(lineId, [...existing, ...accountsToDetail(accs.filter((a) => !have.has(String(a.number))), prefill)]);
+    setExpanded((e) => ({ ...e, [`s_${lineId}`]: true }));
   };
-  const exitAcctMode = (lineId) => { const cur = lines[lineId] || {}; applyLines({ ...lines, [lineId]: { ...cur, detail: undefined } }); };
 
   const fillAllFromPrev = () => {
     if (!hasPrev) return; const next = { ...lines };
+    // Remplit récursivement : les sous-lignes rattachées à un compte reçoivent leur réel N-1.
+    const fillNodes = (nodes) => nodes.map((n) => (n.detail?.length ? { ...n, detail: fillNodes(n.detail) } : (n.account ? { ...n, months: prevAcctAligned(n.account) } : n)));
     const doLine = (id) => {
-      if (isAcctMode(id)) { // en mode compte : chaque compte reçoit son propre réel N-1
-        const detail = (next[id]?.detail || []).map((d) => (d.account ? { ...d, months: prevAcctAligned(d.account) } : d));
-        next[id] = { ...(next[id] || {}), months: {}, detail };
-      } else {
-        next[id] = { ...(next[id] || {}), months: prevLineAligned(id) };
-      }
+      const d = next[id]?.detail;
+      if (d && d.length) next[id] = { ...(next[id] || {}), months: {}, detail: fillNodes(d) };
+      else next[id] = { ...(next[id] || {}), months: prevLineAligned(id) };
     };
     for (const node of plan.nodes) {
       if (node.kind !== 'cat') continue;
@@ -270,94 +255,80 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
     );
     if (!catExp) continue;
 
-    const renderLeaf = (lineId, label, accList, indentLabel, indentAcct) => {
-      const hasDetail = isAcctMode(lineId); // au moins un compte saisi -> la sous-cat = somme
+    // Rendu récursif d'une sous-ligne de détail (libre ou rattachée à un compte, profondeur illimitée).
+    const renderNode = (lineId, node, path, depth) => {
+      const np = [...path, node.id];
+      const kids = node.detail || [];
+      const hasKids = kids.length > 0;
+      const nm = nodeMonths(node, months);
+      const tgt = { setCell: (m, v) => setNodeCell(lineId, np, m, v), setMonths: (mm) => setNodeMonths(lineId, np, mm) };
+      rows.push(
+        <tr key={`${lineId}_${np.join('_')}`} className="bg-white hover:bg-cream/30 transition border-b border-sage/50 group/nd">
+          <td className="px-3 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: `${3.25 + depth * 1.25}rem` }}>
+            <span className="text-gray-custom/40 text-xs mr-1">└</span>
+            {node.account
+              ? <span className="text-xs text-gray-custom">{node.label}</span>
+              : <input value={node.label} onChange={(e) => setNodeLabel(lineId, np, e.target.value)} placeholder="Nom de la ligne…" className="text-navy bg-transparent border-b border-transparent hover:border-sage focus:border-navy/40 focus:outline-none py-0.5 w-52" />}
+            <span className="inline-flex items-center gap-1.5 ml-2 opacity-0 group-hover/nd:opacity-100 transition align-middle">
+              <button onClick={() => addLine(lineId, np)} title="Ajouter une sous-ligne sous celle-ci" className="text-navy/50 hover:text-navy"><Plus size={12} /></button>
+              {!hasKids && <button onClick={() => setHelper({ lineId, path: np, label: node.label || 'ligne' })} title="Aides" className="text-navy/50 hover:text-navy"><Wand2 size={12} /></button>}
+              <button onClick={() => removeLine(lineId, np)} title="Supprimer" className="text-gray-custom/60 hover:text-accent-red"><X size={12} /></button>
+            </span>
+          </td>
+          {columns.map((c) => (
+            <td key={c.key} className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1">
+              {c.kind === 'real'
+                ? (node.account ? realCell(realAcct(node.account, c.month), node.account, node.label, c.month, 'text-xs') : <span className="block px-1 text-right text-xs text-gray-custom/30">·</span>)
+                : hasKids ? roCell(nm[c.month] || 0, 'text-xs') : budCell(tgt, node.months || {}, c.month)}
+            </td>
+          ))}
+          <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs">{roCell(colSum(node.account ? (m) => realAcct(node.account, m) : () => 0, (m) => nm[m]), 'text-xs')}</td>
+        </tr>,
+      );
+      if (hasKids) kids.forEach((k) => renderNode(lineId, k, np, depth + 1));
+    };
+
+    const renderLeaf = (lineId, label, accList, indentLabel) => {
+      const detailed = hasDetail(lineId);
       const leafKey = `s_${lineId}`;
       const leafExp = expanded[leafKey];
       const leafBud = budgetMap[lineId] || {};
       const target = { setCell: (m, v) => setLeafCell(lineId, m, v), setMonths: (mm) => setLeafMonths(lineId, mm) };
-      const hasAccs = accList.length > 0;
+      const canBalance = accList.length > 0;
       const leafNums = nodeAccounts[lineId];
       rows.push(
         <tr key={leafKey} className="border-b border-sage/60 bg-cream/50 group/leaf">
           <td className="px-3 sticky left-0 z-10 bg-cream/50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: indentLabel }}>
-            <span onClick={() => hasAccs && toggle(leafKey)} className={hasAccs ? 'cursor-pointer' : ''}>
-              <span className={`inline-block w-5 text-center mr-1 text-gray-300 transition-transform duration-200 text-xs ${leafExp ? 'rotate-90' : ''}`}>{hasAccs ? CHEV : ''}</span>
+            <span onClick={() => detailed && toggle(leafKey)} className={detailed ? 'cursor-pointer' : ''}>
+              <span className={`inline-block w-5 text-center mr-1 text-gray-300 transition-transform duration-200 text-xs ${leafExp ? 'rotate-90' : ''}`}>{detailed ? CHEV : ''}</span>
               <span className="text-xs font-medium text-navy">{label}</span>
             </span>
-            {hasDetail && <span className="ml-2 text-[10px] text-gray-custom/70 bg-white rounded px-1">saisi par comptes</span>}
-            <span className="inline-flex items-center gap-1 ml-2 opacity-0 group-hover/leaf:opacity-100 transition align-middle">
-              {!hasDetail && <button onClick={(e) => { e.stopPropagation(); setHelper({ lineId, label }); }} title="Aides à la construction" className="text-gray-custom/60 hover:text-navy"><Wand2 size={13} /></button>}
-              {hasDetail && <button onClick={(e) => { e.stopPropagation(); exitAcctMode(lineId); }} title="Revenir à la saisie directe (efface la saisie par comptes)" className="text-gray-custom/60 hover:text-navy"><Pencil size={13} /></button>}
+            {detailed && <span className="ml-2 text-[10px] text-gray-custom/70 bg-white rounded px-1">détaillé</span>}
+            <span className="inline-flex items-center gap-1.5 ml-2 align-middle">
+              <button onClick={(e) => { e.stopPropagation(); addLine(lineId); }} title="Ajouter une ligne détaillée" className="text-navy/50 hover:text-navy"><Plus size={13} /></button>
+              {canBalance && <button onClick={(e) => { e.stopPropagation(); detailFromBalance(lineId); }} title="Détailler depuis les comptes de la balance" className="text-navy/50 hover:text-navy"><ListTree size={13} /></button>}
+              {!detailed && <button onClick={(e) => { e.stopPropagation(); setHelper({ lineId, label }); }} title="Aides à la construction" className="text-navy/40 hover:text-navy opacity-0 group-hover/leaf:opacity-100 transition"><Wand2 size={13} /></button>}
             </span>
           </td>
           {columns.map((c) => (
-            <td key={c.key} className={`text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 ${prevBg(c)}`}>
+            <td key={c.key} className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1">
               {c.kind === 'real' ? realCell(realRowsById[lineId]?.[c.month] || 0, leafNums, label, c.month, 'text-xs')
-                : hasDetail ? roCell(leafBud[c.month] || 0, 'text-xs') : budCell(target, leafBud, c.month)}
+                : detailed ? roCell(leafBud[c.month] || 0, 'text-xs') : budCell(target, leafBud, c.month)}
             </td>
           ))}
           <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs font-medium">{roCell(colSum((m) => realRowsById[lineId]?.[m], (m) => leafBud[m]), 'text-xs')}</td>
         </tr>,
       );
-      if (leafExp && hasAccs) {
-        for (const acc of accList) {
-          const abud = acctBudget(lineId, acc.number);
-          const kids = acctEntry(lineId, acc.number)?.children || [];
-          const hasKids = kids.length > 0;
-          const atgt = { setCell: (m, v) => setAcctCell(lineId, acc.number, acc.label, m, v), setMonths: (mm) => setAcctMonths(lineId, acc.number, acc.label, mm) };
-          rows.push(
-            <tr key={`${leafKey}_${acc.number}`} className="bg-white hover:bg-cream/40 transition border-b border-sage group/acc">
-              <td className="px-3 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: indentAcct }}>
-                <span className="text-xs text-gray-400 mr-2">{acc.number}</span>
-                <span className="text-xs text-gray-custom">{acc.label}</span>
-                {hasKids && <span className="ml-2 text-[10px] text-gray-custom/70 bg-cream rounded px-1">détaillé</span>}
-                <span className="inline-flex items-center gap-1 ml-2 opacity-0 group-hover/acc:opacity-100 transition align-middle">
-                  {!hasKids && <button onClick={() => setHelper({ lineId, detailNum: acc.number, detailLabel: acc.label, label: `${acc.number} ${acc.label}` })} title="Aides" className="text-gray-custom/60 hover:text-navy"><Wand2 size={12} /></button>}
-                  <button onClick={() => addAcctChild(lineId, acc.number, acc.label)} title="Ajouter une sous-ligne détaillée sous ce compte" className="text-gray-custom/60 hover:text-navy"><Plus size={12} /></button>
-                </span>
-              </td>
-              {columns.map((c) => (
-                <td key={c.key} className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1">
-                  {c.kind === 'real' ? realCell(realAcct(acc.number, c.month), acc.number, acc.label, c.month, 'text-xs')
-                    : hasKids ? roCell(abud[c.month] || 0, 'text-xs') : budCell(atgt, abud, c.month)}
-                </td>
-              ))}
-              <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs">{roCell(colSum((m) => realAcct(acc.number, m), (m) => abud[m]), 'text-xs')}</td>
-            </tr>,
-          );
-          for (const kid of kids) {
-            const ktgt = { setCell: (m, v) => setAcctChildCell(lineId, acc.number, kid.id, m, v), setMonths: (mm) => setAcctChildMonths(lineId, acc.number, kid.id, mm) };
-            rows.push(
-              <tr key={`${leafKey}_${acc.number}_${kid.id}`} className="bg-white hover:bg-cream/30 transition border-b border-sage/50 group/kid">
-                <td className="px-3 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: '5rem' }}>
-                  <span className="text-gray-custom/40 text-xs mr-1">└</span>
-                  <input value={kid.label} onChange={(e) => setAcctChildLabel(lineId, acc.number, kid.id, e.target.value)} placeholder="Libellé (ex. offre A, hypothèse…)" className="text-xs text-navy bg-transparent border-b border-transparent hover:border-sage focus:border-navy/40 focus:outline-none py-0.5 w-48" />
-                  <button onClick={() => setHelper({ childLineId: lineId, childNum: acc.number, childId: kid.id, label: kid.label || 'sous-ligne' })} title="Aides" className="ml-1 opacity-0 group-hover/kid:opacity-100 transition text-gray-custom/60 hover:text-navy align-middle"><Wand2 size={11} /></button>
-                  <button onClick={() => removeAcctChild(lineId, acc.number, kid.id)} title="Supprimer" className="ml-1 opacity-0 group-hover/kid:opacity-100 transition text-gray-custom/60 hover:text-accent-red align-middle"><X size={11} /></button>
-                </td>
-                {columns.map((c) => (
-                  <td key={c.key} className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1">
-                    {c.kind === 'real' ? <span className="block px-1 text-right text-xs text-gray-custom/30">·</span> : budCell(ktgt, kid.months || {}, c.month)}
-                  </td>
-                ))}
-                <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs">{roCell(colSum(() => 0, (m) => (kid.months || {})[m]), 'text-xs')}</td>
-              </tr>,
-            );
-          }
-        }
-      }
+      if (detailed && leafExp) detailOf(lineId).forEach((n) => renderNode(lineId, n, [], 0));
     };
 
-    if (subs.length) subs.forEach((sub) => renderLeaf(`${node.id}/${sub.id}`, sub.label, accountsByLine[`${node.id}/${sub.id}`] || [], '2rem', '3.5rem'));
-    else renderLeaf(node.id, node.label, catAccs, '2rem', '3.5rem');
+    if (subs.length) subs.forEach((sub) => renderLeaf(`${node.id}/${sub.id}`, sub.label, accountsByLine[`${node.id}/${sub.id}`] || [], '2rem'));
+    else renderLeaf(node.id, node.label, catAccs, '2rem');
   }
 
-  const helperTarget = !helper ? null : helper.childId
-    ? { get: () => ((acctEntry(helper.childLineId, helper.childNum)?.children || []).find((c) => c.id === helper.childId)?.months || {}), setMonths: (m) => setAcctChildMonths(helper.childLineId, helper.childNum, helper.childId, m), prev: () => prevAcctAligned(helper.childNum) }
-    : helper.detailNum
-      ? { get: () => acctBudget(helper.lineId, helper.detailNum), setMonths: (m) => setAcctMonths(helper.lineId, helper.detailNum, helper.detailLabel, m), prev: () => prevAcctAligned(helper.detailNum) }
-      : { get: () => (lines[helper.lineId]?.months || {}), setMonths: (m) => setLeafMonths(helper.lineId, m), prev: () => prevLineAligned(helper.lineId) };
+  const helperTarget = !helper ? null : helper.path
+    ? { get: () => (nodeAtPath(helper.lineId, helper.path)?.months || {}), setMonths: (m) => setNodeMonths(helper.lineId, helper.path, m), prev: () => { const n = nodeAtPath(helper.lineId, helper.path); return n?.account ? prevAcctAligned(n.account) : prevLineAligned(helper.lineId); } }
+    : { get: () => (lines[helper.lineId]?.months || {}), setMonths: (m) => setLeafMonths(helper.lineId, m), prev: () => prevLineAligned(helper.lineId) };
 
   return (
     <div className="px-3 sm:px-5 md:px-6">

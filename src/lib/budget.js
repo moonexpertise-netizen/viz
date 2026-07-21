@@ -44,26 +44,22 @@ export function monthsOfFy(fy) {
   return out;
 }
 
-/** Valeur mensuelle effective d'une composante de détail : somme de ses
- *  sous-lignes (children) s'il y en a, sinon sa saisie directe. */
-export function detailMonths(d, months) {
-  if (d?.children && d.children.length) {
+/** Valeur mensuelle effective d'un nœud (récursif) : somme de ses sous-lignes
+ *  (`detail`) s'il en a, sinon sa saisie directe. Profondeur illimitée. */
+export function nodeMonths(n, months) {
+  if (n?.detail && n.detail.length) {
     const acc = emptyMonths(months);
-    for (const c of d.children) addMonths(acc, c.months);
+    for (const c of n.detail) addMonths(acc, nodeMonths(c, months));
     return acc;
   }
-  return pickMonths(d?.months, months);
+  return pickMonths(n?.months, months);
 }
+/** Alias historique (une composante de détail est un nœud comme un autre). */
+export const detailMonths = nodeMonths;
 
-/** Valeur mensuelle effective d'une feuille : somme du sous-détail s'il existe, sinon saisie directe. */
+/** Valeur mensuelle effective d'une feuille : somme du détail s'il existe, sinon saisie directe. */
 export function leafMonths(line, months) {
-  if (!line) return emptyMonths(months);
-  if (line.detail && line.detail.length) {
-    const acc = emptyMonths(months);
-    for (const d of line.detail) addMonths(acc, detailMonths(d, months));
-    return acc;
-  }
-  return pickMonths(line.months, months);
+  return nodeMonths(line, months);
 }
 
 /**
