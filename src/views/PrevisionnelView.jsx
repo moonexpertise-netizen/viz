@@ -13,6 +13,7 @@ const monthLabel = (ym) => { const [y, m] = ym.split('-'); return `${m}/${y.slic
 const parseNum = (s) => { const n = Number(String(s).replace(/\s/g, '').replace(',', '.')); return Number.isFinite(n) ? n : 0; };
 const negCls = (v) => (v < 0 ? 'text-accent-red' : v === 0 ? 'text-gray-300' : '');
 const CHEV = '›';
+const PREVI = '#2f9e6f'; // vert prévi (en-têtes / curseur / accent)
 
 /**
  * Prévisionnel / Budget P&L — rendu IDENTIQUE à la Vision périodique : arbre
@@ -234,6 +235,8 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
       className={`block px-1 text-right tabular-nums ${cls} ${negCls(v)} ${number ? 'cursor-pointer hover:text-navy hover:underline decoration-dotted' : ''}`}>{fmt(v)}</span>
   );
   const roCell = (v, cls = 'text-sm') => <span className={`block px-1 text-right tabular-nums ${cls} ${negCls(v)}`}>{fmt(v)}</span>;
+  // Total à droite = somme des colonnes AFFICHÉES : réel visible + prévi visible.
+  const colSum = (realGet, budGet) => columns.reduce((s, c) => s + (c.kind === 'real' ? (realGet(c.month) || 0) : (budGet(c.month) || 0)), 0);
 
   const rows = [];
   for (const node of plan.nodes) {
@@ -243,7 +246,7 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
         <tr key={node.id} className="bg-cream border-y border-sage">
           <td className="px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">{node.label}</td>
           {columns.map((c) => <td key={c.key} className="text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold">{c.kind === 'real' ? realCell(realRowsById[node.id]?.[c.month] || 0, accs, node.label, c.month) : roCell(bud[c.month] || 0)}</td>)}
-          <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-100">{roCell(sumMonths(bud, months))}</td>
+          <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-100">{roCell(colSum((m) => realRowsById[node.id]?.[m], (m) => bud[m]))}</td>
         </tr>,
       );
       continue;
@@ -262,7 +265,7 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
           <span className="text-sm text-navy font-medium">{node.label}</span>
         </td>
         {columns.map((c) => <td key={c.key} className={`text-right tabular-nums whitespace-nowrap min-w-[90px] ${prevBg(c)}`}>{c.kind === 'real' ? realCell(realRowsById[node.id]?.[c.month] || 0, catNums, node.label, c.month) : roCell(catBud[c.month] || 0)}</td>)}
-        <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] font-medium">{roCell(sumMonths(catBud, months))}</td>
+        <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] font-medium">{roCell(colSum((m) => realRowsById[node.id]?.[m], (m) => catBud[m]))}</td>
       </tr>,
     );
     if (!catExp) continue;
@@ -294,7 +297,7 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
                 : hasDetail ? roCell(leafBud[c.month] || 0, 'text-xs') : budCell(target, leafBud, c.month)}
             </td>
           ))}
-          <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs font-medium">{roCell(sumMonths(leafBud, months), 'text-xs')}</td>
+          <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs font-medium">{roCell(colSum((m) => realRowsById[lineId]?.[m], (m) => leafBud[m]), 'text-xs')}</td>
         </tr>,
       );
       if (leafExp && hasAccs) {
@@ -320,7 +323,7 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
                     : hasKids ? roCell(abud[c.month] || 0, 'text-xs') : budCell(atgt, abud, c.month)}
                 </td>
               ))}
-              <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs">{roCell(sumMonths(abud, months), 'text-xs')}</td>
+              <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs">{roCell(colSum((m) => realAcct(acc.number, m), (m) => abud[m]), 'text-xs')}</td>
             </tr>,
           );
           for (const kid of kids) {
@@ -338,7 +341,7 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
                     {c.kind === 'real' ? <span className="block px-1 text-right text-xs text-gray-custom/30">·</span> : budCell(ktgt, kid.months || {}, c.month)}
                   </td>
                 ))}
-                <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs">{roCell(sumMonths(kid.months || {}, months), 'text-xs')}</td>
+                <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs">{roCell(colSum(() => 0, (m) => (kid.months || {})[m]), 'text-xs')}</td>
               </tr>,
             );
           }
@@ -379,7 +382,7 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
       {/* Sélecteurs de mois : un pour le prévi (doré), un pour le réel (navy) */}
       <div className="bg-white border border-sage rounded-xl px-3 sm:px-5 py-3 mb-3 space-y-2">
         {months.length > 1 && (
-          <MonthRangeSlider label="Mois du prévisionnel" accent="gold" months={months} range={clamp(budRange, months.length)} onChange={(f, t) => setBudRange([f, t])} />
+          <MonthRangeSlider label="Mois du prévisionnel" accent="green" months={months} range={clamp(budRange, months.length)} onChange={(f, t) => setBudRange([f, t])} />
         )}
         <div className="flex items-center gap-3 flex-wrap pt-1 border-t border-sage/60">
           <label className="inline-flex items-center gap-1.5 text-xs font-medium text-navy cursor-pointer">
@@ -401,15 +404,12 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
           <thead>
             <tr className="bg-navy text-white text-xs">
               <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-navy z-20 min-w-[160px] sm:min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">Poste</th>
-              {columns.map((c, i) => {
-                const boundary = c.kind === 'budget' && columns[i - 1]?.kind === 'real';
-                return (
-                  <th key={c.key} className={`py-2 px-3 text-right font-semibold whitespace-nowrap min-w-[90px] ${c.kind === 'budget' ? 'shadow-[inset_0_-2px_0_0_rgba(168,137,98,0.85)]' : ''} ${boundary ? 'border-l border-white/15' : ''}`}>
-                    {c.month.split('-')[1]}/{c.month.split('-')[0]}
-                  </th>
-                );
-              })}
-              <th className="py-2 px-3 text-right font-semibold whitespace-nowrap min-w-[110px] shadow-[inset_0_-2px_0_0_rgba(168,137,98,0.85)]">Total</th>
+              {columns.map((c) => (
+                <th key={c.key} className="py-2 px-3 text-right font-semibold whitespace-nowrap min-w-[90px]" style={c.kind === 'budget' ? { backgroundColor: PREVI } : undefined}>
+                  {c.month.split('-')[1]}/{c.month.split('-')[0]}
+                </th>
+              ))}
+              <th className="py-2 px-3 text-right font-semibold whitespace-nowrap min-w-[110px]" style={{ backgroundColor: PREVI }}>Total</th>
             </tr>
           </thead>
           <tbody>{rows}</tbody>
@@ -500,9 +500,7 @@ function MonthRangeSlider({ label, accent = 'gold', months, range, onChange }) {
   const pctOf = (i) => (N > 1 ? (i / (N - 1)) * 100 : 0);
   const idxAt = (clientX, rect) => Math.round(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * (N - 1));
   const lbl = (i) => { const [y, m] = months[i].split('-'); return `${m}/${y.slice(2)}`; };
-  const barCls = accent === 'gold' ? 'bg-gold' : 'bg-navy';
-  const ringCls = accent === 'gold' ? 'focus:ring-gold' : 'focus:ring-navy';
-  const segColor = accent === 'gold' ? 'text-gold border-gold' : 'text-navy border-navy';
+  const color = accent === 'green' ? PREVI : accent === 'gold' ? '#a88962' : '#01071b';
   const startDrag = (which) => (e) => {
     e.preventDefault(); e.stopPropagation();
     const rect = e.currentTarget.parentElement.getBoundingClientRect();
@@ -516,13 +514,13 @@ function MonthRangeSlider({ label, accent = 'gold', months, range, onChange }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className={`text-[11px] font-semibold ${accent === 'gold' ? 'text-gold' : 'text-navy'}`}>{label}</span>
+        <span className="text-[11px] font-semibold" style={{ color }}>{label}</span>
         <div className="flex items-center gap-1">
-          <select value={fromIdx} onChange={(e) => onChange(Math.min(+e.target.value, toIdx), toIdx)} className={`text-xs font-medium text-gray-custom bg-cream px-2 py-1 rounded border border-sage cursor-pointer focus:outline-none focus:ring-1 ${ringCls}`}>
+          <select value={fromIdx} onChange={(e) => onChange(Math.min(+e.target.value, toIdx), toIdx)} className="text-xs font-medium text-gray-custom bg-cream px-2 py-1 rounded border border-sage cursor-pointer focus:outline-none focus:ring-1 focus:ring-navy">
             {months.map((m, i) => <option key={m} value={i}>{lbl(i)}</option>)}
           </select>
           <span className="text-xs text-gray-custom">→</span>
-          <select value={toIdx} onChange={(e) => onChange(fromIdx, Math.max(+e.target.value, fromIdx))} className={`text-xs font-medium text-gray-custom bg-cream px-2 py-1 rounded border border-sage cursor-pointer focus:outline-none focus:ring-1 ${ringCls}`}>
+          <select value={toIdx} onChange={(e) => onChange(fromIdx, Math.max(+e.target.value, fromIdx))} className="text-xs font-medium text-gray-custom bg-cream px-2 py-1 rounded border border-sage cursor-pointer focus:outline-none focus:ring-1 focus:ring-navy">
             {months.map((m, i) => <option key={m} value={i}>{lbl(i)}</option>)}
           </select>
         </div>
@@ -530,7 +528,7 @@ function MonthRangeSlider({ label, accent = 'gold', months, range, onChange }) {
       <div className="relative py-3 select-none">
         <div className="relative h-2 rounded-full bg-sage cursor-pointer"
           onPointerDown={(e) => { if (e.target !== e.currentTarget) return; const rect = e.currentTarget.getBoundingClientRect(); const i = idxAt(e.clientX, rect); if (Math.abs(i - fromIdx) <= Math.abs(i - toIdx)) onChange(Math.min(i, toIdx), toIdx); else onChange(fromIdx, Math.max(i, fromIdx)); }}>
-          <div className={`absolute h-full ${barCls} rounded-full pointer-events-none`} style={{ left: `${pctOf(fromIdx)}%`, right: `${100 - pctOf(toIdx)}%` }} />
+          <div className="absolute h-full rounded-full pointer-events-none" style={{ left: `${pctOf(fromIdx)}%`, right: `${100 - pctOf(toIdx)}%`, backgroundColor: color }} />
           {[['from', fromIdx], ['to', toIdx]].map(([which, idx]) => (
             <button key={which} type="button" onPointerDown={startDrag(which)} title={lbl(idx)}
               className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white border-2 border-navy shadow-md cursor-grab active:cursor-grabbing touch-none hover:scale-110 transition-transform" style={{ left: `${pctOf(idx)}%` }} />
@@ -541,8 +539,8 @@ function MonthRangeSlider({ label, accent = 'gold', months, range, onChange }) {
         <div className="relative h-4">
           {segments.map((s) => (
             <div key={s.seg} className="absolute top-0 flex items-center justify-center" style={{ left: `${pctOf(s.start)}%`, width: `${Math.max(pctOf(s.end) - pctOf(s.start), 0.1)}%` }}>
-              <div className={`w-full border-t relative ${segColor}`}>
-                <span className={`absolute -top-0.5 left-1/2 -translate-x-1/2 bg-white px-2 text-xs whitespace-nowrap ${accent === 'gold' ? 'text-gold' : 'text-navy'}`}>{s.seg}</span>
+              <div className="w-full border-t relative" style={{ borderColor: color }}>
+                <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 bg-white px-2 text-xs whitespace-nowrap" style={{ color }}>{s.seg}</span>
               </div>
             </div>
           ))}

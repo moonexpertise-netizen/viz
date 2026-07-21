@@ -464,6 +464,10 @@ h1, h2, h3, h4, h5, h6 {
 .mv-btable td, .mv-btable th { border-bottom: 1px solid rgb(0 0 0 / 0.05); }
 .mv-btable tbody tr:last-child td { border-bottom: none; }
 
+/* Prévisionnel : les champs de saisie ont EXACTEMENT la même police/taille que
+   les cellules en lecture (nombres du réel), pour une grille homogène. */
+.mv-ptable td input { font-size: 0.95rem; line-height: 1.3; }
+
 /* Champs de formulaire : suivent le thème (sinon blanc UA en mode sombre) */
 input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   background-color: var(--surface);
