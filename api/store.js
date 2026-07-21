@@ -15,6 +15,7 @@ const entryKey = (c, fy) => `mvsync:${c}:${fy}`;
 const idxKey = (c) => `mvsync:idx:${c}`;
 
 const mapKey = (c) => `mvmap:${c}`;
+const budgetKey = (c) => `mvbudget:${c}`;
 
 export default async function handler(req, res) {
   if (!(await requireAuth(req, res))) return;
@@ -52,6 +53,37 @@ export default async function handler(req, res) {
       res.status(405).json({ error: 'Méthode non autorisée' });
     } catch (e) {
       console.error('store mapping:', e?.message || e);
+      res.status(500).json({ error: 'Stockage serveur indisponible' });
+    }
+    return;
+  }
+
+  // ── Budget / prévisionnel (un document par dossier) ──
+  if (kind === 'budget') {
+    try {
+      if (req.method === 'GET') {
+        if (!company) { res.status(400).json({ error: 'company_id requis' }); return; }
+        const raw = await kvGet(budgetKey(company));
+        res.status(200).json({ enabled: true, budget: raw ? JSON.parse(raw) : null });
+        return;
+      }
+      if (req.method === 'POST') {
+        const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+        if (!body.company_id || !body.budget) { res.status(400).json({ error: 'company_id et budget requis' }); return; }
+        if (!validCompanyId(String(body.company_id))) { res.status(400).json({ error: 'Identifiant de société invalide.' }); return; }
+        await kvSet(budgetKey(body.company_id), JSON.stringify(body.budget));
+        res.status(200).json({ ok: true });
+        return;
+      }
+      if (req.method === 'DELETE') {
+        if (!company) { res.status(400).json({ error: 'company_id requis' }); return; }
+        await kvDel(budgetKey(company));
+        res.status(200).json({ ok: true });
+        return;
+      }
+      res.status(405).json({ error: 'Méthode non autorisée' });
+    } catch (e) {
+      console.error('store budget:', e?.message || e);
       res.status(500).json({ error: 'Stockage serveur indisponible' });
     }
     return;

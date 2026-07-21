@@ -44,6 +44,9 @@ export const storeAPI = {
   getMapping: (companyId) => api.get('/store', { params: { company_id: companyId, kind: 'mapping' } }),
   saveMapping: (companyId, mapping) => api.post('/store', { kind: 'mapping', company_id: companyId, mapping }),
   deleteMapping: (companyId) => api.delete('/store', { params: { company_id: companyId, kind: 'mapping' } }),
+  getBudget: (companyId) => api.get('/store', { params: { company_id: companyId, kind: 'budget' } }),
+  saveBudget: (companyId, budget) => api.post('/store', { kind: 'budget', company_id: companyId, budget }),
+  deleteBudget: (companyId) => api.delete('/store', { params: { company_id: companyId, kind: 'budget' } }),
 };
 
 export const dataAPI = {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
-import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronLeft, ChevronDown, Home as HomeIcon, List, Search, ExternalLink, LayoutGrid, LayoutDashboard, Layers, FileText, Scale, Gauge, Menu, X, Trash2, ListTree } from 'lucide-react';
+import { LogOut, RefreshCw, Building2, Check, CloudOff, CalendarRange, ChevronRight, ChevronLeft, ChevronDown, Home as HomeIcon, List, Search, ExternalLink, LayoutGrid, LayoutDashboard, Layers, FileText, Scale, Gauge, Menu, X, Trash2, ListTree, TrendingUp } from 'lucide-react';
 import { dataAPI } from '../services/api';
 import { cls } from '../lib/format';
 import Combobox from '../components/Combobox';
@@ -11,6 +11,7 @@ import { Tip } from '../components/ChartBits';
 import { pennylaneCompanyUrl } from '../lib/pennylaneLink';
 import { applyTheme, getTheme, watchSystemTheme } from '../lib/theme';
 import { defaultMapping, loadLocalMapping, saveLocalMapping } from '../lib/mapping';
+import { loadLocalBudget, saveLocalBudget } from '../lib/budget';
 import { storeAPI } from '../services/api';
 import { loadSync, saveEntry, removeEntry, pullServer } from '../lib/syncStore';
 import { putLines, removeLines } from '../lib/linesStore';
@@ -24,10 +25,12 @@ const SIGView = lazy(() => import('../views/SIGView'));
 const RatiosView = lazy(() => import('../views/RatiosView'));
 const MonthlyView = lazy(() => import('../views/MonthlyView'));
 const MappingEditor = lazy(() => import('../components/MappingEditor'));
+const PrevisionnelView = lazy(() => import('../views/PrevisionnelView'));
 
 const TABS = [
   { key: 'synthese', label: 'Synthèse', Icon: LayoutDashboard },
   { key: 'periodic', label: 'Vision périodique', wide: true, Icon: CalendarRange },
+  { key: 'previsionnel', label: 'Prévisionnel', wide: true, Icon: TrendingUp },
   { key: 'sig', label: 'SIG', Icon: Layers },
   { key: 'resultat', label: 'Compte de résultat', Icon: FileText },
   { key: 'bilan', label: 'Bilan', Icon: Scale },
@@ -66,6 +69,7 @@ export default function Workspace({ onLogout }) {
   const [error, setError] = useState('');
   const [syncErrors, setSyncErrors] = useState({}); // fyId -> message d'échec de synchro
   const [mapping, setMapping] = useState(null); // affectation des comptes du dossier (null = plan par défaut non enregistré)
+  const [budget, setBudget] = useState(null); // prévisionnel du dossier (null = aucun budget saisi)
   const [syncOpen, setSyncOpen] = useState(false); // panneau de synchro déplié ?
   const [confirmRemove, setConfirmRemove] = useState(null); // exercice en attente de confirmation de suppression
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -174,6 +178,20 @@ export default function Workspace({ onLogout }) {
         return local;
       });
     }).catch(() => { /* repli local */ });
+    // Prévisionnel : même logique (cache local puis serveur, le plus récent gagne)
+    setBudget(loadLocalBudget(companyId));
+    storeAPI.getBudget(companyId).then(({ data }) => {
+      if (String(companyIdRef.current) !== String(companyId)) return;
+      const server = data?.budget;
+      if (!server) return;
+      setBudget((local) => {
+        if (!local || String(server.updatedAt || '') > String(local.updatedAt || '')) {
+          saveLocalBudget(companyId, server);
+          return server;
+        }
+        return local;
+      });
+    }).catch(() => { /* repli local */ });
     // Compléter avec le stockage serveur (durable / multi-appareils), sans écraser un job récent
     pullServer(companyId).then((serverMap) => {
       if (serverMap && String(companyIdRef.current) === String(companyId)) {
@@ -223,8 +241,8 @@ export default function Workspace({ onLogout }) {
   // Affectation pour laisser les tableaux en quasi pleine page.
   useEffect(() => { setSyncOpen(false); }, [companyId]);
   useEffect(() => { if (!anySynced) setSyncOpen(true); }, [anySynced]);
-  useEffect(() => { if (tab === 'periodic' || tab === 'mapping') setSyncOpen(false); }, [tab]);
-  const fullWidthTab = tab === 'periodic' || tab === 'mapping';
+  useEffect(() => { if (tab === 'periodic' || tab === 'mapping' || tab === 'previsionnel') setSyncOpen(false); }, [tab]);
+  const fullWidthTab = tab === 'periodic' || tab === 'mapping' || tab === 'previsionnel';
 
   const prevFyOf = (fy) => {
     const idx = fiscalYears.findIndex((f) => String(f.id) === String(fy.id));
@@ -316,6 +334,18 @@ export default function Workspace({ onLogout }) {
     setMapping(stamped);
     saveLocalMapping(companyId, stamped);
     storeAPI.saveMapping(companyId, stamped).catch(() => { /* repli local */ });
+  }, [companyId]);
+
+  // Sauvegarde du prévisionnel : local immédiat, serveur débattu (évite le spam KV).
+  const budgetSaveTimer = useRef(null);
+  const saveBudget = useCallback((b) => {
+    const stamped = { ...b, version: 1, updatedAt: new Date().toISOString() };
+    setBudget(stamped);
+    saveLocalBudget(companyId, stamped);
+    if (budgetSaveTimer.current) clearTimeout(budgetSaveTimer.current);
+    budgetSaveTimer.current = setTimeout(() => {
+      storeAPI.saveBudget(companyId, stamped).catch(() => { /* repli local */ });
+    }, 1000);
   }, [companyId]);
 
   const reportMeta = active && {
@@ -519,6 +549,8 @@ export default function Workspace({ onLogout }) {
                   <Suspense fallback={<ViewSkeleton />}>
                     {tab === 'periodic'
                       ? <div className="-mx-3 sm:-mx-5 md:-mx-6"><MonthlyView companyId={companyId} data={mergedMonthly} mapping={effectiveMapping} onSaveMapping={saveMapping} /></div>
+                      : tab === 'previsionnel'
+                        ? <div className="-mx-3 sm:-mx-5 md:-mx-6"><PrevisionnelView companyId={companyId} data={mergedMonthly} mapping={effectiveMapping} fiscalYears={fiscalYears} selectedFyId={fyId} budget={budget} onSaveBudget={saveBudget} /></div>
                       : tab === 'mapping'
                         ? <MappingEditor key={companyId} mapping={mapping || defaultMapping()} accountsPL={accountsPL} accountsCash={accountsCash} onSave={saveMapping} />
                         : active?.report?.report

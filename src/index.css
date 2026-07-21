@@ -458,6 +458,12 @@ h1, h2, h3, h4, h5, h6 {
 /* Chiffres négatifs : rouge très foncé (bordeaux), signe moins normal. */
 .mv-ptable td.text-accent-red { color: var(--num-neg); }
 
+/* Grille de saisie du prévisionnel : première colonne « Poste » figée à gauche
+   au scroll horizontal, et lignes compactes pour une saisie dense et lisible. */
+.mv-btable .mv-bsticky { position: sticky; left: 0; z-index: 10; box-shadow: 1px 0 0 0 var(--sage, #dcd6c8); }
+.mv-btable td, .mv-btable th { border-bottom: 1px solid rgb(0 0 0 / 0.05); }
+.mv-btable tbody tr:last-child td { border-bottom: none; }
+
 /* Champs de formulaire : suivent le thème (sinon blanc UA en mode sombre) */
 input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   background-color: var(--surface);
