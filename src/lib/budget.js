@@ -44,12 +44,23 @@ export function monthsOfFy(fy) {
   return out;
 }
 
+/** Valeur mensuelle effective d'une composante de détail : somme de ses
+ *  sous-lignes (children) s'il y en a, sinon sa saisie directe. */
+export function detailMonths(d, months) {
+  if (d?.children && d.children.length) {
+    const acc = emptyMonths(months);
+    for (const c of d.children) addMonths(acc, c.months);
+    return acc;
+  }
+  return pickMonths(d?.months, months);
+}
+
 /** Valeur mensuelle effective d'une feuille : somme du sous-détail s'il existe, sinon saisie directe. */
 export function leafMonths(line, months) {
   if (!line) return emptyMonths(months);
   if (line.detail && line.detail.length) {
     const acc = emptyMonths(months);
-    for (const d of line.detail) addMonths(acc, d.months);
+    for (const d of line.detail) addMonths(acc, detailMonths(d, months));
     return acc;
   }
   return pickMonths(line.months, months);

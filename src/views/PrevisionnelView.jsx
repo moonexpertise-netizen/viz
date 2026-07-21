@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Wand2, ArrowRight, Trash2, X, ClipboardPaste, CalendarRange, Check, ChevronsDownUp, Pencil } from 'lucide-react';
+import { Wand2, ArrowRight, Trash2, X, ClipboardPaste, CalendarRange, Check, ChevronsDownUp, Pencil, Plus } from 'lucide-react';
 import { buildPLTree } from '../lib/mapping';
 import EntryDetailModal from '../components/EntryDetailModal';
 import {
-  emptyBudget, monthsOfFy, buildBudgetTree, sumMonths,
+  emptyBudget, monthsOfFy, buildBudgetTree, sumMonths, detailMonths,
   spreadAnnual, growthSeries, fillRight, parsePasted, newBudgetId, accountsToDetail,
 } from '../lib/budget';
 
@@ -77,13 +77,26 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
   const realAcct = (num, m) => { const a = accountMonthly?.[num]; if (!a) return 0; const sign = a.accountClass === '6' ? -1 : 1; return round2(sign * (a.months?.[m] || 0)); };
 
   // ── Réel N-1 aligné (aides de recopie) ──
-  const prevFy = useMemo(() => { const i = fiscalYears.findIndex((f) => String(f.id) === String(fyId)); return i >= 0 ? fiscalYears[i + 1] : null; }, [fiscalYears, fyId]);
+  // Exercice précédent = celui dont la fin est juste avant le début de l'exercice
+  // budgété (robuste quel que soit l'ordre du tableau des exercices).
+  const prevFy = useMemo(() => {
+    const start = String(fy?.start || fy?.period_start || '').slice(0, 7);
+    if (!start) return null;
+    let best = null; let bestEnd = '';
+    for (const f of fiscalYears) {
+      if (String(f.id) === String(fyId)) continue;
+      const e = String(f.end || f.period_end || '').slice(0, 7);
+      if (e && e < start && e > bestEnd) { best = f; bestEnd = e; }
+    }
+    return best;
+  }, [fiscalYears, fyId, fy]);
   const prevMonths = useMemo(() => monthsOfFy(prevFy), [prevFy]);
   const prevRowsById = useMemo(() => {
     if (!plan || !accountMonthly || !prevMonths.length) return null;
     try { return buildPLTree(plan, accountMonthly, prevMonths).rowsById; } catch { return null; }
   }, [plan, accountMonthly, prevMonths]);
-  const hasPrev = !!prevRowsById;
+  const syncedMonthsSet = useMemo(() => new Set(data?.monthly?.months || []), [data]);
+  const hasPrev = !!prevRowsById && prevMonths.some((m) => syncedMonthsSet.has(m));
   const prevLineAligned = (lineId) => { const src = prevRowsById?.[lineId]; if (!src) return {}; const o = {}; months.forEach((m, i) => { const pm = prevMonths[i]; o[m] = pm ? round2(src[pm] || 0) : 0; }); return o; };
   const prevAcctAligned = (num) => { const a = accountMonthly?.[num]; if (!a || !prevMonths.length) return {}; const sign = a.accountClass === '6' ? -1 : 1; const o = {}; months.forEach((m, i) => { const pm = prevMonths[i]; o[m] = pm ? round2(sign * (a.months?.[pm] || 0)) : 0; }); return o; };
 
@@ -94,7 +107,8 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
     return map;
   }, [plan, lines, months]);
   const isAcctMode = (lineId) => !!(lines[lineId]?.detail?.some((d) => d.account));
-  const acctBudget = (lineId, num) => (lines[lineId]?.detail || []).find((d) => String(d.account) === String(num))?.months || {};
+  const acctEntry = (lineId, num) => (lines[lineId]?.detail || []).find((d) => String(d.account) === String(num));
+  const acctBudget = (lineId, num) => { const d = acctEntry(lineId, num); return d ? detailMonths(d, months) : {}; };
 
   // ── Écritures ──
   const setLeafCell = (lineId, mk, val) => { const cur = lines[lineId] || {}; applyLines({ ...lines, [lineId]: { ...cur, months: { ...(cur.months || {}), [mk]: val } } }); };
@@ -113,6 +127,21 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
     else detail[i] = { ...detail[i], months: m };
     applyLines({ ...lines, [lineId]: { ...cur, months: {}, detail } });
   };
+  // Sous-lignes détaillées sous un compte (composantes nommées qui se somment)
+  const withAcct = (lineId, num, label, mutate) => {
+    const cur = lines[lineId] || {}; const detail = [...(cur.detail || [])];
+    const i = detail.findIndex((d) => String(d.account) === String(num));
+    const base = i < 0 ? { id: newBudgetId(), account: String(num), label: `${num} ${label || ''}`.trim(), months: {} } : { ...detail[i] };
+    const entry = mutate(base);
+    if (i < 0) detail.push(entry); else detail[i] = entry;
+    applyLines({ ...lines, [lineId]: { ...cur, months: {}, detail } });
+  };
+  const addAcctChild = (lineId, num, label) => withAcct(lineId, num, label, (e) => ({ ...e, children: [...(e.children || []), { id: newBudgetId(), label: '', months: {} }] }));
+  const setAcctChildLabel = (lineId, num, cid, v) => withAcct(lineId, num, '', (e) => ({ ...e, children: (e.children || []).map((c) => (c.id === cid ? { ...c, label: v } : c)) }));
+  const setAcctChildCell = (lineId, num, cid, mk, v) => withAcct(lineId, num, '', (e) => ({ ...e, children: (e.children || []).map((c) => (c.id === cid ? { ...c, months: { ...(c.months || {}), [mk]: v } } : c)) }));
+  const setAcctChildMonths = (lineId, num, cid, m) => withAcct(lineId, num, '', (e) => ({ ...e, children: (e.children || []).map((c) => (c.id === cid ? { ...c, months: m } : c)) }));
+  const removeAcctChild = (lineId, num, cid) => withAcct(lineId, num, '', (e) => { const children = (e.children || []).filter((c) => c.id !== cid); return { ...e, children: children.length ? children : undefined }; });
+
   const enterAcctMode = (lineId) => {
     const accs = accountsByLine[lineId] || []; if (!accs.length) return;
     const prefill = {}; accs.forEach((a) => { prefill[a.number] = prevAcctAligned(a.number); });
@@ -122,11 +151,19 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
 
   const fillAllFromPrev = () => {
     if (!hasPrev) return; const next = { ...lines };
+    const doLine = (id) => {
+      if (isAcctMode(id)) { // en mode compte : chaque compte reçoit son propre réel N-1
+        const detail = (next[id]?.detail || []).map((d) => (d.account ? { ...d, months: prevAcctAligned(d.account) } : d));
+        next[id] = { ...(next[id] || {}), months: {}, detail };
+      } else {
+        next[id] = { ...(next[id] || {}), months: prevLineAligned(id) };
+      }
+    };
     for (const node of plan.nodes) {
       if (node.kind !== 'cat') continue;
       const subs = node.subs || [];
-      if (subs.length) subs.forEach((s) => { const id = `${node.id}/${s.id}`; if (!isAcctMode(id)) next[id] = { ...(next[id] || {}), months: prevLineAligned(id) }; });
-      else if (!isAcctMode(node.id)) next[node.id] = { ...(next[node.id] || {}), months: prevLineAligned(node.id) };
+      if (subs.length) subs.forEach((s) => doLine(`${node.id}/${s.id}`));
+      else doLine(node.id);
     }
     applyLines(next);
   };
@@ -263,23 +300,48 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
       if (leafExp && hasAccs) {
         for (const acc of accList) {
           const abud = acctBudget(lineId, acc.number);
+          const kids = acctEntry(lineId, acc.number)?.children || [];
+          const hasKids = kids.length > 0;
           const atgt = { setCell: (m, v) => setAcctCell(lineId, acc.number, acc.label, m, v), setMonths: (mm) => setAcctMonths(lineId, acc.number, acc.label, mm) };
           rows.push(
             <tr key={`${leafKey}_${acc.number}`} className="bg-white hover:bg-cream/40 transition border-b border-sage group/acc">
               <td className="px-3 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: indentAcct }}>
                 <span className="text-xs text-gray-400 mr-2">{acc.number}</span>
                 <span className="text-xs text-gray-custom">{acc.label}</span>
-                <button onClick={() => setHelper({ lineId, detailNum: acc.number, detailLabel: acc.label, label: `${acc.number} ${acc.label}` })} title="Aides" className="ml-2 opacity-0 group-hover/acc:opacity-100 transition text-gray-custom/60 hover:text-navy align-middle"><Wand2 size={12} /></button>
+                {hasKids && <span className="ml-2 text-[10px] text-gray-custom/70 bg-cream rounded px-1">détaillé</span>}
+                <span className="inline-flex items-center gap-1 ml-2 opacity-0 group-hover/acc:opacity-100 transition align-middle">
+                  {!hasKids && <button onClick={() => setHelper({ lineId, detailNum: acc.number, detailLabel: acc.label, label: `${acc.number} ${acc.label}` })} title="Aides" className="text-gray-custom/60 hover:text-navy"><Wand2 size={12} /></button>}
+                  <button onClick={() => addAcctChild(lineId, acc.number, acc.label)} title="Ajouter une sous-ligne détaillée sous ce compte" className="text-gray-custom/60 hover:text-navy"><Plus size={12} /></button>
+                </span>
               </td>
               {columns.map((c) => (
-                <td key={c.key} className={`text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 ${prevBg(c)}`}>
+                <td key={c.key} className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1">
                   {c.kind === 'real' ? realCell(realAcct(acc.number, c.month), acc.number, acc.label, c.month, 'text-xs')
-                    : budCell(atgt, abud, c.month)}
+                    : hasKids ? roCell(abud[c.month] || 0, 'text-xs') : budCell(atgt, abud, c.month)}
                 </td>
               ))}
               <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs">{roCell(sumMonths(abud, months), 'text-xs')}</td>
             </tr>,
           );
+          for (const kid of kids) {
+            const ktgt = { setCell: (m, v) => setAcctChildCell(lineId, acc.number, kid.id, m, v), setMonths: (mm) => setAcctChildMonths(lineId, acc.number, kid.id, mm) };
+            rows.push(
+              <tr key={`${leafKey}_${acc.number}_${kid.id}`} className="bg-white hover:bg-cream/30 transition border-b border-sage/50 group/kid">
+                <td className="px-3 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: '5rem' }}>
+                  <span className="text-gray-custom/40 text-xs mr-1">└</span>
+                  <input value={kid.label} onChange={(e) => setAcctChildLabel(lineId, acc.number, kid.id, e.target.value)} placeholder="Libellé (ex. offre A, hypothèse…)" className="text-xs text-navy bg-transparent border-b border-transparent hover:border-sage focus:border-navy/40 focus:outline-none py-0.5 w-48" />
+                  <button onClick={() => setHelper({ childLineId: lineId, childNum: acc.number, childId: kid.id, label: kid.label || 'sous-ligne' })} title="Aides" className="ml-1 opacity-0 group-hover/kid:opacity-100 transition text-gray-custom/60 hover:text-navy align-middle"><Wand2 size={11} /></button>
+                  <button onClick={() => removeAcctChild(lineId, acc.number, kid.id)} title="Supprimer" className="ml-1 opacity-0 group-hover/kid:opacity-100 transition text-gray-custom/60 hover:text-accent-red align-middle"><X size={11} /></button>
+                </td>
+                {columns.map((c) => (
+                  <td key={c.key} className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1">
+                    {c.kind === 'real' ? <span className="block px-1 text-right text-xs text-gray-custom/30">·</span> : budCell(ktgt, kid.months || {}, c.month)}
+                  </td>
+                ))}
+                <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs">{roCell(sumMonths(kid.months || {}, months), 'text-xs')}</td>
+              </tr>,
+            );
+          }
         }
       }
     };
@@ -288,9 +350,11 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
     else renderLeaf(node.id, node.label, catAccs, '2rem', '3.5rem');
   }
 
-  const helperTarget = helper ? (helper.detailNum
-    ? { get: () => acctBudget(helper.lineId, helper.detailNum), setMonths: (m) => setAcctMonths(helper.lineId, helper.detailNum, helper.detailLabel, m) }
-    : { get: () => (lines[helper.lineId]?.months || {}), setMonths: (m) => setLeafMonths(helper.lineId, m) }) : null;
+  const helperTarget = !helper ? null : helper.childId
+    ? { get: () => ((acctEntry(helper.childLineId, helper.childNum)?.children || []).find((c) => c.id === helper.childId)?.months || {}), setMonths: (m) => setAcctChildMonths(helper.childLineId, helper.childNum, helper.childId, m), prev: () => prevAcctAligned(helper.childNum) }
+    : helper.detailNum
+      ? { get: () => acctBudget(helper.lineId, helper.detailNum), setMonths: (m) => setAcctMonths(helper.lineId, helper.detailNum, helper.detailLabel, m), prev: () => prevAcctAligned(helper.detailNum) }
+      : { get: () => (lines[helper.lineId]?.months || {}), setMonths: (m) => setLeafMonths(helper.lineId, m), prev: () => prevLineAligned(helper.lineId) };
 
   return (
     <div className="px-3 sm:px-5 md:px-6">
@@ -358,7 +422,7 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
           onSpread={(t) => { helperTarget.setMonths(spreadAnnual(t, months)); setHelper(null); }}
           onGrowth={(b, g) => { helperTarget.setMonths(growthSeries(b, g, months)); setHelper(null); }}
           onPaste={(txt) => { helperTarget.setMonths(parsePasted(txt, months)); setHelper(null); }}
-          onPrev={() => { helperTarget.setMonths(helper.detailNum ? prevAcctAligned(helper.detailNum) : prevLineAligned(helper.lineId)); setHelper(null); }}
+          onPrev={() => { helperTarget.setMonths(helperTarget.prev()); setHelper(null); }}
           onClear={() => { helperTarget.setMonths({}); setHelper(null); }}
           onClose={() => setHelper(null)}
         />
