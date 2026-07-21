@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Wand2, ArrowRight, Trash2, Plus, X, ClipboardPaste, CalendarRange, Check, ListTree } from 'lucide-react';
+import { Wand2, ArrowRight, Trash2, X, ClipboardPaste, CalendarRange, Check, ListTree, ChevronsDownUp, Pencil } from 'lucide-react';
 import { buildPLTree } from '../lib/mapping';
 import {
   emptyBudget, monthsOfFy, buildBudgetTree, sumMonths,
@@ -10,29 +10,30 @@ const round2 = (n) => Math.round(n * 100) / 100;
 const fmt = (n) => (n ? Math.round(n).toLocaleString('fr-FR') : '0');
 const monthLabel = (ym) => { const [y, m] = ym.split('-'); return `${m}/${y.slice(2)}`; };
 const parseNum = (s) => { const n = Number(String(s).replace(/\s/g, '').replace(',', '.')); return Number.isFinite(n) ? n : 0; };
-const NumTxt = ({ v }) => <span style={v < 0 ? { color: 'var(--num-neg)' } : undefined}>{fmt(v)}</span>;
+const negCls = (v) => (v < 0 ? 'text-accent-red' : v === 0 ? 'text-gray-300' : '');
+const CHEV = '›';
 
 /**
- * Prévisionnel / Budget P&L. Saisie par sous-catégorie (ou catégorie sans
- * sous-catégorie), détaillable jusqu'au compte de la balance, avec rollups
- * automatiques. Trois affichages : prévi seul, réel + prévi (mois en double),
- * réel puis prévi (les mois réels remplacent les mois prévi).
+ * Prévisionnel / Budget P&L — rendu IDENTIQUE à la Vision périodique : arbre
+ * repliable rubrique › sous-rubrique › comptes, mêmes styles. Colonnes réelles
+ * en lecture seule (avec le détail des comptes) et colonnes budget éditables.
+ * Trois affichages : prévi seul / réel + prévi (mois en double) / réel puis prévi.
  */
 export default function PrevisionnelView({ companyId, data, mapping, fiscalYears = [], selectedFyId, budget, onSaveBudget }) {
   const plan = mapping?.pl;
   const accountMonthly = data?.monthly?.accountMonthly || null;
 
-  // ── Exercice budgété ──
   const [fyId, setFyId] = useState(selectedFyId || fiscalYears[0]?.id || '');
   useEffect(() => { if (selectedFyId) setFyId(String(selectedFyId)); }, [selectedFyId]);
   const fy = useMemo(() => fiscalYears.find((f) => String(f.id) === String(fyId)) || fiscalYears[0], [fiscalYears, fyId]);
   const months = useMemo(() => monthsOfFy(fy), [fy]);
 
-  // ── Affichage : réel à côté du prévi ──
   const [showReal, setShowReal] = useState(false);
   const [monthsDouble, setMonthsDouble] = useState(false);
+  const [expanded, setExpanded] = useState({});
+  const toggle = (k) => setExpanded((e) => ({ ...e, [k]: !e[k] }));
 
-  // ── Lignes de travail ──
+  // ── Lignes de budget (état local rapide, poussé au parent en différé) ──
   const [lines, setLines] = useState({});
   const dirty = useRef(false);
   const budgetRef = useRef(budget);
@@ -41,10 +42,8 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
   useEffect(() => { dirty.current = false; setLines(budget?.fy?.[fyId]?.lines || {}); /* eslint-disable-next-line */ }, [companyId, fyId]);
   useEffect(() => { if (!dirty.current) setLines(budget?.fy?.[fyId]?.lines || {}); /* eslint-disable-next-line */ }, [budget]);
   const [savedAt, setSavedAt] = useState(0);
-
   const applyLines = (next) => {
-    dirty.current = true;
-    setLines(next);
+    dirty.current = true; setLines(next);
     if (pushTimer.current) clearTimeout(pushTimer.current);
     pushTimer.current = setTimeout(() => {
       const base = budgetRef.current && budgetRef.current.version === 1 ? budgetRef.current : emptyBudget();
@@ -54,26 +53,7 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
   };
   useEffect(() => () => { if (pushTimer.current) clearTimeout(pushTimer.current); }, []);
 
-  // ── Écritures de lignes ──
-  const setLeafMonths = (lineId, m) => { const cur = lines[lineId] || {}; applyLines({ ...lines, [lineId]: { ...cur, months: m } }); };
-  const setLeafCell = (lineId, mk, val) => { const cur = lines[lineId] || {}; setLeafMonths(lineId, { ...(cur.months || {}), [mk]: val }); };
-  const setDetailMonths = (lineId, detailId, m) => { const cur = lines[lineId] || {}; applyLines({ ...lines, [lineId]: { ...cur, detail: (cur.detail || []).map((d) => (d.id === detailId ? { ...d, months: m } : d)) } }); };
-  const setDetailCell = (lineId, detailId, mk, val) => { const cur = lines[lineId] || {}; applyLines({ ...lines, [lineId]: { ...cur, detail: (cur.detail || []).map((d) => (d.id === detailId ? { ...d, months: { ...(d.months || {}), [mk]: val } } : d)) } }); };
-  const setDetailLabel = (lineId, detailId, label) => { const cur = lines[lineId] || {}; applyLines({ ...lines, [lineId]: { ...cur, detail: (cur.detail || []).map((d) => (d.id === detailId ? { ...d, label } : d)) } }); };
-  const addDetail = (lineId) => {
-    const cur = lines[lineId] || {};
-    const detail = [...(cur.detail || [])];
-    if (!detail.length && cur.months && Object.values(cur.months).some((v) => Number(v))) detail.push({ id: newBudgetId(), label: 'Base', months: { ...cur.months } });
-    detail.push({ id: newBudgetId(), label: '', months: {} });
-    applyLines({ ...lines, [lineId]: { months: {}, detail } });
-  };
-  const removeDetail = (lineId, detailId) => { const cur = lines[lineId] || {}; const detail = (cur.detail || []).filter((d) => d.id !== detailId); applyLines({ ...lines, [lineId]: { ...cur, detail: detail.length ? detail : undefined } }); };
-
-  const getMonths = (t) => (t.detailId ? ((lines[t.lineId]?.detail || []).find((d) => d.id === t.detailId)?.months || {}) : (lines[t.lineId]?.months || {}));
-  const setMonths = (t, m) => (t.detailId ? setDetailMonths(t.lineId, t.detailId, m) : setLeafMonths(t.lineId, m));
-  const setCell = (t, mk, v) => (t.detailId ? setDetailCell(t.lineId, t.detailId, mk, v) : setLeafCell(t.lineId, mk, v));
-
-  // ── Réel (sur les mois synchronisés jusqu'à la fin de l'exercice budgété) ──
+  // ── Réel (structure + valeurs) via le MÊME buildPLTree que la Vision périodique ──
   const realMonths = useMemo(() => {
     const all = data?.monthly?.months || [];
     const last = months[months.length - 1] || '';
@@ -84,7 +64,6 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
     try { return buildPLTree(plan, accountMonthly, realMonths); } catch { return null; }
   }, [plan, accountMonthly, realMonths]);
   const realRowsById = realTree?.rowsById || {};
-  // Comptes rattachés à chaque feuille (pour la saisie au compte)
   const accountsByLine = useMemo(() => {
     const map = {};
     for (const node of realTree?.tree || []) {
@@ -95,9 +74,9 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
     }
     return map;
   }, [realTree]);
-  const realAcctMonth = (num, m) => { const a = accountMonthly?.[num]; if (!a) return 0; const sign = a.accountClass === '6' ? -1 : 1; return round2(sign * (a.months?.[m] || 0)); };
+  const realAcct = (num, m) => { const a = accountMonthly?.[num]; if (!a) return 0; const sign = a.accountClass === '6' ? -1 : 1; return round2(sign * (a.months?.[m] || 0)); };
 
-  // Réel N-1 aligné (par ligne et par compte) pour les aides de recopie
+  // ── Réel N-1 aligné (aides de recopie) ──
   const prevFy = useMemo(() => { const i = fiscalYears.findIndex((f) => String(f.id) === String(fyId)); return i >= 0 ? fiscalYears[i + 1] : null; }, [fiscalYears, fyId]);
   const prevMonths = useMemo(() => monthsOfFy(prevFy), [prevFy]);
   const prevRowsById = useMemo(() => {
@@ -108,39 +87,72 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
   const prevLineAligned = (lineId) => { const src = prevRowsById?.[lineId]; if (!src) return {}; const o = {}; months.forEach((m, i) => { const pm = prevMonths[i]; o[m] = pm ? round2(src[pm] || 0) : 0; }); return o; };
   const prevAcctAligned = (num) => { const a = accountMonthly?.[num]; if (!a || !prevMonths.length) return {}; const sign = a.accountClass === '6' ? -1 : 1; const o = {}; months.forEach((m, i) => { const pm = prevMonths[i]; o[m] = pm ? round2(sign * (a.months?.[pm] || 0)) : 0; }); return o; };
 
-  // Détailler une feuille par ses comptes de la balance (pré-remplis par le réel N-1)
-  const detailByAccounts = (lineId) => {
-    const accs = accountsByLine[lineId] || [];
-    if (!accs.length) return;
-    const cur = lines[lineId] || {};
-    const existing = cur.detail || [];
-    const haveNums = new Set(existing.filter((d) => d.account).map((d) => String(d.account)));
-    const prefill = {}; accs.forEach((a) => { prefill[a.number] = prevAcctAligned(a.number); });
-    const fresh = accountsToDetail(accs.filter((a) => !haveNums.has(String(a.number))), prefill);
-    const detail = [...existing, ...fresh];
-    applyLines({ ...lines, [lineId]: { months: {}, detail } });
-  };
+  // ── Rollups budget (mêmes règles cumul/section que le réel) ──
+  const budgetMap = useMemo(() => {
+    const map = {};
+    for (const r of buildBudgetTree(plan || { nodes: [] }, lines, months)) if (r.type === 'cat' || r.type === 'leaf' || r.type === 'total') map[r.id] = r.months;
+    return map;
+  }, [plan, lines, months]);
+  const isAcctMode = (lineId) => !!(lines[lineId]?.detail?.some((d) => d.account));
+  const acctBudget = (lineId, num) => (lines[lineId]?.detail || []).find((d) => String(d.account) === String(num))?.months || {};
 
-  const rows = useMemo(() => (plan && months.length ? buildBudgetTree(plan, lines, months) : []), [plan, lines, months]);
+  // ── Écritures ──
+  const setLeafCell = (lineId, mk, val) => { const cur = lines[lineId] || {}; applyLines({ ...lines, [lineId]: { ...cur, months: { ...(cur.months || {}), [mk]: val } } }); };
+  const setLeafMonths = (lineId, m) => { const cur = lines[lineId] || {}; applyLines({ ...lines, [lineId]: { ...cur, months: m } }); };
+  const setAcctCell = (lineId, num, label, mk, val) => {
+    const cur = lines[lineId] || {}; const detail = [...(cur.detail || [])];
+    const i = detail.findIndex((d) => String(d.account) === String(num));
+    if (i < 0) detail.push({ id: newBudgetId(), account: String(num), label: `${num} ${label || ''}`.trim(), months: { [mk]: val } });
+    else detail[i] = { ...detail[i], months: { ...(detail[i].months || {}), [mk]: val } };
+    applyLines({ ...lines, [lineId]: { ...cur, months: {}, detail } });
+  };
+  const setAcctMonths = (lineId, num, label, m) => {
+    const cur = lines[lineId] || {}; const detail = [...(cur.detail || [])];
+    const i = detail.findIndex((d) => String(d.account) === String(num));
+    if (i < 0) detail.push({ id: newBudgetId(), account: String(num), label: `${num} ${label || ''}`.trim(), months: m });
+    else detail[i] = { ...detail[i], months: m };
+    applyLines({ ...lines, [lineId]: { ...cur, months: {}, detail } });
+  };
+  const enterAcctMode = (lineId) => {
+    const accs = accountsByLine[lineId] || []; if (!accs.length) return;
+    const prefill = {}; accs.forEach((a) => { prefill[a.number] = prevAcctAligned(a.number); });
+    applyLines({ ...lines, [lineId]: { months: {}, detail: accountsToDetail(accs, prefill) } });
+  };
+  const exitAcctMode = (lineId) => { const cur = lines[lineId] || {}; applyLines({ ...lines, [lineId]: { ...cur, detail: undefined } }); };
 
   const fillAllFromPrev = () => {
-    if (!hasPrev) return;
-    const next = { ...lines };
-    for (const r of rows) { if (r.type !== 'leaf' || r.hasDetail) continue; next[r.lineId] = { ...(next[r.lineId] || {}), months: prevLineAligned(r.lineId) }; }
+    if (!hasPrev) return; const next = { ...lines };
+    for (const node of plan.nodes) {
+      if (node.kind !== 'cat') continue;
+      const subs = node.subs || [];
+      if (subs.length) subs.forEach((s) => { const id = `${node.id}/${s.id}`; if (!isAcctMode(id)) next[id] = { ...(next[id] || {}), months: prevLineAligned(id) }; });
+      else if (!isAcctMode(node.id)) next[node.id] = { ...(next[node.id] || {}), months: prevLineAligned(node.id) };
+    }
     applyLines(next);
   };
 
-  // ── Colonnes selon le mode d'affichage ──
+  // ── Colonnes selon l'affichage ──
   const columns = useMemo(() => {
     const bud = months.map((m) => ({ key: `b:${m}`, month: m, kind: 'budget' }));
     if (!showReal || !realMonths.length) return bud;
-    const realSet = new Set(realMonths);
+    const rset = new Set(realMonths);
     const real = realMonths.map((m) => ({ key: `r:${m}`, month: m, kind: 'real' }));
-    const budCols = monthsDouble ? bud : bud.filter((c) => !realSet.has(c.month));
-    return [...real, ...budCols];
+    return [...real, ...(monthsDouble ? bud : bud.filter((c) => !rset.has(c.month)))];
   }, [months, showReal, monthsDouble, realMonths]);
   const realCount = columns.filter((c) => c.kind === 'real').length;
   const budgetCount = columns.length - realCount;
+
+  const allExpanded = useMemo(() => {
+    const keys = [];
+    for (const node of plan?.nodes || []) if (node.kind === 'cat') { keys.push(`c_${node.id}`); (node.subs || []).forEach((s) => keys.push(`s_${node.id}/${s.id}`)); }
+    return keys.every((k) => expanded[k]);
+  }, [plan, expanded]);
+  const toggleAll = () => {
+    if (allExpanded) { setExpanded({}); return; }
+    const next = {};
+    for (const node of plan?.nodes || []) if (node.kind === 'cat') { next[`c_${node.id}`] = true; (node.subs || []).forEach((s) => { next[`s_${node.id}/${s.id}`] = true; }); }
+    setExpanded(next);
+  };
 
   const [helper, setHelper] = useState(null);
 
@@ -148,19 +160,110 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
   if (!fiscalYears.length || !months.length) return <div className="card-moon p-8 text-center text-gray-custom">Sélectionnez un exercice pour construire le prévisionnel.</div>;
   const year = (fy?.end || fy?.period_end || fy?.start || '').slice(0, 4);
 
-  // Valeur d'une cellule (réel = lecture seule ; budget = éditable sur les feuilles)
-  const cellFor = (r, col) => {
-    if (col.kind === 'real') {
-      const v = r.type === 'detail' ? (r.account ? realAcctMonth(r.account, col.month) : null) : (realRowsById[r.id]?.[col.month]);
-      return v == null ? <span className="block px-1.5 py-1 text-sm text-gray-custom/30">·</span> : <span className="block px-1.5 py-1 text-sm tabular-nums text-gray-custom/80"><NumTxt v={v} /></span>;
+  // Cellule budget éditable
+  const budCell = (target, monthsObj, m) => (
+    <NumCell value={monthsObj[m]} onCommit={(v) => target.setCell(m, v)}
+      onFillRight={() => target.setMonths(fillRight(monthsObj, m, months))} />
+  );
+  // Cellule (réel lecture seule, ou budget calculé)
+  const roCell = (v, cls = 'text-sm') => <span className={`block px-1 text-right tabular-nums ${cls} ${negCls(v)}`}>{fmt(v)}</span>;
+
+  const rows = [];
+  for (const node of plan.nodes) {
+    if (node.kind === 'total') {
+      const bud = budgetMap[node.id] || {};
+      rows.push(
+        <tr key={node.id} className="bg-cream border-y border-sage">
+          <td className="px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">{node.label}</td>
+          {columns.map((c) => <td key={c.key} className={`text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold ${c.kind === 'real' ? 'bg-cream/70' : 'bg-cream'}`}>{roCell(c.kind === 'real' ? (realRowsById[node.id]?.[c.month] || 0) : (bud[c.month] || 0))}</td>)}
+          <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-100">{roCell(sumMonths(bud, months))}</td>
+        </tr>,
+      );
+      continue;
     }
-    if (r.editable) return <NumCell value={r.months[col.month]} onCommit={(v) => setCell({ lineId: r.lineId, detailId: r.detailId }, col.month, v)} onFillRight={() => setMonths({ lineId: r.lineId, detailId: r.detailId }, fillRight(getMonths({ lineId: r.lineId, detailId: r.detailId }), col.month, months))} />;
-    return <span className="block px-1.5 py-1 text-sm tabular-nums text-navy font-medium"><NumTxt v={r.months[col.month]} /></span>;
-  };
+    // Catégorie (rubrique)
+    const catKey = `c_${node.id}`;
+    const catExp = expanded[catKey];
+    const subs = node.subs || [];
+    const catAccs = accountsByLine[node.id] || [];
+    const catHasContent = subs.length > 0 || catAccs.length > 0;
+    const catBud = budgetMap[node.id] || {};
+    rows.push(
+      <tr key={catKey} className={`border-b border-sage ${catHasContent ? 'cursor-pointer hover:bg-cream/50 transition' : ''}`} onClick={() => catHasContent && toggle(catKey)}>
+        <td className="px-3 sticky left-0 z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
+          <span className={`inline-block w-5 text-center mr-1 text-gray-300 transition-transform duration-200 text-xs ${catExp ? 'rotate-90' : ''}`}>{catHasContent ? CHEV : ''}</span>
+          <span className="text-sm text-navy font-medium">{node.label}</span>
+        </td>
+        {columns.map((c) => <td key={c.key} className={`text-right tabular-nums whitespace-nowrap min-w-[90px] ${c.kind === 'real' ? 'bg-cream/20' : ''}`}>{roCell(c.kind === 'real' ? (realRowsById[node.id]?.[c.month] || 0) : (catBud[c.month] || 0))}</td>)}
+        <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] font-medium">{roCell(sumMonths(catBud, months))}</td>
+      </tr>,
+    );
+    if (!catExp) continue;
+
+    const renderLeaf = (lineId, label, accList, indentLabel, indentAcct) => {
+      const accMode = isAcctMode(lineId);
+      const leafKey = `s_${lineId}`;
+      const leafExp = expanded[leafKey];
+      const leafBud = budgetMap[lineId] || {};
+      const target = { setCell: (m, v) => setLeafCell(lineId, m, v), setMonths: (mm) => setLeafMonths(lineId, mm) };
+      const hasAccs = accList.length > 0;
+      rows.push(
+        <tr key={leafKey} className="border-b border-sage/60 bg-cream/50 group/leaf">
+          <td className="px-3 sticky left-0 z-10 bg-cream/50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: indentLabel }}>
+            <span onClick={() => hasAccs && toggle(leafKey)} className={hasAccs ? 'cursor-pointer' : ''}>
+              <span className={`inline-block w-5 text-center mr-1 text-gray-300 transition-transform duration-200 text-xs ${leafExp ? 'rotate-90' : ''}`}>{hasAccs ? CHEV : ''}</span>
+              <span className="text-xs font-medium text-navy">{label}</span>
+            </span>
+            {accMode && <span className="ml-2 text-[10px] text-gray-custom/70 bg-white rounded px-1">par comptes</span>}
+            <span className="inline-flex items-center gap-1 ml-2 opacity-0 group-hover/leaf:opacity-100 transition align-middle">
+              {!accMode && <button onClick={(e) => { e.stopPropagation(); setHelper({ lineId, label }); }} title="Aides à la construction" className="text-gray-custom/60 hover:text-navy"><Wand2 size={13} /></button>}
+              {hasAccs && !accMode && <button onClick={(e) => { e.stopPropagation(); enterAcctMode(lineId); toggle(leafKey); }} title="Détailler par les comptes" className="text-gray-custom/60 hover:text-navy"><ListTree size={13} /></button>}
+              {accMode && <button onClick={(e) => { e.stopPropagation(); exitAcctMode(lineId); }} title="Revenir à la saisie directe" className="text-gray-custom/60 hover:text-navy"><Pencil size={13} /></button>}
+            </span>
+          </td>
+          {columns.map((c) => (
+            <td key={c.key} className={`text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 ${c.kind === 'real' ? 'bg-cream/20' : ''}`}>
+              {c.kind === 'real' ? roCell(realRowsById[lineId]?.[c.month] || 0, 'text-xs')
+                : accMode ? roCell(leafBud[c.month] || 0, 'text-xs') : budCell(target, leafBud, c.month)}
+            </td>
+          ))}
+          <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs font-medium">{roCell(sumMonths(leafBud, months), 'text-xs')}</td>
+        </tr>,
+      );
+      if ((leafExp || accMode) && hasAccs) {
+        for (const acc of accList) {
+          const abud = acctBudget(lineId, acc.number);
+          const atgt = { setCell: (m, v) => setAcctCell(lineId, acc.number, acc.label, m, v), setMonths: (mm) => setAcctMonths(lineId, acc.number, acc.label, mm) };
+          rows.push(
+            <tr key={`${leafKey}_${acc.number}`} className="bg-white hover:bg-cream/40 transition border-b border-sage group/acc">
+              <td className="px-3 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: indentAcct }}>
+                <span className="text-xs text-gray-400 mr-2">{acc.number}</span>
+                <span className="text-xs text-gray-custom">{acc.label}</span>
+                {accMode && <button onClick={() => setHelper({ lineId, detailNum: acc.number, detailLabel: acc.label, label: `${acc.number} ${acc.label}` })} title="Aides" className="ml-2 opacity-0 group-hover/acc:opacity-100 transition text-gray-custom/60 hover:text-navy align-middle"><Wand2 size={12} /></button>}
+              </td>
+              {columns.map((c) => (
+                <td key={c.key} className={`text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 ${c.kind === 'real' ? 'bg-cream/20' : ''}`}>
+                  {c.kind === 'real' ? roCell(realAcct(acc.number, c.month), 'text-xs')
+                    : accMode ? budCell(atgt, abud, c.month) : <span className="block px-1 text-right text-xs text-gray-300">·</span>}
+                </td>
+              ))}
+              <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs">{accMode ? roCell(sumMonths(abud, months), 'text-xs') : <span className="text-gray-300">·</span>}</td>
+            </tr>,
+          );
+        }
+      }
+    };
+
+    if (subs.length) subs.forEach((sub) => renderLeaf(`${node.id}/${sub.id}`, sub.label, accountsByLine[`${node.id}/${sub.id}`] || [], '2rem', '3.5rem'));
+    else renderLeaf(node.id, node.label, catAccs, '2rem', '3.5rem');
+  }
+
+  const helperTarget = helper ? (helper.detailNum
+    ? { get: () => acctBudget(helper.lineId, helper.detailNum), setMonths: (m) => setAcctMonths(helper.lineId, helper.detailNum, helper.detailLabel, m) }
+    : { get: () => (lines[helper.lineId]?.months || {}), setMonths: (m) => setLeafMonths(helper.lineId, m) }) : null;
 
   return (
     <div className="px-3 sm:px-5 md:px-6">
-      {/* Barre d'outils */}
       <div className="flex flex-wrap items-center gap-3 mb-3">
         <h2 className="font-display text-lg font-semibold text-navy">Prévisionnel {year}</h2>
         <div className="flex items-center gap-1.5 text-sm">
@@ -169,112 +272,50 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
             {fiscalYears.map((f) => <option key={f.id} value={f.id}>{f.label || f.year || f.id}</option>)}
           </select>
         </div>
-
-        {/* Affichage réel / prévi */}
         <div className="flex items-center gap-1 bg-cream rounded-lg p-0.5">
           <button onClick={() => setShowReal(false)} className={`px-2.5 py-1 text-xs rounded transition ${!showReal ? 'bg-navy text-white font-medium' : 'text-gray-custom hover:text-navy'}`}>Prévi seul</button>
           <button onClick={() => setShowReal(true)} disabled={!realMonths.length} className={`px-2.5 py-1 text-xs rounded transition disabled:opacity-40 ${showReal ? 'bg-navy text-white font-medium' : 'text-gray-custom hover:text-navy'}`}>Réel + Prévi</button>
         </div>
         {showReal && (
           <label className="inline-flex items-center gap-1.5 text-xs text-gray-custom cursor-pointer">
-            <input type="checkbox" checked={monthsDouble} onChange={(e) => setMonthsDouble(e.target.checked)} className="rounded border-sage" />
-            Afficher les mois en double
+            <input type="checkbox" checked={monthsDouble} onChange={(e) => setMonthsDouble(e.target.checked)} className="rounded border-sage" /> Afficher les mois en double
           </label>
         )}
-
+        <button onClick={toggleAll} className="inline-flex items-center gap-1.5 text-xs font-medium border border-sage rounded-lg px-2.5 py-1.5 text-navy hover:bg-cream transition">
+          <ChevronsDownUp size={13} /> {allExpanded ? 'Tout replier' : 'Tout déplier'}
+        </button>
         <div className="flex-1" />
-        <button onClick={fillAllFromPrev} disabled={!hasPrev} title={hasPrev ? '' : 'Synchronisez l’exercice précédent pour utiliser cette aide'}
-          className="inline-flex items-center gap-1.5 text-xs font-medium border border-sage rounded-lg px-3 py-1.5 text-navy hover:bg-cream transition disabled:opacity-40">
+        <button onClick={fillAllFromPrev} disabled={!hasPrev} title={hasPrev ? '' : 'Synchronisez l’exercice précédent'} className="inline-flex items-center gap-1.5 text-xs font-medium border border-sage rounded-lg px-3 py-1.5 text-navy hover:bg-cream transition disabled:opacity-40">
           <Wand2 size={14} /> Pré-remplir avec le réel N-1
         </button>
-        <span className="inline-flex items-center gap-1 text-xs text-gray-custom">
-          {savedAt ? <><Check size={13} className="text-green-600" /> Enregistré</> : 'Enregistrement auto'}
-        </span>
+        <span className="inline-flex items-center gap-1 text-xs text-gray-custom">{savedAt ? <><Check size={13} className="text-green-600" /> Enregistré</> : 'Enregistrement auto'}</span>
       </div>
 
-      <p className="text-[11px] text-gray-custom/80 mb-2">
-        Montants comme dans le réel (produits +, charges −). Survolez une cellule pour recopier vers la droite (→), la baguette pour les aides. « + » ajoute un sous-détail libre ; l'icône comptes détaille la ligne par les comptes de la balance.
-      </p>
-
       <div className="overflow-x-auto border border-sage rounded-xl bg-white">
-        <table className="mv-btable border-collapse w-full">
+        <table className="mv-ptable w-full border-collapse">
           <thead>
             <tr className="bg-navy text-white">
-              <th rowSpan={2} className="mv-bsticky text-left px-3 py-2 font-semibold text-xs bg-navy z-20" style={{ minWidth: 250 }}>Poste</th>
-              {realCount > 0 && <th colSpan={realCount} className="px-2 py-1.5 text-center font-semibold text-[11px] border-l border-white/20 bg-navy/95">Réel</th>}
-              {budgetCount > 0 && <th colSpan={budgetCount} className="px-2 py-1.5 text-center font-semibold text-[11px] border-l border-white/20 bg-navy">Prévisionnel</th>}
-              <th rowSpan={2} className="px-3 py-2 text-right font-semibold text-xs bg-navy border-l border-white/20" style={{ minWidth: 92 }}>Total prévi</th>
-              <th rowSpan={2} className="px-1 bg-navy" style={{ width: 44 }} />
+              <th rowSpan={2} className="text-left px-3 sticky left-0 bg-navy z-20 font-semibold" style={{ minWidth: 240 }}>Poste</th>
+              {realCount > 0 && <th colSpan={realCount} className="text-center border-l border-white/20 font-semibold text-sage">Réel</th>}
+              {budgetCount > 0 && <th colSpan={budgetCount} className="text-center border-l border-white/20 font-semibold">Prévisionnel</th>}
+              <th rowSpan={2} className="text-right px-3 border-l border-white/20 font-semibold" style={{ minWidth: 92 }}>Total prévi</th>
             </tr>
             <tr className="bg-navy text-white">
-              {columns.map((c) => (
-                <th key={c.key} className={`px-2 py-1.5 text-right font-semibold text-[11px] whitespace-nowrap ${c.kind === 'real' ? 'text-sage/90' : ''}`} style={{ minWidth: 74 }}>{monthLabel(c.month)}</th>
-              ))}
+              {columns.map((c) => <th key={c.key} className={`text-right whitespace-nowrap font-semibold ${c.kind === 'real' ? 'text-sage/90' : ''}`} style={{ minWidth: 90 }}>{monthLabel(c.month)}</th>)}
             </tr>
           </thead>
-          <tbody>
-            {rows.map((r) => {
-              const total = sumMonths(r.months, months);
-              if (r.type === 'cat' || r.type === 'total') {
-                const isTotal = r.type === 'total';
-                return (
-                  <tr key={r.id} className={isTotal ? 'bg-navy text-white' : 'bg-cream'}>
-                    <td className={`mv-bsticky text-left px-3 py-1.5 font-semibold text-sm ${isTotal ? 'bg-navy text-white' : 'bg-cream text-navy'}`}>{r.label}</td>
-                    {columns.map((c) => (
-                      <td key={c.key} className={`px-2 py-1.5 text-right text-sm tabular-nums font-medium ${c.kind === 'real' ? 'opacity-80' : ''}`}>
-                        {c.kind === 'real' ? <NumTxt v={realRowsById[r.id]?.[c.month] || 0} /> : <NumTxt v={r.months[c.month]} />}
-                      </td>
-                    ))}
-                    <td className={`px-3 py-1.5 text-right text-sm tabular-nums font-bold ${isTotal ? 'bg-navy' : 'bg-cream'}`}><NumTxt v={total} /></td>
-                    <td className={isTotal ? 'bg-navy' : 'bg-cream'} />
-                  </tr>
-                );
-              }
-              const isDetail = r.type === 'detail';
-              return (
-                <tr key={r.id} className={isDetail ? 'bg-white' : 'bg-white hover:bg-cream/40 transition'}>
-                  <td className="mv-bsticky bg-white px-3 py-1 text-left align-middle" style={{ paddingLeft: 12 + r.level * 16 }}>
-                    {isDetail ? (
-                      <div className="flex items-center gap-1">
-                        <span className="text-gray-custom/50 text-xs">└</span>
-                        {r.account
-                          ? <span className="text-xs text-navy/80 truncate">{r.label}</span>
-                          : <input value={r.label} onChange={(e) => setDetailLabel(r.lineId, r.detailId, e.target.value)} placeholder="Libellé du détail…" className="w-full text-xs text-navy bg-transparent border-b border-transparent hover:border-sage focus:border-navy/40 focus:outline-none py-0.5" />}
-                        <button onClick={() => removeDetail(r.lineId, r.detailId)} title="Supprimer" className="shrink-0 text-gray-custom/60 hover:text-accent-red"><X size={13} /></button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-navy">{r.label}</span>
-                        {r.hasDetail && <span className="text-[10px] text-gray-custom/70 bg-cream rounded px-1">détaillé</span>}
-                      </div>
-                    )}
-                  </td>
-                  {columns.map((c) => <td key={c.key} className={`px-1 py-0.5 text-right ${c.kind === 'real' ? 'bg-cream/30' : ''}`}>{cellFor(r, c)}</td>)}
-                  <td className="px-3 py-1 text-right text-sm tabular-nums font-semibold text-navy"><NumTxt v={total} /></td>
-                  <td className="px-1 text-center whitespace-nowrap">
-                    {r.editable && <button onClick={() => setHelper({ lineId: r.lineId, detailId: r.detailId, label: r.label })} title="Aides" className="text-gray-custom/60 hover:text-navy transition"><Wand2 size={14} /></button>}
-                    {!isDetail && (
-                      <>
-                        <button onClick={() => addDetail(r.lineId)} title="Ajouter un sous-détail libre" className="text-gray-custom/60 hover:text-navy transition ml-1"><Plus size={14} /></button>
-                        {(accountsByLine[r.lineId]?.length > 0) && <button onClick={() => detailByAccounts(r.lineId)} title="Détailler par les comptes de la balance" className="text-gray-custom/60 hover:text-navy transition ml-1"><ListTree size={14} /></button>}
-                      </>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
+          <tbody>{rows}</tbody>
         </table>
       </div>
 
       {helper && (
         <HelperPopover
-          label={helper.label} months={months} current={getMonths(helper)} hasPrev={hasPrev}
-          onSpread={(tot) => { setMonths(helper, spreadAnnual(tot, months)); setHelper(null); }}
-          onGrowth={(base, g) => { setMonths(helper, growthSeries(base, g, months)); setHelper(null); }}
-          onPaste={(txt) => { setMonths(helper, parsePasted(txt, months)); setHelper(null); }}
-          onPrev={() => { setMonths(helper, prevLineAligned(helper.lineId)); setHelper(null); }}
-          onClear={() => { setMonths(helper, {}); setHelper(null); }}
+          label={helper.label} months={months} current={helperTarget.get()} hasPrev={hasPrev}
+          onSpread={(t) => { helperTarget.setMonths(spreadAnnual(t, months)); setHelper(null); }}
+          onGrowth={(b, g) => { helperTarget.setMonths(growthSeries(b, g, months)); setHelper(null); }}
+          onPaste={(txt) => { helperTarget.setMonths(parsePasted(txt, months)); setHelper(null); }}
+          onPrev={() => { helperTarget.setMonths(helper.detailNum ? prevAcctAligned(helper.detailNum) : prevLineAligned(helper.lineId)); setHelper(null); }}
+          onClear={() => { helperTarget.setMonths({}); setHelper(null); }}
           onClose={() => setHelper(null)}
         />
       )}
@@ -292,12 +333,9 @@ function NumCell({ value, onCommit, onFillRight }) {
         onFocus={(e) => { setFocused(true); setRaw(value ? String(value) : ''); e.target.select(); }}
         onBlur={() => setFocused(false)}
         onChange={(e) => { setRaw(e.target.value); onCommit(parseNum(e.target.value)); }}
-        placeholder="0"
-        className="w-full text-right text-sm tabular-nums bg-transparent rounded px-1.5 py-1 text-navy placeholder:text-gray-custom/30 focus:bg-white focus:ring-1 focus:ring-navy/40 outline-none" />
-      {onFillRight && (
-        <button tabIndex={-1} onMouseDown={(e) => e.preventDefault()} onClick={onFillRight} title="Recopier vers la droite"
-          className="absolute -right-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover/cell:opacity-100 transition text-navy/60 hover:text-navy bg-white/90 rounded"><ArrowRight size={12} /></button>
-      )}
+        placeholder="0" style={value < 0 ? { color: 'var(--num-neg)' } : undefined}
+        className="w-full text-right text-xs tabular-nums bg-transparent rounded px-1 py-0.5 text-navy placeholder:text-gray-custom/30 focus:bg-white focus:ring-1 focus:ring-navy/40 outline-none" />
+      {onFillRight && <button tabIndex={-1} onMouseDown={(e) => e.preventDefault()} onClick={onFillRight} title="Recopier vers la droite" className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover/cell:opacity-100 transition text-navy/60 hover:text-navy bg-white/90 rounded"><ArrowRight size={11} /></button>}
     </div>
   );
 }
@@ -317,25 +355,15 @@ function HelperPopover({ label, months, current, hasPrev, onSpread, onGrowth, on
         <div className="p-4 space-y-3">
           <div>
             <label className="block text-xs font-medium text-gray-custom mb-1">Répartir un total annuel sur {months.length} mois</label>
-            <div className="flex gap-2">
-              <input value={annual} onChange={(e) => setAnnual(e.target.value)} inputMode="numeric" placeholder="ex. 120000" className="flex-1 text-sm border border-sage rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy/30" />
-              <button onClick={() => onSpread(parseNum(annual))} className="btn-navy text-sm px-3 py-1.5 rounded-lg">Répartir</button>
-            </div>
+            <div className="flex gap-2"><input value={annual} onChange={(e) => setAnnual(e.target.value)} inputMode="numeric" placeholder="ex. 120000" className="flex-1 text-sm border border-sage rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy/30" /><button onClick={() => onSpread(parseNum(annual))} className="btn-navy text-sm px-3 py-1.5 rounded-lg">Répartir</button></div>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-custom mb-1">Croissance mensuelle (base + % par mois)</label>
-            <div className="flex gap-2">
-              <input value={growthBase} onChange={(e) => setGrowthBase(e.target.value)} inputMode="numeric" placeholder="base 1er mois" className="flex-1 text-sm border border-sage rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy/30" />
-              <input value={growthPct} onChange={(e) => setGrowthPct(e.target.value)} inputMode="numeric" placeholder="% /mois" className="w-24 text-sm border border-sage rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy/30" />
-              <button onClick={() => onGrowth(parseNum(growthBase), parseNum(growthPct))} className="btn-navy text-sm px-3 py-1.5 rounded-lg">OK</button>
-            </div>
+            <div className="flex gap-2"><input value={growthBase} onChange={(e) => setGrowthBase(e.target.value)} inputMode="numeric" placeholder="base 1er mois" className="flex-1 text-sm border border-sage rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy/30" /><input value={growthPct} onChange={(e) => setGrowthPct(e.target.value)} inputMode="numeric" placeholder="% /mois" className="w-24 text-sm border border-sage rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy/30" /><button onClick={() => onGrowth(parseNum(growthBase), parseNum(growthPct))} className="btn-navy text-sm px-3 py-1.5 rounded-lg">OK</button></div>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-custom mb-1 inline-flex items-center gap-1"><ClipboardPaste size={13} /> Coller depuis Excel (une ligne)</label>
-            <div className="flex gap-2">
-              <input value={paste} onChange={(e) => setPaste(e.target.value)} placeholder="60000  64200  88800…" className="flex-1 text-sm border border-sage rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy/30" />
-              <button onClick={() => onPaste(paste)} className="btn-navy text-sm px-3 py-1.5 rounded-lg">Coller</button>
-            </div>
+            <div className="flex gap-2"><input value={paste} onChange={(e) => setPaste(e.target.value)} placeholder="60000  64200  88800…" className="flex-1 text-sm border border-sage rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy/30" /><button onClick={() => onPaste(paste)} className="btn-navy text-sm px-3 py-1.5 rounded-lg">Coller</button></div>
           </div>
           <div className="flex items-center gap-2 pt-1 border-t border-sage">
             <button onClick={onPrev} disabled={!hasPrev} className="text-sm px-3 py-2 rounded-lg hover:bg-cream transition text-navy disabled:opacity-40">Recopier le réalisé N-1</button>
