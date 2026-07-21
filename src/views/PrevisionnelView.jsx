@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Wand2, ArrowRight, Trash2, X, ClipboardPaste, CalendarRange, Check, ChevronsDownUp, Plus, ListTree } from 'lucide-react';
+import { Wand2, ArrowRight, Trash2, X, ClipboardPaste, CalendarRange, Check, ChevronsDownUp, Plus, ListTree, Eraser } from 'lucide-react';
 import { buildPLTree } from '../lib/mapping';
 import EntryDetailModal from '../components/EntryDetailModal';
 import {
@@ -126,6 +126,8 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
   const setNodeCell = (lineId, path, mk, v) => applyDetail(lineId, updNode(detailOf(lineId), path, (n) => ({ ...n, months: { ...(n.months || {}), [mk]: v } })));
   const setNodeMonths = (lineId, path, m) => applyDetail(lineId, updNode(detailOf(lineId), path, (n) => ({ ...n, months: m })));
   const removeLine = (lineId, path) => applyDetail(lineId, rmNode(detailOf(lineId), path));
+  // Annule le détail : on récupère le total courant en saisie directe (montant conservé).
+  const revertToDirect = (lineId) => { const summed = nodeMonths(lines[lineId], months); const cur = lines[lineId] || {}; applyLines({ ...lines, [lineId]: { ...cur, months: summed, detail: undefined } }); };
   // Pré-remplit les sous-lignes avec les vrais comptes de la balance (réel N-1).
   const detailFromBalance = (lineId) => {
     const accs = accountsByLine[lineId] || []; if (!accs.length) return;
@@ -306,8 +308,9 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
             {detailed && <span className="ml-2 text-[10px] text-gray-custom/70 bg-white rounded px-1">détaillé</span>}
             <span className="inline-flex items-center gap-1.5 ml-2 align-middle">
               <button onClick={(e) => { e.stopPropagation(); addLine(lineId); }} title="Ajouter une ligne détaillée" className="text-navy/50 hover:text-navy"><Plus size={13} /></button>
-              {canBalance && <button onClick={(e) => { e.stopPropagation(); detailFromBalance(lineId); }} title="Détailler depuis les comptes de la balance" className="text-navy/50 hover:text-navy"><ListTree size={13} /></button>}
+              {canBalance && !detailed && <button onClick={(e) => { e.stopPropagation(); detailFromBalance(lineId); }} title="Détailler depuis les comptes de la balance" className="text-navy/50 hover:text-navy"><ListTree size={13} /></button>}
               {!detailed && <button onClick={(e) => { e.stopPropagation(); setHelper({ lineId, label }); }} title="Aides à la construction" className="text-navy/40 hover:text-navy opacity-0 group-hover/leaf:opacity-100 transition"><Wand2 size={13} /></button>}
+              {detailed && <button onClick={(e) => { e.stopPropagation(); revertToDirect(lineId); }} title="Annuler le détail · revenir à la saisie directe (le total est conservé)" className="text-navy/50 hover:text-accent-red"><Eraser size={13} /></button>}
             </span>
           </td>
           {columns.map((c) => (
