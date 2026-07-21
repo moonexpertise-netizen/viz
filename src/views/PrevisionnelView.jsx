@@ -187,7 +187,7 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
   if (!fiscalYears.length || !months.length) return <div className="card-moon p-8 text-center text-gray-custom">Sélectionnez un exercice pour construire le prévisionnel.</div>;
   const year = (fy?.end || fy?.period_end || fy?.start || '').slice(0, 4);
 
-  const prevBg = (c) => (c.kind === 'budget' ? 'bg-gold-soft/40' : 'bg-cream/20'); // colonnes prévi teintées or, réel neutre
+  const prevBg = () => ''; // pas de fond de colonne (lignes propres, comme la Vision périodique)
   const budCell = (target, monthsObj, m) => (
     <NumCell value={monthsObj[m]} onCommit={(v) => target.setCell(m, v)} onFillRight={() => target.setMonths(fillRight(monthsObj, m, months))} />
   );
@@ -205,7 +205,7 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
       rows.push(
         <tr key={node.id} className="bg-cream border-y border-sage">
           <td className="px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">{node.label}</td>
-          {columns.map((c) => <td key={c.key} className={`text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold ${c.kind === 'budget' ? 'bg-gold-soft/60' : 'bg-cream/80'}`}>{c.kind === 'real' ? realCell(realRowsById[node.id]?.[c.month] || 0, accs, node.label, c.month) : roCell(bud[c.month] || 0)}</td>)}
+          {columns.map((c) => <td key={c.key} className="text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold">{c.kind === 'real' ? realCell(realRowsById[node.id]?.[c.month] || 0, accs, node.label, c.month) : roCell(bud[c.month] || 0)}</td>)}
           <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-100">{roCell(sumMonths(bud, months))}</td>
         </tr>,
       );
@@ -333,16 +333,19 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
       </div>
 
       <div className="overflow-x-auto border border-sage rounded-xl bg-white">
-        <table className="mv-ptable w-full border-collapse">
+        <table className="mv-ptable border-collapse text-sm">
           <thead>
-            <tr className="text-white">
-              <th rowSpan={2} className="text-left px-3 sticky left-0 bg-navy z-20 font-semibold text-white" style={{ minWidth: 240 }}>Poste</th>
-              {realCount > 0 && <th colSpan={realCount} className="text-center bg-navy border-l border-white/25 font-semibold text-white">Réel</th>}
-              {budgetCount > 0 && <th colSpan={budgetCount} className="text-center bg-gold border-l border-white/40 font-semibold text-white">Prévisionnel</th>}
-              <th rowSpan={2} className="text-right px-3 bg-gold border-l border-white/40 font-semibold text-white" style={{ minWidth: 92 }}>Total prévi</th>
-            </tr>
-            <tr className="text-white">
-              {columns.map((c) => <th key={c.key} className={`text-right whitespace-nowrap font-semibold text-white ${c.kind === 'real' ? 'bg-navy' : 'bg-gold'}`} style={{ minWidth: 90 }}>{monthLabel(c.month)}</th>)}
+            <tr className="bg-navy text-white text-xs">
+              <th className="py-2 px-3 text-left font-semibold sticky left-0 bg-navy z-20 min-w-[160px] sm:min-w-[280px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)]">Poste</th>
+              {columns.map((c, i) => {
+                const boundary = c.kind === 'budget' && columns[i - 1]?.kind === 'real';
+                return (
+                  <th key={c.key} className={`py-2 px-3 text-right font-semibold whitespace-nowrap min-w-[90px] ${c.kind === 'budget' ? 'shadow-[inset_0_-2px_0_0_rgba(168,137,98,0.85)]' : ''} ${boundary ? 'border-l border-white/15' : ''}`}>
+                    {c.month.split('-')[1]}/{c.month.split('-')[0]}
+                  </th>
+                );
+              })}
+              <th className="py-2 px-3 text-right font-semibold whitespace-nowrap min-w-[110px] shadow-[inset_0_-2px_0_0_rgba(168,137,98,0.85)]">Total</th>
             </tr>
           </thead>
           <tbody>{rows}</tbody>
