@@ -86,7 +86,7 @@ export function buildBudgetTree(plan, lines = {}, months = []) {
         addMonths(catMonths, lv);
         rows.push({ type: 'leaf', id: lineId, lineId, label: sub.label, level: 1, editable: !hasDetail, hasDetail, months: lv });
         for (const d of line?.detail || []) {
-          rows.push({ type: 'detail', id: `${lineId}#${d.id}`, lineId, detailId: d.id, label: d.label || '', level: 2, editable: true, months: pickMonths(d.months, months) });
+          rows.push({ type: 'detail', id: `${lineId}#${d.id}`, lineId, detailId: d.id, label: d.label || '', account: d.account || null, level: 2, editable: true, months: pickMonths(d.months, months) });
         }
       }
     } else {
@@ -97,7 +97,7 @@ export function buildBudgetTree(plan, lines = {}, months = []) {
       addMonths(catMonths, lv);
       rows.push({ type: 'leaf', id: node.id, lineId: node.id, label: node.label, level: 0, editable: !hasDetail, hasDetail, months: lv, isCatLeaf: true });
       for (const d of line?.detail || []) {
-        rows.push({ type: 'detail', id: `${node.id}#${d.id}`, lineId: node.id, detailId: d.id, label: d.label || '', level: 1, editable: true, months: pickMonths(d.months, months) });
+        rows.push({ type: 'detail', id: `${node.id}#${d.id}`, lineId: node.id, detailId: d.id, label: d.label || '', account: d.account || null, level: 1, editable: true, months: pickMonths(d.months, months) });
       }
     }
     addMonths(cum, catMonths);
@@ -146,6 +146,17 @@ export function parsePasted(text, months) {
   const out = {};
   months.forEach((m, i) => { if (i < nums.length) out[m] = round2(nums[i]); });
   return out;
+}
+
+/** Transforme des comptes (de la balance) en lignes de sous-détail budgétables,
+ *  éventuellement pré-remplies depuis le réel (map numéro → {mois: valeur}). */
+export function accountsToDetail(accounts, prefill = {}) {
+  return (accounts || []).map((a) => ({
+    id: newBudgetId(),
+    label: `${a.number} ${a.label || ''}`.trim(),
+    account: String(a.number),
+    months: prefill[a.number] ? { ...prefill[a.number] } : {},
+  }));
 }
 
 /* ── Persistance locale (miroir du serveur, « le plus récent gagne ») ── */
