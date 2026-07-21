@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Wand2, ArrowRight, Trash2, X, ClipboardPaste, CalendarRange, Check, ListTree, ChevronsDownUp, Pencil } from 'lucide-react';
+import { Wand2, ArrowRight, Trash2, X, ClipboardPaste, CalendarRange, Check, ChevronsDownUp, Pencil } from 'lucide-react';
 import { buildPLTree } from '../lib/mapping';
+import EntryDetailModal from '../components/EntryDetailModal';
 import {
   emptyBudget, monthsOfFy, buildBudgetTree, sumMonths,
   spreadAnnual, growthSeries, fillRight, parsePasted, newBudgetId, accountsToDetail,
@@ -155,58 +156,78 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
   };
 
   const [helper, setHelper] = useState(null);
+  const [modal, setModal] = useState(null); // détail des écritures (réel), comme la Vision périodique
+
+  // Numéros de comptes par ligne (pour le drill-down réel) : sous-cat, catégorie
+  // (somme des sous-cat) et sous-total (cumul / section, comme le calcul du réel).
+  const nodeAccounts = useMemo(() => {
+    const map = {}; let cum = []; let section = [];
+    for (const node of plan?.nodes || []) {
+      if (node.kind === 'total') { map[node.id] = [...new Set(node.mode === 'section' ? section : cum)].join(','); section = []; continue; }
+      const subs = node.subs || []; const catNums = [];
+      if (subs.length) subs.forEach((s) => { const id = `${node.id}/${s.id}`; const nums = (accountsByLine[id] || []).map((a) => a.number); map[id] = nums.join(','); catNums.push(...nums); });
+      else (accountsByLine[node.id] || []).forEach((a) => catNums.push(a.number));
+      map[node.id] = [...new Set(catNums)].join(',');
+      cum.push(...catNums); section.push(...catNums);
+    }
+    return map;
+  }, [plan, accountsByLine]);
 
   if (!plan) return <div className="card-moon p-8 text-center text-gray-custom">Aucun plan de comptes. Configurez d'abord l'affectation des comptes.</div>;
   if (!fiscalYears.length || !months.length) return <div className="card-moon p-8 text-center text-gray-custom">Sélectionnez un exercice pour construire le prévisionnel.</div>;
   const year = (fy?.end || fy?.period_end || fy?.start || '').slice(0, 4);
 
-  // Cellule budget éditable
+  const prevBg = (c) => (c.kind === 'budget' ? 'bg-gold-soft/40' : 'bg-cream/20'); // colonnes prévi teintées or, réel neutre
   const budCell = (target, monthsObj, m) => (
-    <NumCell value={monthsObj[m]} onCommit={(v) => target.setCell(m, v)}
-      onFillRight={() => target.setMonths(fillRight(monthsObj, m, months))} />
+    <NumCell value={monthsObj[m]} onCommit={(v) => target.setCell(m, v)} onFillRight={() => target.setMonths(fillRight(monthsObj, m, months))} />
   );
-  // Cellule (réel lecture seule, ou budget calculé)
+  // Cellule réel = valeur cliquable (drill-down écritures), comme la Vision périodique.
+  const realCell = (v, number, label, month, cls = 'text-sm') => (
+    <span onClick={number ? (e) => { e.stopPropagation(); setModal({ number, label, from: month, to: month }); } : undefined}
+      className={`block px-1 text-right tabular-nums ${cls} ${negCls(v)} ${number ? 'cursor-pointer hover:text-navy hover:underline decoration-dotted' : ''}`}>{fmt(v)}</span>
+  );
   const roCell = (v, cls = 'text-sm') => <span className={`block px-1 text-right tabular-nums ${cls} ${negCls(v)}`}>{fmt(v)}</span>;
 
   const rows = [];
   for (const node of plan.nodes) {
     if (node.kind === 'total') {
-      const bud = budgetMap[node.id] || {};
+      const bud = budgetMap[node.id] || {}; const accs = nodeAccounts[node.id];
       rows.push(
         <tr key={node.id} className="bg-cream border-y border-sage">
           <td className="px-3 font-semibold text-navy sticky left-0 z-10 bg-cream shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">{node.label}</td>
-          {columns.map((c) => <td key={c.key} className={`text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold ${c.kind === 'real' ? 'bg-cream/70' : 'bg-cream'}`}>{roCell(c.kind === 'real' ? (realRowsById[node.id]?.[c.month] || 0) : (bud[c.month] || 0))}</td>)}
+          {columns.map((c) => <td key={c.key} className={`text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold ${c.kind === 'budget' ? 'bg-gold-soft/60' : 'bg-cream/80'}`}>{c.kind === 'real' ? realCell(realRowsById[node.id]?.[c.month] || 0, accs, node.label, c.month) : roCell(bud[c.month] || 0)}</td>)}
           <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] font-semibold bg-slate-100">{roCell(sumMonths(bud, months))}</td>
         </tr>,
       );
       continue;
     }
-    // Catégorie (rubrique)
     const catKey = `c_${node.id}`;
     const catExp = expanded[catKey];
     const subs = node.subs || [];
     const catAccs = accountsByLine[node.id] || [];
     const catHasContent = subs.length > 0 || catAccs.length > 0;
     const catBud = budgetMap[node.id] || {};
+    const catNums = nodeAccounts[node.id];
     rows.push(
       <tr key={catKey} className={`border-b border-sage ${catHasContent ? 'cursor-pointer hover:bg-cream/50 transition' : ''}`} onClick={() => catHasContent && toggle(catKey)}>
         <td className="px-3 sticky left-0 z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap">
           <span className={`inline-block w-5 text-center mr-1 text-gray-300 transition-transform duration-200 text-xs ${catExp ? 'rotate-90' : ''}`}>{catHasContent ? CHEV : ''}</span>
           <span className="text-sm text-navy font-medium">{node.label}</span>
         </td>
-        {columns.map((c) => <td key={c.key} className={`text-right tabular-nums whitespace-nowrap min-w-[90px] ${c.kind === 'real' ? 'bg-cream/20' : ''}`}>{roCell(c.kind === 'real' ? (realRowsById[node.id]?.[c.month] || 0) : (catBud[c.month] || 0))}</td>)}
+        {columns.map((c) => <td key={c.key} className={`text-right tabular-nums whitespace-nowrap min-w-[90px] ${prevBg(c)}`}>{c.kind === 'real' ? realCell(realRowsById[node.id]?.[c.month] || 0, catNums, node.label, c.month) : roCell(catBud[c.month] || 0)}</td>)}
         <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] font-medium">{roCell(sumMonths(catBud, months))}</td>
       </tr>,
     );
     if (!catExp) continue;
 
     const renderLeaf = (lineId, label, accList, indentLabel, indentAcct) => {
-      const accMode = isAcctMode(lineId);
+      const hasDetail = isAcctMode(lineId); // au moins un compte saisi -> la sous-cat = somme
       const leafKey = `s_${lineId}`;
       const leafExp = expanded[leafKey];
       const leafBud = budgetMap[lineId] || {};
       const target = { setCell: (m, v) => setLeafCell(lineId, m, v), setMonths: (mm) => setLeafMonths(lineId, mm) };
       const hasAccs = accList.length > 0;
+      const leafNums = nodeAccounts[lineId];
       rows.push(
         <tr key={leafKey} className="border-b border-sage/60 bg-cream/50 group/leaf">
           <td className="px-3 sticky left-0 z-10 bg-cream/50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: indentLabel }}>
@@ -214,23 +235,22 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
               <span className={`inline-block w-5 text-center mr-1 text-gray-300 transition-transform duration-200 text-xs ${leafExp ? 'rotate-90' : ''}`}>{hasAccs ? CHEV : ''}</span>
               <span className="text-xs font-medium text-navy">{label}</span>
             </span>
-            {accMode && <span className="ml-2 text-[10px] text-gray-custom/70 bg-white rounded px-1">par comptes</span>}
+            {hasDetail && <span className="ml-2 text-[10px] text-gray-custom/70 bg-white rounded px-1">saisi par comptes</span>}
             <span className="inline-flex items-center gap-1 ml-2 opacity-0 group-hover/leaf:opacity-100 transition align-middle">
-              {!accMode && <button onClick={(e) => { e.stopPropagation(); setHelper({ lineId, label }); }} title="Aides à la construction" className="text-gray-custom/60 hover:text-navy"><Wand2 size={13} /></button>}
-              {hasAccs && !accMode && <button onClick={(e) => { e.stopPropagation(); enterAcctMode(lineId); toggle(leafKey); }} title="Détailler par les comptes" className="text-gray-custom/60 hover:text-navy"><ListTree size={13} /></button>}
-              {accMode && <button onClick={(e) => { e.stopPropagation(); exitAcctMode(lineId); }} title="Revenir à la saisie directe" className="text-gray-custom/60 hover:text-navy"><Pencil size={13} /></button>}
+              {!hasDetail && <button onClick={(e) => { e.stopPropagation(); setHelper({ lineId, label }); }} title="Aides à la construction" className="text-gray-custom/60 hover:text-navy"><Wand2 size={13} /></button>}
+              {hasDetail && <button onClick={(e) => { e.stopPropagation(); exitAcctMode(lineId); }} title="Revenir à la saisie directe (efface la saisie par comptes)" className="text-gray-custom/60 hover:text-navy"><Pencil size={13} /></button>}
             </span>
           </td>
           {columns.map((c) => (
-            <td key={c.key} className={`text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 ${c.kind === 'real' ? 'bg-cream/20' : ''}`}>
-              {c.kind === 'real' ? roCell(realRowsById[lineId]?.[c.month] || 0, 'text-xs')
-                : accMode ? roCell(leafBud[c.month] || 0, 'text-xs') : budCell(target, leafBud, c.month)}
+            <td key={c.key} className={`text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 ${prevBg(c)}`}>
+              {c.kind === 'real' ? realCell(realRowsById[lineId]?.[c.month] || 0, leafNums, label, c.month, 'text-xs')
+                : hasDetail ? roCell(leafBud[c.month] || 0, 'text-xs') : budCell(target, leafBud, c.month)}
             </td>
           ))}
           <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs font-medium">{roCell(sumMonths(leafBud, months), 'text-xs')}</td>
         </tr>,
       );
-      if ((leafExp || accMode) && hasAccs) {
+      if (leafExp && hasAccs) {
         for (const acc of accList) {
           const abud = acctBudget(lineId, acc.number);
           const atgt = { setCell: (m, v) => setAcctCell(lineId, acc.number, acc.label, m, v), setMonths: (mm) => setAcctMonths(lineId, acc.number, acc.label, mm) };
@@ -239,15 +259,15 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
               <td className="px-3 sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] whitespace-nowrap" style={{ paddingLeft: indentAcct }}>
                 <span className="text-xs text-gray-400 mr-2">{acc.number}</span>
                 <span className="text-xs text-gray-custom">{acc.label}</span>
-                {accMode && <button onClick={() => setHelper({ lineId, detailNum: acc.number, detailLabel: acc.label, label: `${acc.number} ${acc.label}` })} title="Aides" className="ml-2 opacity-0 group-hover/acc:opacity-100 transition text-gray-custom/60 hover:text-navy align-middle"><Wand2 size={12} /></button>}
+                <button onClick={() => setHelper({ lineId, detailNum: acc.number, detailLabel: acc.label, label: `${acc.number} ${acc.label}` })} title="Aides" className="ml-2 opacity-0 group-hover/acc:opacity-100 transition text-gray-custom/60 hover:text-navy align-middle"><Wand2 size={12} /></button>
               </td>
               {columns.map((c) => (
-                <td key={c.key} className={`text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 ${c.kind === 'real' ? 'bg-cream/20' : ''}`}>
-                  {c.kind === 'real' ? roCell(realAcct(acc.number, c.month), 'text-xs')
-                    : accMode ? budCell(atgt, abud, c.month) : <span className="block px-1 text-right text-xs text-gray-300">·</span>}
+                <td key={c.key} className={`text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 ${prevBg(c)}`}>
+                  {c.kind === 'real' ? realCell(realAcct(acc.number, c.month), acc.number, acc.label, c.month, 'text-xs')
+                    : budCell(atgt, abud, c.month)}
                 </td>
               ))}
-              <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs">{accMode ? roCell(sumMonths(abud, months), 'text-xs') : <span className="text-gray-300">·</span>}</td>
+              <td className="text-right tabular-nums whitespace-nowrap min-w-[90px] px-1 text-xs">{roCell(sumMonths(abud, months), 'text-xs')}</td>
             </tr>,
           );
         }
@@ -296,12 +316,12 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
           <thead>
             <tr className="bg-navy text-white">
               <th rowSpan={2} className="text-left px-3 sticky left-0 bg-navy z-20 font-semibold" style={{ minWidth: 240 }}>Poste</th>
-              {realCount > 0 && <th colSpan={realCount} className="text-center border-l border-white/20 font-semibold text-sage">Réel</th>}
-              {budgetCount > 0 && <th colSpan={budgetCount} className="text-center border-l border-white/20 font-semibold">Prévisionnel</th>}
-              <th rowSpan={2} className="text-right px-3 border-l border-white/20 font-semibold" style={{ minWidth: 92 }}>Total prévi</th>
+              {realCount > 0 && <th colSpan={realCount} className="text-center border-l border-white/20 font-semibold text-sage/80">Réel</th>}
+              {budgetCount > 0 && <th colSpan={budgetCount} className="text-center border-l border-gold/40 font-semibold text-gold">◆ Prévisionnel</th>}
+              <th rowSpan={2} className="text-right px-3 border-l border-white/20 font-semibold text-gold" style={{ minWidth: 92 }}>Total prévi</th>
             </tr>
             <tr className="bg-navy text-white">
-              {columns.map((c) => <th key={c.key} className={`text-right whitespace-nowrap font-semibold ${c.kind === 'real' ? 'text-sage/90' : ''}`} style={{ minWidth: 90 }}>{monthLabel(c.month)}</th>)}
+              {columns.map((c) => <th key={c.key} className={`text-right whitespace-nowrap font-semibold ${c.kind === 'real' ? 'text-sage/70' : 'text-gold border-b-2 border-gold/50'}`} style={{ minWidth: 90 }}>{monthLabel(c.month)}</th>)}
             </tr>
           </thead>
           <tbody>{rows}</tbody>
@@ -317,6 +337,15 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
           onPrev={() => { helperTarget.setMonths(helper.detailNum ? prevAcctAligned(helper.detailNum) : prevLineAligned(helper.lineId)); setHelper(null); }}
           onClear={() => { helperTarget.setMonths({}); setHelper(null); }}
           onClose={() => setHelper(null)}
+        />
+      )}
+
+      {modal && (
+        <EntryDetailModal
+          clientId={companyId} balanceId={companyId}
+          accountNumber={modal.number} accountLabel={modal.label}
+          from={modal.from} to={modal.to}
+          onClose={() => setModal(null)}
         />
       )}
     </div>
