@@ -25,13 +25,23 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
   const plan = mapping?.pl;
   const accountMonthly = data?.monthly?.accountMonthly || null;
 
-  const [fyId, setFyId] = useState(selectedFyId || fiscalYears[0]?.id || '');
-  useEffect(() => { if (selectedFyId) setFyId(String(selectedFyId)); }, [selectedFyId]);
+  // ── Préférences persistées PAR DOSSIER : exercice, plages, affichage, dépliage.
+  // On retrouve chaque dossier exactement comme on l'a laissé (onglets, reconnexion).
+  const storageKey = `mv:previ:${companyId}`;
+  const readPrefs = (key) => { try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch { return {}; } };
+
+  const [fyId, setFyId] = useState(() => String(readPrefs(storageKey).fyId || selectedFyId || fiscalYears[0]?.id || ''));
+  // Si l'exercice mémorisé n'existe pas (encore), repli sur l'exercice sélectionné / le premier.
+  useEffect(() => {
+    if (!fiscalYears.length) return;
+    if (!fyId || !fiscalYears.some((f) => String(f.id) === String(fyId))) setFyId(String(selectedFyId || fiscalYears[0].id));
+    /* eslint-disable-next-line */
+  }, [fiscalYears.length]);
   const fy = useMemo(() => fiscalYears.find((f) => String(f.id) === String(fyId)) || fiscalYears[0], [fiscalYears, fyId]);
   const months = useMemo(() => monthsOfFy(fy), [fy]);
 
-  const [monthsDouble, setMonthsDouble] = useState(false);
-  const [expanded, setExpanded] = useState({});
+  const [monthsDouble, setMonthsDouble] = useState(() => !!readPrefs(storageKey).monthsDouble);
+  const [expanded, setExpanded] = useState(() => readPrefs(storageKey).expanded || {});
   const toggle = (k) => setExpanded((e) => ({ ...e, [k]: !e[k] }));
 
   // ── Lignes de budget (état local rapide, poussé au parent en différé) ──
@@ -157,17 +167,36 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
   };
 
   // ── Sélection indépendante des mois : une plage pour le réel, une pour le prévi ──
-  const [showReal, setShowReal] = useState(false);
-  const [realRange, setRealRange] = useState([0, 0]);
-  const [budRange, setBudRange] = useState([0, 0]);
-  useEffect(() => { setRealRange(([f, t]) => { const n = realMonths.length; return n ? [Math.min(f, n - 1), n - 1 >= t && t > 0 ? t : n - 1] : [0, 0]; }); /* eslint-disable-next-line */ }, [realMonths.length]);
-  useEffect(() => { setBudRange([0, Math.max(0, months.length - 1)]); }, [months.length]);
-  const clamp = (r, n) => [Math.max(0, Math.min(r[0], n - 1)), Math.max(0, Math.min(r[1], n - 1))];
+  // Sentinelle t = -1 : « jusqu'au dernier mois » (plage complète), résolue à
+  // l'affichage par effRange — aucun effet de bornage nécessaire.
+  const FULL = [0, -1];
+  const [showReal, setShowReal] = useState(() => !!readPrefs(storageKey).showReal);
+  const [realRange, setRealRange] = useState(() => { const p = readPrefs(storageKey).realRange; return Array.isArray(p) ? p : FULL; });
+  const [budRange, setBudRange] = useState(() => { const p = readPrefs(storageKey).budRange; return Array.isArray(p) ? p : FULL; });
+  const effRange = (r, n) => { if (!n) return [0, 0]; const f = Math.max(0, Math.min(r[0], n - 1)); const t = r[1] >= 0 ? Math.max(f, Math.min(r[1], n - 1)) : n - 1; return [f, t]; };
+
+  // Changement de dossier SANS démontage : on recharge les préférences du nouveau dossier.
+  const [curKey, setCurKey] = useState(storageKey);
+  if (curKey !== storageKey) {
+    setCurKey(storageKey);
+    const p = readPrefs(storageKey);
+    setFyId(String(p.fyId || selectedFyId || fiscalYears[0]?.id || ''));
+    setMonthsDouble(!!p.monthsDouble);
+    setExpanded(p.expanded || {});
+    setShowReal(!!p.showReal);
+    setRealRange(Array.isArray(p.realRange) ? p.realRange : FULL);
+    setBudRange(Array.isArray(p.budRange) ? p.budRange : FULL);
+  }
+  // Sauvegarde des préférences du dossier courant (après stabilisation de la clé).
+  useEffect(() => {
+    if (curKey !== storageKey) return;
+    try { localStorage.setItem(storageKey, JSON.stringify({ fyId, showReal, monthsDouble, budRange, realRange, expanded })); } catch { /* noop */ }
+  }, [curKey, storageKey, fyId, showReal, monthsDouble, budRange, realRange, expanded]);
   const columns = useMemo(() => {
-    const [rf, rt] = clamp(realRange, realMonths.length);
+    const [rf, rt] = effRange(realRange, realMonths.length);
     const realShown = showReal && realMonths.length ? realMonths.slice(rf, rt + 1) : [];
     const rset = new Set(realShown);
-    const [bf, bt] = clamp(budRange, months.length);
+    const [bf, bt] = effRange(budRange, months.length);
     let budShown = months.slice(bf, bt + 1);
     if (!monthsDouble) budShown = budShown.filter((m) => !rset.has(m));
     return [
@@ -356,7 +385,7 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
       {/* Sélecteurs de mois : un pour le prévi (doré), un pour le réel (navy) */}
       <div className="bg-white border border-sage rounded-xl px-3 sm:px-5 py-3 mb-3 space-y-2">
         {months.length > 1 && (
-          <MonthRangeSlider label="Mois du prévisionnel" accent="green" months={months} range={clamp(budRange, months.length)} onChange={(f, t) => setBudRange([f, t])} />
+          <MonthRangeSlider label="Mois du prévisionnel" accent="green" months={months} range={effRange(budRange, months.length)} onChange={(f, t) => setBudRange([f, t])} />
         )}
         <div className="flex items-center gap-3 flex-wrap pt-1 border-t border-sage/60">
           <label className="inline-flex items-center gap-1.5 text-xs font-medium text-navy cursor-pointer">
@@ -369,7 +398,7 @@ export default function PrevisionnelView({ companyId, data, mapping, fiscalYears
           )}
         </div>
         {showReal && realMonths.length > 1 && (
-          <MonthRangeSlider label="Mois du réel" accent="navy" months={realMonths} range={clamp(realRange, realMonths.length)} onChange={(f, t) => setRealRange([f, t])} />
+          <MonthRangeSlider label="Mois du réel" accent="navy" months={realMonths} range={effRange(realRange, realMonths.length)} onChange={(f, t) => setRealRange([f, t])} />
         )}
       </div>
 

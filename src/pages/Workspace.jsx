@@ -138,6 +138,19 @@ export default function Workspace({ onLogout }) {
   useEffect(() => {
     try { localStorage.setItem(UI_KEY, JSON.stringify({ companyId, fyId, tab })); } catch { /* noop */ }
   }, [companyId, fyId, tab]);
+  // Mémoire PAR DOSSIER : dernier onglet et dernier exercice consultés, pour
+  // retrouver chaque dossier exactement comme on l'a laissé. On n'écrit qu'une
+  // fois le dossier « stabilisé » (exercices chargés), sinon le changement de
+  // dossier écraserait sa mémoire avec les valeurs du dossier précédent.
+  const settledCompany = useRef('');
+  useEffect(() => {
+    if (!companyId || !tab || String(settledCompany.current) !== String(companyId)) return;
+    try { localStorage.setItem(`mv:tab:${companyId}`, tab); } catch { /* noop */ }
+  }, [companyId, tab]);
+  useEffect(() => {
+    if (!companyId || !fyId || String(settledCompany.current) !== String(companyId)) return;
+    try { localStorage.setItem(`mv:fy:${companyId}`, String(fyId)); } catch { /* noop */ }
+  }, [companyId, fyId]);
 
   useEffect(() => {
     (async () => {
@@ -159,8 +172,12 @@ export default function Workspace({ onLogout }) {
     // Premier chargement de la societe sauvegardee = restauration : on garde l'etat memorise.
     const isRestore = !restoreConsumed.current && String(companyId) === String(initialUI.companyId);
     restoreConsumed.current = true;
+    settledCompany.current = ''; // gèle la mémoire par dossier le temps du chargement
     if (!isRestore) {
-      setTab('synthese');
+      // On retrouve le dossier comme on l'a laissé : dernier onglet visité.
+      let lastTab = 'synthese';
+      try { lastTab = localStorage.getItem(`mv:tab:${companyId}`) || 'synthese'; } catch { /* noop */ }
+      setTab(TABS.some((t) => t.key === lastTab) ? lastTab : 'synthese');
     }
     const sync = loadSync(companyId);
     setSynced(sync);
@@ -213,8 +230,13 @@ export default function Workspace({ onLogout }) {
         const { data } = await dataAPI.fiscalYears(companyId);
         const fys = data.fiscalYears || [];
         setFiscalYears(fys);
+        // Dernier exercice consulté sur CE dossier (on le retrouve comme on l'a laissé)
+        let savedFy = '';
+        try { savedFy = localStorage.getItem(`mv:fy:${companyId}`) || ''; } catch { /* noop */ }
         if (isRestore && fys.some((f) => String(f.id) === String(initialUI.fyId))) {
           setFyId(String(initialUI.fyId));
+        } else if (savedFy && fys.some((f) => String(f.id) === String(savedFy))) {
+          setFyId(String(savedFy));
         } else {
           // Par defaut : EXERCICE FISCAL EN COURS (celui qui contient aujourd'hui),
           // sinon un exercice deja synchronise, sinon le plus recent.
@@ -223,6 +245,7 @@ export default function Workspace({ onLogout }) {
           const firstSynced = fys.find((f) => sync[f.id]);
           setFyId(String((currentFy || firstSynced || fys[0])?.id || ''));
         }
+        settledCompany.current = companyId; // dossier stabilisé : la mémoire par dossier reprend
       } catch (err) {
         setFiscalYears([]);
         setError(describe(err));
